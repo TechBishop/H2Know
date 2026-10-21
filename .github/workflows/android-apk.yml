@@ -16,33 +16,25 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-
-      - name: Setup Gradle 9.3.1
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '9.3.1'
-
-      - name: Accept Android SDK Licenses & Prepare Keystore
+      - name: Package or Build APK
         run: |
-          if [ -n "$ANDROID_HOME" ] && [ -f "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ]; then
-            yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null 2>&1 || true
+          if [ -f "release/H2Know-latest.apk" ]; then
+            echo "Using pre-built signed APK from release/H2Know-latest.apk"
+            cp release/H2Know-latest.apk H2Know-latest.apk
+          else
+            if [ -n "$ANDROID_HOME" ] && [ -f "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ]; then
+              yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null 2>&1 || true
+              "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36.1" "build-tools;36.0.0"
+            fi
+            if [ -f "debug.keystore.base64" ]; then
+              base64 -d debug.keystore.base64 > debug.keystore
+            fi
+            if [ ! -f ".env" ] && [ -f ".env.example" ]; then
+              cp .env.example .env
+            fi
+            gradle assembleDebug --no-configuration-cache
+            cp app/build/outputs/apk/debug/app-debug.apk H2Know-latest.apk
           fi
-          if [ -f "debug.keystore.base64" ]; then
-            base64 -d debug.keystore.base64 > debug.keystore
-          fi
-          if [ ! -f ".env" ] && [ -f ".env.example" ]; then
-            cp .env.example .env
-          fi
-
-      - name: Build Debug APK
-        run: |
-          gradle assembleDebug --no-configuration-cache
-          cp app/build/outputs/apk/debug/app-debug.apk H2Know-latest.apk
 
       - name: Upload Installable APK Artifact
         uses: actions/upload-artifact@v4

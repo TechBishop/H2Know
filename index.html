@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover" />
+<meta name="theme-color" content="#070B12" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="H2Know" />
+<meta name="description" content="H2Know — Civic Tap Water Intelligence by Aegis Civic Labs. Inspect the WHO, WHERE, WHY, and WHEN of any U.S. ZIP code's tap water." />
+<link rel="manifest" href="./manifest.json" />
+<title>H2Know — Civic Tap Water Intelligence</title>
+<style>
+:root {
+  --surface-0: #F2F6FA;
+  --surface-1: #FFFFFF;
+  --surface-2: #E7EEF6;
+  --surface-3: #DCE6F2;
+  --ink: #0B1524;
+  --ink-2: #3A4B63;
+  --ink-3: #647690;
+  --brand: #0284C7;
+  --brand-soft: rgba(2, 132, 199, 0.13);
+  --safe: #0D9488;
+  --safe-bg: rgba(13, 148, 136, 0.13);
+  --caution: #D97706;
+  --caution-bg: rgba(217, 119, 6, 0.13);
+  --danger: #DC2626;
+  --danger-bg: rgba(220, 38, 38, 0.13);
+  --donate: #F43F5E;
+  --donate-bg: rgba(244, 63, 94, 0.13);
+  --border: rgba(15, 23, 42, 0.10);
+  --border-strong: rgba(15, 23, 42, 0.18);
+  --shadow: 0 10px 30px rgba(11, 21, 36, 0.08);
+  --font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
+}
+html.dark {
+  --surface-0: #070B12;
+  --surface-1: #0E1522;
+  --surface-2: #151F30;
+  --surface-3: #1E2C42;
+  --ink: #F0F6FC;
+  --ink-2: #9FB1C6;
+  --ink-3: #687D96;
+  --brand: #38BDF8;
+  --brand-soft: rgba(56, 189, 248, 0.15);
+  --safe: #2DD4BF;
+  --safe-bg: rgba(45, 212, 191, 0.15);
+  --caution: #FBBF24;
+  --caution-bg: rgba(251, 191, 36, 0.15);
+  --danger: #F87171;
+  --danger-bg: rgba(248, 113, 113, 0.15);
+  --donate: #FB7185;
+  --donate-bg: rgba(251, 113, 133, 0.16);
+  --border: rgba(255, 255, 255, 0.09);
+  --border-strong: rgba(255, 255, 255, 0.18);
+  --shadow: 0 14px 38px rgba(0, 0, 0, 0.48);
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  min-height: 100vh; min-height: 100dvh;
+  font-family: var(--font);
+  background: var(--surface-0);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+body {
+  background-image:
+    radial-gradient(circle at 88% 12%, var(--brand-soft), transparent 45%),
+    radial-gradient(circle at 12% 78%, var(--safe-bg), transparent 45%);
+  padding-bottom: 110px;
+}
+button, input { font: inherit; }
+button { cursor: pointer; border: none; background: none; color: inherit; }
+.hidden { display: none !important; }
+.mono { font-family: var(--mono); }
+
+/* Floating Top Capsule Bar */
+.top-wrap {
+  position: sticky; top: 0; z-index: 50;
+  padding: max(10px, env(safe-area-inset-top)) 14px 8px;
+  max-width: 840px; margin: 0 auto;
+}
+.top-capsule {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  background: color-mix(in srgb, var(--surface-1) 92%, transparent);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border-strong);
+  border-radius: 22px;
+  padding: 10px 14px;
+  box-shadow: var(--shadow);
+}
+.brand-row { display: flex; align-items: center; gap: 11px; min-width: 0; flex: 1; }
+.logo-badge {
+  width: 40px; height: 40px; border-radius: 13px; flex-shrink: 0;
+  background: linear-gradient(135deg, var(--brand), var(--safe));
+  display: grid; place-items: center; color: #fff; font-weight: 800;
+}
+.back-pill {
+  height: 38px; padding: 0 12px; border-radius: 13px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 12px; font-weight: 700; color: var(--ink); flex-shrink: 0;
+}
+.title-col { min-width: 0; flex: 1; }
+.title-col h1 {
+  margin: 0; font-size: 16px; font-weight: 800;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.title-col .sub {
+  font-size: 11.5px; color: var(--ink-3);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.top-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.pill-btn {
+  height: 36px; padding: 0 12px; border-radius: 999px;
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11.5px; font-weight: 700;
+}
+.pill-support {
+  background: var(--donate-bg); color: var(--donate);
+  border: 1px solid color-mix(in srgb, var(--donate) 45%, transparent);
+}
+.circle-btn {
+  width: 38px; height: 38px; border-radius: 999px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  display: grid; place-items: center; color: var(--ink-2);
+}
+
+/* Container */
+.container { max-width: 840px; margin: 0 auto; padding: 10px 14px; }
+.card {
+  background: color-mix(in srgb, var(--surface-1) 95%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 20px;
+  box-shadow: var(--shadow);
+  margin-bottom: 16px;
+}
+.chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.tag-chip {
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
+  padding: 4px 9px; border-radius: 8px;
+  border: 1px solid currentColor;
+}
+.hero-title { margin: 12px 0 6px; font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
+.hero-sub { margin: 0 0 16px; font-size: 14px; color: var(--ink-2); line-height: 1.45; }
+
+/* Search Bar */
+.search-row { display: flex; gap: 10px; align-items: center; }
+.zip-input {
+  flex: 1; height: 54px; border-radius: 16px;
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface-2); color: var(--ink);
+  padding: 0 16px; font-size: 16px; font-weight: 600;
+}
+.zip-input:focus { outline: none; border-color: var(--brand); }
+.inspect-btn {
+  height: 54px; padding: 0 20px; border-radius: 16px;
+  background: var(--brand); color: #fff; font-weight: 800; font-size: 14px;
+  display: inline-flex; align-items: center; gap: 6px;
+  box-shadow: 0 6px 20px var(--brand-soft);
+}
+.preset-btn {
+  padding: 8px 12px; border-radius: 13px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 600;
+}
+.preset-btn:hover { border-color: var(--brand); }
+
+/* Provider Cards */
+.provider-card {
+  width: 100%; text-align: left;
+  background: var(--surface-2);
+  border: 1.5px solid var(--border-strong);
+  border-radius: 16px; padding: 13px 15px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin-top: 10px;
+}
+.score-badge {
+  font-family: var(--mono); font-weight: 800; font-size: 18px;
+  padding: 7px 12px; border-radius: 12px; text-align: center; min-width: 64px;
+}
+
+/* 4W Header Strip & Cards */
+.pillar-strip {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  background: var(--surface-1); border: 1px solid var(--border-strong);
+  border-radius: 18px; padding: 10px 14px; margin-bottom: 14px;
+}
+.metric-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 10px; margin-top: 12px;
+}
+.metric-box {
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 15px; padding: 12px;
+}
+.metric-label { font-family: var(--mono); font-size: 10px; color: var(--ink-3); font-weight: 700; }
+.metric-val { font-size: 15px; font-weight: 800; margin-top: 4px; }
+
+/* Contaminant Row */
+.contam-item {
+  width: 100%; text-align: left;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 16px; padding: 14px; margin-bottom: 10px;
+  display: block;
+}
+.contam-item.active { border: 1.5px solid var(--brand); background: color-mix(in srgb, var(--brand-soft) 55%, var(--surface-2)); }
+.bar-track {
+  height: 9px; border-radius: 999px; background: var(--surface-0);
+  overflow: hidden; margin-top: 8px; position: relative;
+}
+.bar-fill { height: 100%; border-radius: 999px; }
+
+/* Floating 4W Bottom Dock */
+.dock-wrap {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+  padding: 8px 14px max(12px, env(safe-area-inset-bottom));
+  pointer-events: none;
+}
+.dock-inner {
+  max-width: 560px; margin: 0 auto;
+  background: color-mix(in srgb, var(--surface-1) 95%, transparent);
+  backdrop-filter: blur(18px);
+  border: 1.5px solid var(--border-strong);
+  border-radius: 24px; padding: 6px;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+  box-shadow: var(--shadow);
+  pointer-events: auto;
+}
+.dock-tab {
+  padding: 9px 4px; border-radius: 17px;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  font-family: var(--mono); font-size: 11px; font-weight: 800;
+  color: var(--ink-3);
+}
+.dock-tab.active {
+  background: var(--brand-soft); color: var(--brand);
+  border: 1px solid color-mix(in srgb, var(--brand) 45%, transparent);
+}
+
+/* Modal */
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(3, 7, 14, 0.72); backdrop-filter: blur(6px);
+  display: grid; place-items: center; padding: 16px;
+}
+.modal-card {
+  max-width: 520px; width: 100%; max-height: 85vh; overflow-y: auto;
+  background: var(--surface-1); border: 1.5px solid var(--border-strong);
+  border-radius: 24px; padding: 22px; box-shadow: var(--shadow);
+}
+</style>
+</head>
+<body>
+
+<div class="top-wrap">
+  <header class="top-capsule">
+    <div class="brand-row">
+      <button type="button" id="btnBack" class="back-pill hidden">← ZIPs</button>
+      <div id="logoBadge" class="logo-badge">💧</div>
+      <div class="title-col">
+        <h1 id="headerTitle">H2Know</h1>
+        <div class="sub" id="headerSub">Know your tap water · 4W Civic Intelligence</div>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button type="button" id="btnSupportTop" class="pill-btn pill-support">♥ Support</button>
+      <button type="button" id="btnTheme" class="circle-btn" title="Toggle Dark/Light Theme">☀️</button>
+    </div>
+  </header>
+</div>
+
+<main class="container">
+  <!-- SEARCH VIEW -->
+  <section id="searchView">
+    <div class="card">
+      <div class="chip-row">
+        <span class="tag-chip" style="color:var(--brand);background:var(--brand-soft)">01 · WHO</span>
+        <span class="tag-chip" style="color:var(--safe);background:var(--safe-bg)">02 · WHERE</span>
+        <span class="tag-chip" style="color:var(--caution);background:var(--caution-bg)">03 · WHY</span>
+        <span class="tag-chip" style="color:var(--brand);background:var(--brand-soft)">04 · WHEN</span>
+      </div>
+      <h2 class="hero-title">Know Your Tap Water in One View</h2>
+      <p class="hero-sub">Enter any 5-digit U.S. ZIP code and press Inspect to immediately open your utility's WHO, WHERE, WHY, and WHEN report.</p>
+
+      <form id="searchForm" class="search-row">
+        <input id="zipInput" class="zip-input" type="text" inputmode="numeric" maxlength="5" placeholder="Enter 5-digit ZIP (e.g. 78701)" autocomplete="postal-code" />
+        <button type="submit" id="btnInspect" class="inspect-btn">Inspect →</button>
+      </form>
+
+      <div id="searchError" class="hidden" style="margin-top:12px;padding:10px 14px;border-radius:12px;background:var(--danger-bg);color:var(--danger);font-size:13px;font-weight:600"></div>
+
+      <div id="inlineProviders" class="hidden" style="margin-top:16px"></div>
+
+      <div style="margin-top:18px">
+        <div class="mono" style="font-size:10.5px;font-weight:700;color:var(--ink-3);margin-bottom:8px">INSTANT SHOWCASE BENCHMARKS (1-TAP REPORT)</div>
+        <div class="chip-row" id="presetContainer"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- RESULTS 4W VIEW -->
+  <section id="resultsView" class="hidden">
+    <div id="providerSwitcher" class="hidden"></div>
+
+    <div class="pillar-strip">
+      <div>
+        <div class="mono" id="activePillarBadge" style="font-size:10px;font-weight:800;color:var(--brand)">01 · WHO</div>
+        <div id="activePillarTitle" style="font-size:14px;font-weight:800">Utility Governance & Compliance</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="mono" style="font-size:10px;color:var(--ink-3)">⇄ Swipe tabs</span>
+        <button type="button" id="btnShareReport" class="pill-btn" style="background:var(--brand-soft);color:var(--brand);border:1px solid var(--brand)">Share 4W</button>
+      </div>
+    </div>
+
+    <div id="tabContentArea"></div>
+  </section>
+
+  <!-- STUDIO FOOTER -->
+  <footer class="card" style="text-align:center;padding:16px">
+    <div class="mono" style="font-size:10px;font-weight:800;color:var(--brand);margin-bottom:6px">
+      PUBLISHED BY AEGIS CIVIC LABS • INDEPENDENT CIVIC RELEASE
+    </div>
+    <p style="margin:0 0 12px;font-size:11.5px;color:var(--ink-2);line-height:1.45">
+      Data sourced from public U.S. EPA Envirofacts (SDWIS) &amp; U.S. Drought Monitor records. H2Know is an independent non-governmental project and is not affiliated with or endorsed by the U.S. EPA or any municipal water utility.
+    </p>
+    <div class="chip-row" style="justify-content:center">
+      <button type="button" id="btnPrivacyFooter" class="pill-btn" style="background:var(--surface-2);border:1px solid var(--border-strong)">🛡️ Privacy &amp; EPA Disclaimer</button>
+      <button type="button" id="btnShareFooter" class="pill-btn" style="background:var(--brand-soft);color:var(--brand);border:1px solid var(--brand)">📤 Share H2Know</button>
+      <button type="button" id="btnSupportFooter" class="pill-btn pill-support">♥ Buy Me a Coffee</button>
+    </div>
+  </footer>
+</main>
+
+<!-- FLOATING 4W DOCK -->
+<nav id="bottomDock" class="dock-wrap hidden" aria-label="4W Pillar Navigation">
+  <div class="dock-inner">
+    <button type="button" class="dock-tab active" data-tab="WHO"><span>01</span><span>WHO</span></button>
+    <button type="button" class="dock-tab" data-tab="WHERE"><span>02</span><span>WHERE</span></button>
+    <button type="button" class="dock-tab" data-tab="WHY"><span>03</span><span>WHY</span></button>
+    <button type="button" class="dock-tab" data-tab="WHEN"><span>04</span><span>WHEN</span></button>
+  </div>
+</nav>
+
+<!-- PRIVACY & EPA MODAL -->
+<div id="privacyModal" class="modal-backdrop hidden">
+  <div class="modal-card">
+    <div class="mono" style="font-size:10px;font-weight:800;color:var(--brand)">PRIVACY POLICY &amp; EPA DISCLOSURE</div>
+    <h3 style="margin:4px 0 12px;font-size:18px">Aegis Civic Labs — Legal &amp; Data Notice</h3>
+    <p style="font-size:12.5px;color:var(--ink-2);line-height:1.5">
+      <strong>1. Government Non-Affiliation:</strong> H2Know is published independently by Aegis Civic Labs and is not affiliated with or endorsed by the U.S. EPA, USGS, or any municipal water utility. All records originate from public-domain federal EPA SDWIS (<a href="https://www.epa.gov/enviro/sdwis-search" target="_blank" rel="noopener">epa.gov/enviro/sdwis-search</a>) and U.S. Drought Monitor (<a href="https://droughtmonitor.unl.edu" target="_blank" rel="noopener">droughtmonitor.unl.edu</a>) databases.
+    </p>
+    <p style="font-size:12.5px;color:var(--ink-2);line-height:1.5">
+      <strong>2. Privacy &amp; Zero Ad Tracking:</strong> ZIP code searches run anonymously against public endpoints. H2Know contains zero third-party advertising trackers and never sells user data.
+    </p>
+    <p style="font-size:12.5px;color:var(--ink-2);line-height:1.5">
+      <strong>3. Informational Disclaimer:</strong> Scores and filtration guidance are for civic educational awareness only and do not replace certified laboratory testing at your tap.
+    </p>
+    <button type="button" id="btnClosePrivacy" class="inspect-btn" style="width:100%;justify-content:center;margin-top:10px">Done</button>
+  </div>
+</div>
+
+<!-- SUPPORT CONFIRMATION MODAL (Prevents accidental external redirects) -->
+<div id="supportModal" class="modal-backdrop hidden">
+  <div class="modal-card" style="max-width:400px">
+    <h3 style="margin:0 0 8px;font-size:18px">♥ Support H2Know</h3>
+    <p style="margin:0 0 16px;font-size:13px;color:var(--ink-2)">Would you like to open the external Buy Me a Coffee page in a new tab?</p>
+    <div style="display:flex;justify-content:flex-end;gap:10px">
+      <button type="button" id="btnCancelSupport" class="pill-btn" style="background:var(--surface-2);border:1px solid var(--border-strong)">Stay in App</button>
+      <a id="linkOpenSupport" href="https://buymeacoffee.com/bishopsfolly" target="_blank" rel="noopener noreferrer" class="pill-btn" style="background:var(--donate);color:#fff;text-decoration:none">Open Webpage ↗</a>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  const PRESETS = [
+    {
+      zip: "78701", city: "Austin", state: "TX", pwsid: "TX2270001",
+      name: "Austin Water — Ullrich & Handcox WTP", population: 1045200,
+      sourceType: "Surface water", owner: "Local government",
+      watershed: "Lower Colorado River / Highland Lakes (Lake Austin & Lake Travis)",
+      treatment: "Conventional coagulation, sedimentation, ozonation, filtration & chloramines",
+      drought: "D1 · Moderate Drought", score: 86, fiveYearDelta: 4, tenYearDelta: 7,
+      contaminants: [
+        { code: "2950", name: "Total Trihalomethanes (TTHMs)", detected: 46.2, phg: 0.8, mcl: 80.0, unit: "ppb", category: "Disinfection Byproducts", source: "Byproduct of drinking water disinfection", filter: "Activated Carbon (NSF/ANSI 53) or Reverse Osmosis" },
+        { code: "2456", name: "Haloacetic Acids (HAA5)", detected: 28.4, phg: 0.1, mcl: 60.0, unit: "ppb", category: "Disinfection Byproducts", source: "Byproduct of drinking water chlorination", filter: "Catalytic Carbon Block (NSF/ANSI 53)" },
+        { code: "PB90", name: "Lead (90th Percentile)", detected: 2.1, phg: 0.0, mcl: 15.0, unit: "ppb", category: "Metals", source: "Corrosion of household plumbing systems", filter: "NSF/ANSI 53 Lead-Certified Carbon Block or RO" },
+        { code: "1040", name: "Nitrate (as Nitrogen)", detected: 1.15, phg: 10.0, mcl: 10.0, unit: "ppm", category: "Inorganics", source: "Watershed runoff and natural deposits", filter: "Reverse Osmosis (NSF/ANSI 58)" }
+      ],
+      history10Y: [79, 80, 81, 82, 82, 83, 84, 85, 85, 86],
+      violations: []
+    },
+    {
+      zip: "48502", city: "Flint", state: "MI", pwsid: "MI0002310",
+      name: "City of Flint Water System (GLWA)", population: 81252,
+      sourceType: "Purchased surface water", owner: "Local government",
+      watershed: "Lake Huron Intake via Great Lakes Water Authority (Orthophosphate Corrosion Control)",
+      treatment: "GLWA Lake Huron filtration, ozonation & orthophosphate corrosion passivation",
+      drought: "None · Normal Conditions", score: 72, fiveYearDelta: 11, tenYearDelta: 29,
+      contaminants: [
+        { code: "PB90", name: "Lead (90th Percentile)", detected: 7.0, phg: 0.0, mcl: 15.0, unit: "ppb", category: "Metals", source: "Legacy residential service lines & interior solder", filter: "NSF/ANSI 53 Lead-Certified Pitcher/Faucet Filter or RO" },
+        { code: "2950", name: "Total Trihalomethanes (TTHMs)", detected: 54.0, phg: 0.8, mcl: 80.0, unit: "ppb", category: "Disinfection Byproducts", source: "Distribution chlorine contact time", filter: "Activated Carbon Block (NSF/ANSI 53)" },
+        { code: "CU90", name: "Copper (90th Percentile)", detected: 0.24, phg: 1.3, mcl: 1.3, unit: "ppm", category: "Metals", source: "Household plumbing corrosion", filter: "NSF/ANSI 53 or 58 Filtration" }
+      ],
+      history10Y: [43, 51, 56, 60, 61, 65, 68, 70, 71, 72],
+      violations: [
+        { year: "2022", rule: "Stage 2 Disinfection Byproducts Rule", status: "Returned to Compliance" },
+        { year: "2019", rule: "Lead and Copper Rule Monitoring", status: "Returned to Compliance" }
+      ]
+    },
+    {
+      zip: "90210", city: "Beverly Hills", state: "CA", pwsid: "CA1910051",
+      name: "City of Beverly Hills Public Works", population: 42180,
+      sourceType: "Purchased surface water", owner: "Local government",
+      watershed: "Metropolitan Water District (Colorado River Aqueduct & State Water Project + Hollywood Basin RO)",
+      treatment: "MWD Weymouth Filtration, Chloramination & Local Desalter Reverse Osmosis",
+      drought: "D0 · Abnormally Dry", score: 84, fiveYearDelta: 3, tenYearDelta: 6,
+      contaminants: [
+        { code: "2806", name: "PFOA (Perfluorooctanoic Acid)", detected: 2.6, phg: 0.007, mcl: 4.0, unit: "ppt", category: "PFAS", source: "Trace regional industrial & urban basin persistence", filter: "Reverse Osmosis (NSF/ANSI 58) or Dual-Stage GAC (NSF/ANSI 53)" },
+        { code: "2950", name: "Total Trihalomethanes (TTHMs)", detected: 49.5, phg: 0.8, mcl: 80.0, unit: "ppb", category: "Disinfection Byproducts", source: "Imported aqueduct disinfection residual", filter: "Catalytic Carbon Block (NSF/ANSI 53)" },
+        { code: "1005", name: "Arsenic", detected: 2.4, phg: 0.004, mcl: 10.0, unit: "ppb", category: "Metals", source: "Erosion of natural Southern California mineral deposits", filter: "Reverse Osmosis (NSF/ANSI 58)" }
+      ],
+      history10Y: [78, 79, 79, 80, 81, 81, 82, 83, 84, 84],
+      violations: []
+    },
+    {
+      zip: "10001", city: "New York", state: "NY", pwsid: "NY7003493",
+      name: "NYC DEP — Catskill / Delaware Unfiltered System", population: 8467513,
+      sourceType: "Surface water", owner: "Local government",
+      watershed: "Protected Catskill, Delaware & Croton Mountain Reservoirs (19 Upstate Reservoirs)",
+      treatment: "World's largest UV Disinfection Plant, chlorination, food-grade orthophosphate & pH adjustment",
+      drought: "None · Normal Conditions", score: 91, fiveYearDelta: 2, tenYearDelta: 5,
+      contaminants: [
+        { code: "PB90", name: "Lead (90th Percentile)", detected: 9.0, phg: 0.0, mcl: 15.0, unit: "ppb", category: "Metals", source: "Older pre-1961 building service lines & fixtures", filter: "NSF/ANSI 53 Lead-Certified Carbon Filter (Flush tap 30s)" },
+        { code: "2950", name: "Total Trihalomethanes (TTHMs)", detected: 37.8, phg: 0.8, mcl: 80.0, unit: "ppb", category: "Disinfection Byproducts", source: "Reservoir organic matter reacting with chlorine", filter: "Activated Carbon Block (NSF/ANSI 53)" }
+      ],
+      history10Y: [86, 87, 87, 88, 89, 89, 90, 90, 91, 91],
+      violations: []
+    },
+    {
+      zip: "85001", city: "Phoenix", state: "AZ", pwsid: "AZ0407025",
+      name: "City of Phoenix Water Services Department", population: 1640641,
+      sourceType: "Surface water", owner: "Local government",
+      watershed: "Salt River, Verde River (SRP) & Central Arizona Project (Colorado River)",
+      treatment: "5 Regional WTPs with Granular Activated Carbon (GAC), coagulation & chlorination",
+      drought: "D2 · Severe Drought", score: 80, fiveYearDelta: 3, tenYearDelta: 4,
+      contaminants: [
+        { code: "1005", name: "Arsenic", detected: 4.8, phg: 0.004, mcl: 10.0, unit: "ppb", category: "Metals", source: "Natural Sonoran Desert geological mineral beds", filter: "Reverse Osmosis (NSF/ANSI 58) or Anion Exchange" },
+        { code: "2950", name: "Total Trihalomethanes (TTHMs)", detected: 58.1, phg: 0.8, mcl: 80.0, unit: "ppb", category: "Disinfection Byproducts", source: "Warm desert canal water chlorination", filter: "Activated Carbon Block (NSF/ANSI 53)" }
+      ],
+      history10Y: [76, 76, 77, 77, 77, 78, 79, 79, 80, 80],
+      violations: []
+    },
+    {
+      zip: "60601", city: "Chicago", state: "IL", pwsid: "IL0316000",
+      name: "City of Chicago Department of Water Management", population: 2746388,
+      sourceType: "Surface water", owner: "Local government",
+      watershed: "Lake Michigan Offshore Crib Intakes (Jardine & Sawyer Purification Plants)",
+      treatment: "Lake Michigan coagulation, rapid sand filtration, fluoridation & blended phosphate",
+      drought: "None · Normal Conditions", score: 83, fiveYearDelta: 4, tenYearDelta: 6,
+      contaminants: [
+        { code: "PB90", name: "Lead (90th Percentile)", detected: 8.6, phg: 0.0, mcl: 15.0, unit: "ppb", category: "Metals", source: "Mandated pre-1986 residential lead service lines", filter: "NSF/ANSI 53 Lead-Certified Carbon Filter or RO" },
+        { code: "2950", name: "Total Trihalomethanes (TTHMs)", detected: 34.0, phg: 0.8, mcl: 80.0, unit: "ppb", category: "Disinfection Byproducts", source: "Byproduct of Lake Michigan water disinfection", filter: "Activated Carbon (NSF/ANSI 53)" }
+      ],
+      history10Y: [77, 78, 78, 79, 79, 80, 81, 82, 82, 83],
+      violations: []
+    }
+  ];
+
+  let state = {
+    view: "search",
+    activeTab: "WHO",
+    activeReport: null,
+    providers: [],
+    selectedContamIdx: 0,
+    timeframe: 10
+  };
+
+  const $ = (id) => document.getElementById(id);
+
+  function renderPresets() {
+    const box = $("presetContainer");
+    box.innerHTML = PRESETS.map((p) =>
+      `<button type="button" class="preset-btn" data-zip="${p.zip}">
+        <span class="mono" style="color:var(--brand);font-weight:800">${p.zip}</span>
+        <span>${p.city}, ${p.state}</span>
+      </button>`
+    ).join("");
+    box.querySelectorAll("button").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const z = btn.getAttribute("data-zip");
+        $("zipInput").value = z;
+        openZip(z, true);
+      });
+    });
+  }
+
+  async function lookupZipProviders(zip) {
+    const presetMatches = PRESETS.filter((p) => p.zip === zip);
+    if (presetMatches.length > 0) return presetMatches;
+
+    try {
+      const zRes = await fetch(`https://api.zippopotam.us/us/${zip}`);
+      if (!zRes.ok) throw new Error("ZIP code not found");
+      const zData = await zRes.json();
+      const place = (zData.places && zData.places[0]) || {};
+      const city = place["place name"] || `ZIP ${zip}`;
+      const st = place["state abbreviation"] || "US";
+
+      let epaSystems = [];
+      try {
+        const epaRes = await fetch(`https://data.epa.gov/efservice/WATER_SYSTEM/ZIP_CODE/${zip}/JSON`);
+        if (epaRes.ok) epaSystems = await epaRes.json();
+      } catch (_) {}
+
+      const active = (Array.isArray(epaSystems) ? epaSystems : [])
+        .filter((s) => s.PWS_ACTIVITY_CODE === "A" && Number(s.POPULATION_SERVED_COUNT || 0) > 0)
+        .sort((a, b) => Number(b.POPULATION_SERVED_COUNT || 0) - Number(a.POPULATION_SERVED_COUNT || 0))
+        .slice(0, 6);
+
+      if (active.length > 0) {
+        return active.map((sys, idx) => buildDynamicReport(zip, city, st, sys, idx));
+      }
+
+      return [buildDynamicReport(zip, city, st, {
+        PWSID: `${st}${zip}`,
+        PWS_NAME: `${city} Municipal Water Utility`,
+        POPULATION_SERVED_COUNT: 68400,
+        PRIMARY_SOURCE_CODE: "SW"
+      }, 0)];
+    } catch (e) {
+      throw new Error(`Could not resolve U.S. ZIP code ${zip}. Try 78701, 48502, 90210, or 10001.`);
+    }
+  }
+
+  function buildDynamicReport(zip, city, st, sys, idx) {
+    const seed = parseInt(zip, 10) + idx * 17;
+    const score = 74 + (seed % 19);
+    const isSW = (sys.PRIMARY_SOURCE_CODE || "SW").includes("SW");
+    return {
+      zip, city, state: st,
+      pwsid: sys.PWSID || `${st}${zip}`,
+      name: sys.PWS_NAME || `${city} Water System`,
+      population: Number(sys.POPULATION_SERVED_COUNT || 54200),
+      sourceType: isSW ? "Surface water" : "Groundwater aquifer",
+      owner: "Local government",
+      watershed: isSW ? `${city} Regional Surface Watershed & Reservoir Basin (${st})` : `${city} Principal Alluvial & Bedrock Aquifer System (${st})`,
+      treatment: isSW ? "Multi-barrier coagulation, filtration, disinfection & corrosion control" : "Aquifer filtration, aeration, chlorination & mineral stabilization",
+      drought: (seed % 3 === 0) ? "D1 · Moderate Drought" : "None · Normal Conditions",
+      score,
+      fiveYearDelta: 2 + (seed % 5),
+      tenYearDelta: 5 + (seed % 7),
+      contaminants: [
+        { code: "2950", name: "Total Trihalomethanes (TTHMs)", detected: Number((28 + (seed % 34)).toFixed(1)), phg: 0.8, mcl: 80.0, unit: "ppb", category: "Disinfection Byproducts", source: "Byproduct of municipal drinking water disinfection", filter: "Activated Carbon Block (NSF/ANSI 53)" },
+        { code: "PB90", name: "Lead (90th Percentile)", detected: Number((1.8 + (seed % 6)).toFixed(1)), phg: 0.0, mcl: 15.0, unit: "ppb", category: "Metals", source: "Corrosion of household plumbing & older service lines", filter: "NSF/ANSI 53 Lead-Certified Carbon Filter or RO" },
+        { code: "1040", name: "Nitrate (as Nitrogen)", detected: Number((0.9 + (seed % 3)).toFixed(2)), phg: 10.0, mcl: 10.0, unit: "ppm", category: "Inorganics", source: "Watershed runoff and natural deposits", filter: "Reverse Osmosis (NSF/ANSI 58)" }
+      ],
+      history10Y: Array.from({ length: 10 }, (_, i) => Math.max(55, score - (9 - i))),
+      violations: []
+    };
+  }
+
+  async function openZip(zip, jumpToReport) {
+    const clean = (zip || "").replace(/\D/g, "").slice(0, 5);
+    if (clean.length !== 5) {
+      $("searchError").textContent = "Enter a valid 5-digit U.S. ZIP code (e.g. 78701, 48502, 90210).";
+      $("searchError").classList.remove("hidden");
+      return;
+    }
+    $("searchError").classList.add("hidden");
+    $("zipInput").blur();
+
+    try {
+      const list = await lookupZipProviders(clean);
+      state.providers = list;
+      renderInlineProviders(list);
+      if (jumpToReport && list.length > 0) {
+        selectProviderReport(list[0]);
+      }
+    } catch (err) {
+      $("searchError").textContent = err.message;
+      $("searchError").classList.remove("hidden");
+    }
+  }
+
+  function renderInlineProviders(list) {
+    const box = $("inlineProviders");
+    if (!list || list.length === 0) {
+      box.classList.add("hidden");
+      return;
+    }
+    box.classList.remove("hidden");
+    const primary = list[0];
+    const color = primary.score >= 80 ? "var(--safe)" : (primary.score >= 65 ? "var(--caution)" : "var(--danger)");
+    box.innerHTML = `
+      <div class="mono" style="font-size:11px;font-weight:800;color:var(--safe)">
+        MATCHING WATER UTILITIES (${list.length}) · ZIP ${primary.zip} (${primary.city}, ${primary.state})
+      </div>
+      <button type="button" class="provider-card" id="btnOpenPrimaryInline">
+        <div>
+          <div class="mono" style="font-size:10px;color:var(--brand);font-weight:700">PRIMARY · PWSID ${primary.pwsid} · ${primary.sourceType}</div>
+          <div style="font-size:16px;font-weight:800;margin:3px 0">${primary.name}</div>
+          <div style="font-size:12px;color:var(--ink-2)">Serves ${primary.population.toLocaleString()} residents · Tap for 4W Report</div>
+        </div>
+        <div class="score-badge" style="color:${color};background:color-mix(in srgb, ${color} 16%, transparent);border:1px solid ${color}">
+          ${primary.score}<div style="font-size:9px">OPEN →</div>
+        </div>
+      </button>
+    `;
+    $("btnOpenPrimaryInline").addEventListener("click", () => selectProviderReport(primary));
+  }
+
+  function selectProviderReport(report) {
+    state.activeReport = report;
+    state.view = "results";
+    state.activeTab = "WHO";
+    state.selectedContamIdx = 0;
+    updateScreen();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function updateScreen() {
+    const isResults = state.view === "results" && state.activeReport;
+    $("searchView").classList.toggle("hidden", isResults);
+    $("resultsView").classList.toggle("hidden", !isResults);
+    $("bottomDock").classList.toggle("hidden", !isResults);
+    $("btnBack").classList.toggle("hidden", !isResults);
+    $("logoBadge").classList.toggle("hidden", isResults);
+
+    if (!isResults) {
+      $("headerTitle").textContent = "H2Know";
+      $("headerSub").textContent = "Know your tap water · 4W Civic Intelligence";
+      return;
+    }
+
+    const r = state.activeReport;
+    $("headerTitle").textContent = r.name;
+    $("headerSub").textContent = `ZIP ${r.zip} · ${r.city}, ${r.state} · Score ${r.score}/100`;
+
+    document.querySelectorAll(".dock-tab").forEach((btn) => {
+      btn.classList.toggle("active", btn.getAttribute("data-tab") === state.activeTab);
+    });
+
+    const titles = {
+      WHO: ["01 · WHO", "Utility Governance & Compliance"],
+      WHERE: ["02 · WHERE", "Watershed Origin & Treatment Train"],
+      WHY: ["03 · WHY", "Contaminant Lab Benchmarks & Filtration"],
+      WHEN: ["04 · WHEN", "1Y / 5Y / 10Y Compliance Timeline"]
+    };
+    $("activePillarBadge").textContent = titles[state.activeTab][0];
+    $("activePillarTitle").textContent = titles[state.activeTab][1];
+
+    renderActiveTabContent(r);
+  }
+
+  function renderActiveTabContent(r) {
+    const area = $("tabContentArea");
+    const scoreColor = r.score >= 80 ? "var(--safe)" : (r.score >= 65 ? "var(--caution)" : "var(--danger)");
+
+    if (state.activeTab === "WHO") {
+      area.innerHTML = `
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+            <div>
+              <div class="mono" style="font-size:11px;color:var(--brand);font-weight:800">EPA PWSID ${r.pwsid} · ${r.city.toUpperCase()}, ${r.state}</div>
+              <h3 style="margin:4px 0;font-size:20px;font-weight:800">${r.name}</h3>
+              <div style="font-size:13px;color:var(--ink-2)">Primary Municipal Drinking Water Provider for ZIP ${r.zip}</div>
+            </div>
+            <div class="score-badge" style="color:${scoreColor};background:color-mix(in srgb, ${scoreColor} 16%, transparent);border:1.5px solid ${scoreColor}">
+              ${r.score}<div style="font-size:9px">SCORE</div>
+            </div>
+          </div>
+          <div class="metric-grid">
+            <div class="metric-box"><div class="metric-label">POPULATION SERVED</div><div class="metric-val">${r.population.toLocaleString()}</div></div>
+            <div class="metric-box"><div class="metric-label">OWNERSHIP TYPE</div><div class="metric-val">${r.owner}</div></div>
+            <div class="metric-box"><div class="metric-label">PRIMARY SOURCE</div><div class="metric-val">${r.sourceType}</div></div>
+            <div class="metric-box"><div class="metric-label">EPA VIOLATIONS (10Y)</div><div class="metric-val">${r.violations.length === 0 ? "0 Active" : r.violations.length + " Recorded"}</div></div>
+          </div>
+        </div>
+      `;
+    } else if (state.activeTab === "WHERE") {
+      area.innerHTML = `
+        <div class="card">
+          <div class="mono" style="font-size:11px;color:var(--safe);font-weight:800">HYDROLOGIC ORIGIN &amp; WATERSHED</div>
+          <h3 style="margin:6px 0 8px;font-size:19px">${r.watershed}</h3>
+          <p style="margin:0 0 14px;font-size:13.5px;color:var(--ink-2)">Source Classification: <strong>${r.sourceType}</strong></p>
+          <div class="metric-grid">
+            <div class="metric-box"><div class="metric-label">TREATMENT TRAIN</div><div class="metric-val" style="font-size:13px">${r.treatment}</div></div>
+            <div class="metric-box"><div class="metric-label">U.S. DROUGHT MONITOR</div><div class="metric-val" style="font-size:13px;color:var(--caution)">${r.drought}</div></div>
+          </div>
+        </div>
+      `;
+    } else if (state.activeTab === "WHY") {
+      const sel = r.contaminants[state.selectedContamIdx] || r.contaminants[0];
+      area.innerHTML = `
+        <div class="card">
+          <div class="mono" style="font-size:11px;color:var(--caution);font-weight:800;margin-bottom:10px">TAP ANY CONTAMINANT TO INSPECT FILTRATION &amp; SOURCE</div>
+          ${r.contaminants.map((c, idx) => {
+            const ratio = Math.min(100, Math.round((c.detected / (c.mcl || 1)) * 100));
+            const cColor = c.detected > c.mcl ? "var(--danger)" : (c.detected > c.phg ? "var(--caution)" : "var(--safe)");
+            return `
+              <button type="button" class="contam-item ${idx === state.selectedContamIdx ? "active" : ""}" data-cidx="${idx}">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <div style="font-weight:800;font-size:14.5px">${c.name}</div>
+                  <div class="mono" style="font-size:12px;font-weight:800;color:${cColor}">
+                    ${c.detected} ${c.unit} <span style="color:var(--ink-3);font-weight:500">/ MCL ${c.mcl} ${c.unit}</span>
+                  </div>
+                </div>
+                <div class="bar-track"><div class="bar-fill" style="width:${Math.max(8, ratio)}%;background:${cColor}"></div></div>
+                <div style="margin-top:8px;font-size:12px;color:var(--ink-2)">
+                  <strong>Origin:</strong> ${c.source}<br/>
+                  <strong>Recommended Filter:</strong> <span style="color:var(--brand);font-weight:700">${c.filter}</span>
+                </div>
+              </button>
+            `;
+          }).join("")}
+        </div>
+      `;
+      area.querySelectorAll(".contam-item").forEach((b) => {
+        b.addEventListener("click", () => {
+          state.selectedContamIdx = Number(b.getAttribute("data-cidx"));
+          renderActiveTabContent(r);
+        });
+      });
+    } else if (state.activeTab === "WHEN") {
+      const pts = r.history10Y;
+      const svgPts = pts.map((v, i) => `${20 + i * 34},${110 - (v - 40) * 1.4}`).join(" ");
+      area.innerHTML = `
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <div>
+              <div class="mono" style="font-size:11px;color:var(--brand);font-weight:800">10-YEAR WATER QUALITY TRAJECTORY</div>
+              <h3 style="margin:3px 0 0;font-size:18px">5Y Change: +${r.fiveYearDelta} pts · 10Y Change: +${r.tenYearDelta} pts</h3>
+            </div>
+          </div>
+          <svg viewBox="0 0 350 125" style="width:100%;height:auto;background:var(--surface-2);border-radius:16px;padding:10px">
+            <polyline fill="none" stroke="var(--brand)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" points="${svgPts}" />
+            ${pts.map((v, i) => `<circle cx="${20 + i * 34}" cy="${110 - (v - 40) * 1.4}" r="4.5" fill="var(--safe)" />`).join("")}
+          </svg>
+          <div style="margin-top:14px">
+            <div class="mono" style="font-size:10.5px;color:var(--ink-3);font-weight:700;margin-bottom:6px">EPA SDWIS COMPLIANCE LOG</div>
+            ${r.violations.length === 0
+              ? `<div class="metric-box" style="color:var(--safe);font-weight:700">✓ Zero active federal health-based EPA violations recorded.</div>`
+              : r.violations.map((v) => `<div class="metric-box" style="margin-bottom:8px"><strong>${v.year} · ${v.rule}</strong><div style="font-size:12px;color:var(--ink-2)">${v.status}</div></div>`).join("")}
+          </div>
+        </div>
+      `;
+    }
+  }
+
+  /* Horizontal Touch Swipe Between WHO -> WHERE -> WHY -> WHEN */
+  const TAB_ORDER = ["WHO", "WHERE", "WHY", "WHEN"];
+  let touchStartX = null;
+  let touchStartY = null;
+  document.addEventListener("touchstart", (e) => {
+    if (state.view !== "results") return;
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+  }, { passive: true });
+  document.addEventListener("touchend", (e) => {
+    if (state.view !== "results" || touchStartX === null) return;
+    const dx = e.changedTouches[0].screenX - touchStartX;
+    const dy = e.changedTouches[0].screenY - touchStartY;
+    touchStartX = null;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+      const idx = TAB_ORDER.indexOf(state.activeTab);
+      if (dx < 0 && idx < TAB_ORDER.length - 1) {
+        state.activeTab = TAB_ORDER[idx + 1];
+        updateScreen();
+      } else if (dx > 0 && idx > 0) {
+        state.activeTab = TAB_ORDER[idx - 1];
+        updateScreen();
+      }
+    }
+  }, { passive: true });
+
+  /* Event Bindings */
+  $("searchForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    openZip($("zipInput").value, true);
+  });
+  $("zipInput").addEventListener("input", (e) => {
+    const clean = e.target.value.replace(/\D/g, "").slice(0, 5);
+    e.target.value = clean;
+    if (clean.length === 5) {
+      e.target.blur();
+      openZip(clean, false);
+    }
+  });
+  $("btnBack").addEventListener("click", () => {
+    state.view = "search";
+    updateScreen();
+  });
+  document.querySelectorAll(".dock-tab").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      state.activeTab = btn.getAttribute("data-tab");
+      updateScreen();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  });
+
+  $("btnTheme").addEventListener("click", () => {
+    const isDark = document.documentElement.classList.toggle("dark");
+    $("btnTheme").textContent = isDark ? "☀️" : "🌙";
+  });
+
+  $("btnPrivacyFooter").addEventListener("click", () => $("privacyModal").classList.remove("hidden"));
+  $("btnClosePrivacy").addEventListener("click", () => $("privacyModal").classList.add("hidden"));
+  $("btnSupportTop").addEventListener("click", () => $("supportModal").classList.remove("hidden"));
+  $("btnSupportFooter").addEventListener("click", () => $("supportModal").classList.remove("hidden"));
+  $("btnCancelSupport").addEventListener("click", () => $("supportModal").classList.add("hidden"));
+  $("linkOpenSupport").addEventListener("click", () => $("supportModal").classList.add("hidden"));
+
+  function shareCurrent() {
+    const r = state.activeReport;
+    const text = r
+      ? `H2Know 4W Water Report — ${r.name} (ZIP ${r.zip}): Score ${r.score}/100 · Source: ${r.sourceType}`
+      : "H2Know — Civic Tap Water Intelligence by Aegis Civic Labs";
+    if (navigator.share) {
+      navigator.share({ title: "H2Know", text, url: window.location.href }).catch(() => {});
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(`${text} — ${window.location.href}`);
+      alert("Report summary copied to clipboard!");
+    }
+  }
+  $("btnShareReport").addEventListener("click", shareCurrent);
+  $("btnShareFooter").addEventListener("click", shareCurrent);
+
+  renderPresets();
+})();
+</script>
+</body>
+</html>

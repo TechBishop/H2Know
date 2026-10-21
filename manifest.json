@@ -1,0 +1,10 @@
+{
+  "name": "H2Know — Civic Tap Water Intelligence",
+  "short_name": "H2Know",
+  "description": "Inspect the WHO, WHERE, WHY, and WHEN of any U.S. ZIP code's tap water using public U.S. EPA SDWIS and U.S. Drought Monitor data.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#070B12",
+  "theme_color": "#070B12",
+  "orientation": "portrait-primary"
+}
