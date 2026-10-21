@@ -14,11 +14,17 @@ concurrency:
   group: "pages"
   cancel-in-progress: false
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   deploy-html5:
     runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Checkout repository and publish HTML5 Web App to gh-pages branch
+      - name: Checkout repository and assemble 1:1 Android Simulator Web App bundle
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -28,6 +34,7 @@ jobs:
           git fetch --depth=1 origin "${GITHUB_SHA}"
           git checkout FETCH_HEAD
 
+          rm -rf _site
           mkdir -p _site/release
           cp index.html _site/index.html
           cp index.html _site/404.html
@@ -38,21 +45,29 @@ jobs:
             cp release/H2Know-latest.apk _site/release/H2Know-latest.apk
           fi
 
-          cd _site
-          git init -b gh-pages
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "Deploy H2Know HTML5 Web App"
-          git push -f "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" gh-pages:gh-pages
+          # Also mirror to gh-pages branch so branch-based Pages configurations stay 100% in sync
+          (
+            cd _site
+            git init -b gh-pages
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -A
+            git commit -m "Deploy H2Know 1:1 Android Simulator Web App (${GITHUB_SHA})"
+            git push -f "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" gh-pages:gh-pages
+          ) || true
 
-          # Automatically enable/configure GitHub Pages to serve from the gh-pages branch if permitted
-          gh api --method POST "repos/${GITHUB_REPOSITORY}/pages" \
-            -f "source[branch]=gh-pages" -f "source[path]=/" >/dev/null 2>&1 || \
-          gh api --method PUT "repos/${GITHUB_REPOSITORY}/pages" \
-            -f "build_type=legacy" -f "source[branch]=gh-pages" -f "source[path]=/" >/dev/null 2>&1 || true
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+        continue-on-error: true
 
-          echo "### H2Know HTML5 Web App + Android APK Published" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Published 1:1 Android Simulator Web App to branch: \`gh-pages\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Direct Android APK download included at: \`/release/H2Know-latest.apk\`" >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '_site'
 
+      - name: Deploy to GitHub Pages environment
+        id: deployment
+        uses: actions/deploy-pages@v4
+        continue-on-error: true

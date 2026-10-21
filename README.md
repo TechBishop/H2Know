@@ -7,8 +7,8 @@
 ## 📱 Two Ways to Test on Your Phone Right Now
 
 ### 1. Instant HTML5 Web App (iPhone & Android — No Install Needed)
-- Open the live GitHub Pages web app on any phone browser:
-  **`https://techbishop.github.io/<your-repo-name>/`**
+- Open the live GitHub Pages web app on any phone or desktop browser:
+  **[`https://techbishop.github.io/H2Know/`](https://techbishop.github.io/H2Know/)**
 - *(Tip: On iPhone Safari or Android Chrome, tap **Share → Add to Home Screen** to install it as a full-screen mobile app).*
 
 ### 2. Native Android APK (1-Tap Download)

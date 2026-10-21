@@ -8,7 +8,10 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="H2Know" />
 <meta name="description" content="H2Know — Civic Tap Water Intelligence by Aegis Civic Labs. Inspect the WHO, WHERE, WHY, and WHEN of any U.S. ZIP code's tap water." />
-<link rel="manifest" href="./manifest.json" />
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
+<link rel="manifest" href="./manifest.json?v=2027.2" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700;800&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
@@ -1055,6 +1058,19 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
 <script>
 (function () {
   "use strict";
+
+  try {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function (regs) {
+        regs.forEach(function (r) { r.unregister(); });
+      }).catch(function () {});
+    }
+    if ("caches" in window) {
+      caches.keys().then(function (keys) {
+        keys.forEach(function (k) { caches.delete(k); });
+      }).catch(function () {});
+    }
+  } catch (_) {}
 
   /* ==========================================================================
      MATERIAL VECTOR SVG ICON HELPERS (Exact Android Icons.Default.*)
