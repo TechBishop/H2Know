@@ -1,3 +1,4 @@
+import com.android.build.api.variant.ApplicationAndroidComponentsExtension
 import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
 import java.time.Duration
 
@@ -88,6 +89,32 @@ secrets {
 }
 
 googleServices { missingGoogleServicesStrategy = MissingGoogleServicesStrategy.WARN }
+
+abstract class CopyWebConfigTask : DefaultTask() {
+  @get:InputFile
+  abstract val configFile: RegularFileProperty
+
+  @get:OutputDirectory
+  abstract val outputDir: DirectoryProperty
+
+  @TaskAction
+  fun copyConfig() {
+    val dest = outputDir.get().asFile
+    dest.mkdirs()
+    configFile.get().asFile.copyTo(dest.resolve("config.js"), overwrite = true)
+  }
+}
+
+val copyWebConfig = tasks.register<CopyWebConfigTask>("copyWebConfig") {
+  configFile.set(rootProject.layout.projectDirectory.file("config.js"))
+  outputDir.set(layout.buildDirectory.dir("generated/webconfig"))
+}
+
+extensions.configure<ApplicationAndroidComponentsExtension>("androidComponents") {
+  onVariants { variant ->
+    variant.sources.assets?.addGeneratedSourceDirectory(copyWebConfig, CopyWebConfigTask::outputDir)
+  }
+}
 
 // Some unused dependencies are commented out below instead of being removed.
 // This makes it easy to add them back in the future if needed.

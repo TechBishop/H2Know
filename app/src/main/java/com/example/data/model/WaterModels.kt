@@ -123,8 +123,10 @@ data class Contaminant(
     val healthNote: String,
     val pfas: Boolean,
     val regulated: Boolean,
-    val trendDeltaPct1Y: Int,  // e.g., +14 or -12
-    val trendDirection: String // "improving", "stable", "elevated", "seasonal"
+    val trendDeltaPct1Y: Int,  // e.g., +14 or -12. Zero when a prior sample is not in the feed.
+    val trendDirection: String, // "improving", "stable", "elevated", "unknown"
+    val reported: Boolean = true,
+    val sampleDate: String? = null
 ) {
     val exceedsMcl: Boolean
         get() = mcl != null && detected > mcl
@@ -255,7 +257,8 @@ data class SuggestedProductLink(
     val targetCodes: List<String>,
     val amazonUrl: String,
     val secondaryLabel: String,
-    val secondaryUrl: String
+    val secondaryUrl: String,
+    val disclosure: String = "If an affiliate tag is configured, H2Know may earn a commission at no extra cost to you. The suggestion is matched to a contaminant in this system's public record. It is not an EPA recommendation."
 )
 
 data class WaterSystemReport(
@@ -284,5 +287,7 @@ data class WaterSystemReport(
     val usage: WaterUsageTarget,
     val reportUrl: String,
     val lastUpdated: String,
-    val sourceDescription: String
+    val sourceDescription: String,
+    val labSamplesReported: Int = 0,
+    val recordNote: String = ""
 )

@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">H2Know</string>
+    <string name="app_name">H2Know Beta</string>
     <string name="app_tagline">Know your tap water</string>
     <string name="search_zip_label">ZIP code</string>
     <string name="search_zip_placeholder">e.g. 78701</string>

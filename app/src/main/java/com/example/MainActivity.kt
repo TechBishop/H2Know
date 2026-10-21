@@ -67,19 +67,18 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.data.local.H2KnowDatabase
 import com.example.data.local.UserPreferenceEntity
 import com.example.data.repository.FirestoreWaterRepository
+import com.example.data.repository.MonetizationConfig
 import com.example.data.repository.WaterRepository
-import com.example.ui.FourWTab
 import com.example.ui.H2KnowViewModel
 import com.example.ui.auth.AuthScreen
 import com.example.ui.auth.authStateFlow
 import com.example.ui.auth.signOut
-import com.example.ui.components.FloatingFourWDock
 import com.example.ui.components.H2KnowPrivacyAndEpaModal
 import com.example.ui.components.H2KnowSearchAndCloudHome
 import com.example.ui.components.H2KnowStreamlinedTopBar
 import com.example.ui.components.H2KnowStudioFooter
+import com.example.ui.components.ProductReport
 import com.example.ui.components.ReportCloudIssueDialog
-import com.example.ui.components.WhoWhereWhyWhenDashboard
 import com.example.ui.theme.H2KnowTheme
 import com.example.ui.theme.H2KnowThemeTokens
 import com.example.ui.theme.JetBrainsMonoFamily
@@ -91,6 +90,7 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        MonetizationConfig.load(this)
         enableEdgeToEdge()
         setContent {
             AppNavigation()
@@ -171,6 +171,7 @@ fun H2KnowMainWorkspace(
     val userPrefs by viewModel.userPreferences.collectAsStateWithLifecycle()
     val cloudIssuesState by viewModel.cloudIssuesState.collectAsStateWithLifecycle()
     val cloudHistoryState by viewModel.cloudLocationHistoryState.collectAsStateWithLifecycle()
+    val watchedSystems by viewModel.watchedSystems.collectAsStateWithLifecycle()
 
     val isDarkTheme = userPrefs?.isDarkTheme ?: true
     val context = LocalContext.current
@@ -197,12 +198,7 @@ fun H2KnowMainWorkspace(
 
         BackHandler(enabled = isResultsScreen) {
             haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-            if (uiState.activeFourWTab != FourWTab.WHO) {
-                viewModel.selectFourWTab(FourWTab.WHO)
-                scope.launch { scrollState.animateScrollTo(0) }
-            } else {
-                viewModel.backToSearch()
-            }
+            viewModel.backToSearch()
         }
 
         val headerTitle = when {
@@ -240,27 +236,7 @@ fun H2KnowMainWorkspace(
                     )
                 }
             },
-            bottomBar = {
-                if (isResultsScreen && uiState.activeReport != null) {
-                    FloatingFourWDock(
-                        activeTab = uiState.activeFourWTab,
-                        isGuestMode = currentUser == null,
-                        onSelectTab = { tab ->
-                            viewModel.selectFourWTab(tab)
-                            scope.launch {
-                                scrollState.animateScrollTo(0)
-                            }
-                        },
-                        onQuickActionClick = {
-                            if (currentUser == null) {
-                                onRequestSignIn()
-                            } else {
-                                viewModel.setReportIssueDialogOpen(true, null)
-                            }
-                        }
-                    )
-                }
-            }
+            bottomBar = {}
         ) { innerPadding ->
             Column(
                 modifier = Modifier
@@ -468,6 +444,7 @@ fun H2KnowMainWorkspace(
                                                         uiState.providers.forEachIndexed { idx, sys ->
                                                             val isCurrent = sys.pwsid == report.pwsid
                                                             val scoreColor = when {
+                                                                sys.currentScore < 0 -> palette.ink3
                                                                 sys.currentScore >= 80 -> palette.safe
                                                                 sys.currentScore >= 60 -> palette.caution
                                                                 else -> palette.danger
@@ -540,7 +517,7 @@ fun H2KnowMainWorkspace(
                                                                         border = BorderStroke(1.dp, scoreColor.copy(alpha = 0.4f))
                                                                     ) {
                                                                         Text(
-                                                                            text = "${sys.currentScore}",
+                                                                            text = if (sys.currentScore < 0) "—" else "${sys.currentScore}",
                                                                             fontFamily = JetBrainsMonoFamily,
                                                                             fontSize = 11.sp,
                                                                             fontWeight = FontWeight.ExtraBold,
@@ -558,36 +535,12 @@ fun H2KnowMainWorkspace(
                                     }
                                 }
 
-                                WhoWhereWhyWhenDashboard(
+                                ProductReport(
                                     report = report,
-                                    activeTab = uiState.activeFourWTab,
-                                    selectedWhyCategoryFilter = uiState.selectedWhyCategoryFilter,
-                                    selectedWhyContaminantCode = uiState.selectedWhyContaminantCode,
-                                    selectedWhenTimeframe = uiState.selectedWhenTimeframe,
-                                    selectedWhenPointIndex = uiState.selectedWhenPointIndex,
-                                    issueStatusFilter = uiState.issueStatusFilter,
-                                    cloudIssuesState = cloudIssuesState,
-                                    cloudHistoryState = cloudHistoryState,
-                                    cloudStatusBanner = uiState.cloudStatusBanner,
-                                    isSavingHistory = uiState.isSavingHistory,
-                                    onSelectTab = { tab ->
-                                        viewModel.selectFourWTab(tab)
-                                        scope.launch { scrollState.animateScrollTo(0) }
-                                    },
-                                    onSelectWhyCategoryFilter = { viewModel.selectWhyCategoryFilter(it) },
-                                    onSelectWhyContaminant = { viewModel.selectWhyContaminant(it) },
-                                    onSelectWhenTimeframe = { viewModel.selectWhenTimeframe(it) },
-                                    onSelectWhenPoint = { viewModel.selectWhenTimelinePoint(it) },
-                                    onSelectIssueStatusFilter = { viewModel.setIssueStatusFilter(it) },
-                                    onSaveSnapshotToCloud = { viewModel.saveCurrentLocationSnapshotToCloud() },
-                                    onOpenReportIssueModal = { cont ->
-                                        viewModel.setReportIssueDialogOpen(true, cont)
-                                    },
-                                    onUpvoteIssue = { viewModel.upvoteCloudWaterIssue(it) },
-                                    onResolveIssue = { viewModel.resolveCloudWaterIssue(it) },
-                                    onDeleteIssue = { viewModel.deleteCloudWaterIssue(it) },
-                                    onDismissBanner = { viewModel.dismissCloudBanner() },
-                                    onRequestSignIn = onRequestSignIn
+                                    watched = watchedSystems.any { it.pwsid == report.pwsid },
+                                    notice = uiState.cloudStatusBanner,
+                                    onToggleWatch = { viewModel.toggleWatchCurrent() },
+                                    onDismissNotice = { viewModel.dismissCloudBanner() }
                                 )
                             }
                         }

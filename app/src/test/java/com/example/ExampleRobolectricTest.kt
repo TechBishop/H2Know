@@ -20,7 +20,7 @@ class ExampleRobolectricTest {
     fun `read H2Know app_name from context and verify longitudinal trend synthesis`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val appName = context.getString(R.string.app_name)
-        assertEquals("H2Know", appName)
+        assertEquals("H2Know Beta", appName)
 
         val austinProviders = ReferenceWaterData.presetSystemsForZip("78701")
         assertNotNull(austinProviders)

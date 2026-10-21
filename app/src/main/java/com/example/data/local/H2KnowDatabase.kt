@@ -24,7 +24,8 @@ data class WatchedSystemEntity(
     val alertOnNewViolations: Boolean = true,
     val alertOnDroughtShifts: Boolean = true,
     val alertOnCommunityTickets: Boolean = true,
-    val savedAtEpochMs: Long = System.currentTimeMillis()
+    val savedAtEpochMs: Long = System.currentTimeMillis(),
+    val openViolationCount: Int = 0
 )
 
 @Entity(tableName = "community_tickets")
@@ -137,7 +138,7 @@ interface H2KnowDao {
         HomeSampleEntity::class,
         FilterTrackerEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class H2KnowDatabase : RoomDatabase() {

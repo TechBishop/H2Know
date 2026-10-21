@@ -35,11 +35,14 @@ jobs:
           git checkout FETCH_HEAD
 
           rm -rf _site
-          mkdir -p _site/release
-          cp index.html _site/index.html
+          mkdir -p _site/release _site/icons _site/v2/icons
+          cp index.html styles.css app.js data.js config.js sw.js manifest.json _site/
           cp index.html _site/404.html
-          cp manifest.json _site/manifest.json
           cp PRIVACY_POLICY.md _site/PRIVACY_POLICY.md
+          if [ -d icons ]; then cp -r icons/. _site/icons/; fi
+          # Keep a copy at /v2/ so a preview path survives alongside the root site.
+          cp index.html styles.css app.js data.js config.js sw.js manifest.json _site/v2/
+          if [ -d icons ]; then cp -r icons/. _site/v2/icons/; fi
           touch _site/.nojekyll
           if [ -f "release/H2Know-latest.apk" ]; then
             cp release/H2Know-latest.apk _site/release/H2Know-latest.apk

@@ -68,31 +68,7 @@ private const val EPA_SDWIS_URL = "https://www.epa.gov/enviro/sdwis-search"
 private const val US_DROUGHT_MONITOR_URL = "https://droughtmonitor.unl.edu"
 private const val DONATE_COFFEE_URL = "https://buymeacoffee.com/bishopsfolly"
 
-fun getFormattedReportShareText(report: WaterSystemReport): String {
-    val topContaminant = report.contaminants.firstOrNull()
-    val contaminantLine = if (topContaminant != null) {
-        val limitText = topContaminant.mcl?.let { String.format(Locale.US, "%.2f", it) } ?: "N/A"
-        "• Quality (${topContaminant.plainShortName()}): ${
-            String.format(Locale.US, "%.2f", topContaminant.detected)
-        } ${topContaminant.unit} (Legal Limit: $limitText ${topContaminant.unit})"
-    } else {
-        "• Quality: Tested parameters within federal drinking water limits"
-    }
-
-    val delta5Y = if (report.fiveYearScoreDelta >= 0) "+${report.fiveYearScoreDelta}" else "${report.fiveYearScoreDelta}"
-    val delta10Y = if (report.tenYearScoreDelta >= 0) "+${report.tenYearScoreDelta}" else "${report.tenYearScoreDelta}"
-    return buildString {
-        appendLine("H2Know Tap Water Report — ZIP ${report.zip}")
-        appendLine("Utility: ${report.name}")
-        appendLine("Water Quality Score: ${report.qualityScore}/100 (${report.riskLevel.uppercase()} RISK)")
-        appendLine("• Overview: Serves ${String.format(Locale.US, "%,d", report.population)} residents in ${report.city}, ${report.state}")
-        appendLine("• Source: ${report.sourceType} · ${report.sourceDescription}")
-        appendLine(contaminantLine)
-        appendLine("• History: 5Y Trend $delta5Y pts · 10Y Trend $delta10Y pts")
-        appendLine()
-        append("Source: Public U.S. EPA & U.S. Drought Monitor records via H2Know ($STUDIO_PUBLISHER_NAME).")
-    }
-}
+fun getFormattedReportShareText(report: WaterSystemReport): String = waterReportPlainText(report)
 
 fun shareWaterSystemReport(context: Context, report: WaterSystemReport) {
     val shareText = getFormattedReportShareText(report)
@@ -116,6 +92,7 @@ fun H2KnowReportSnapshotDialog(
     var isCopied by remember { mutableStateOf(false) }
 
     val scoreColor = when {
+        report.qualityScore < 0 -> palette.ink3
         report.qualityScore >= 80 -> palette.safe
         report.qualityScore >= 60 -> palette.caution
         else -> palette.danger
@@ -250,7 +227,7 @@ fun H2KnowReportSnapshotDialog(
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
                                     Text(
-                                        text = "${report.qualityScore}",
+                                        text = if (report.qualityScore < 0) "—" else "${report.qualityScore}",
                                         fontFamily = JetBrainsMonoFamily,
                                         fontSize = 24.sp,
                                         fontWeight = FontWeight.ExtraBold,
@@ -295,17 +272,17 @@ fun H2KnowReportSnapshotDialog(
                                 val whyLabel = if (topContaminant != null) {
                                     "${topContaminant.plainShortName().substringBefore(" (")}: ${String.format(Locale.US, "%.1f", topContaminant.detected)} ${topContaminant.unit}"
                                 } else {
-                                    "Within legal limits"
+                                    "No lead or copper sample"
                                 }
                                 SnapshotPill(
                                     pillar = "QUALITY",
                                     label = whyLabel,
                                     modifier = Modifier.weight(1f)
                                 )
-                                val delta5Y = if (report.fiveYearScoreDelta >= 0) "+${report.fiveYearScoreDelta}" else "${report.fiveYearScoreDelta}"
+                                val openCount = report.violations.count { it.status == "open" }
                                 SnapshotPill(
-                                    pillar = "TREND",
-                                    label = "$delta5Y pts (5Y)",
+                                    pillar = "RECORD",
+                                    label = "$openCount open",
                                     modifier = Modifier.weight(1f)
                                 )
                             }
