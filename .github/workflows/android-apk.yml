@@ -10,14 +10,19 @@ permissions:
 
 jobs:
   build-apk:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Package or Build APK
+      - name: Checkout, Package APK, and Publish to GitHub Releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -e
+          git init
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --depth=1 origin "${GITHUB_SHA}"
+          git checkout FETCH_HEAD
+
           if [ -f "release/H2Know-latest.apk" ]; then
             echo "Using pre-built signed APK from release/H2Know-latest.apk"
             cp release/H2Know-latest.apk H2Know-latest.apk
@@ -36,22 +41,12 @@ jobs:
             cp app/build/outputs/apk/debug/app-debug.apk H2Know-latest.apk
           fi
 
-      - name: Upload Installable APK Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: H2Know-Tester-APK
-          path: H2Know-latest.apk
-          if-no-files-found: error
-
-      - name: Publish to GitHub Releases (1-Tap Phone Download)
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: latest-test
-          name: "H2Know — Latest Tester Build"
-          body: |
-            ### Install on Android Phone
-            1. Tap **`H2Know-latest.apk`** below under **Assets** to download on your Android phone.
-            2. Open the downloaded file and allow **Install unknown apps** if prompted.
-          files: H2Know-latest.apk
-          prerelease: true
-          make_latest: true
+          if gh release view latest-test --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            gh release upload latest-test H2Know-latest.apk --clobber --repo "${GITHUB_REPOSITORY}"
+          else
+            gh release create latest-test H2Know-latest.apk \
+              --repo "${GITHUB_REPOSITORY}" \
+              --title "H2Know — Latest Tester Build" \
+              --notes "Tap **H2Know-latest.apk** under Assets to download and install on your Android phone." \
+              --prerelease
+          fi

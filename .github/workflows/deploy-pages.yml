@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -16,22 +16,36 @@ concurrency:
 
 jobs:
   deploy-html5:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout repository and publish HTML5 Web App to gh-pages branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          git init
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --depth=1 origin "${GITHUB_SHA}"
+          git checkout FETCH_HEAD
 
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v5
+          mkdir -p _site/release
+          cp index.html _site/index.html
+          cp index.html _site/404.html
+          cp manifest.json _site/manifest.json
+          cp PRIVACY_POLICY.md _site/PRIVACY_POLICY.md
+          touch _site/.nojekyll
+          if [ -f "release/H2Know-latest.apk" ]; then
+            cp release/H2Know-latest.apk _site/release/H2Know-latest.apk
+          fi
 
-      - name: Upload HTML5 Web App
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: '.'
+          cd _site
+          git init -b gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Deploy H2Know HTML5 Web App"
+          git push -f "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" gh-pages:gh-pages
 
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          echo "### H2Know HTML5 Web App Published" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Published to branch: \`gh-pages\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- To view live, ensure **Settings -> Pages -> Source** is set to **Deploy from a branch** -> **\`gh-pages\` / \`(root)\`**." >> "$GITHUB_STEP_SUMMARY"
