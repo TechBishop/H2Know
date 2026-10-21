@@ -46,6 +46,13 @@ jobs:
           git commit -m "Deploy H2Know HTML5 Web App"
           git push -f "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" gh-pages:gh-pages
 
-          echo "### H2Know HTML5 Web App Published" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Published to branch: \`gh-pages\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- To view live, ensure **Settings -> Pages -> Source** is set to **Deploy from a branch** -> **\`gh-pages\` / \`(root)\`**." >> "$GITHUB_STEP_SUMMARY"
+          # Automatically enable/configure GitHub Pages to serve from the gh-pages branch if permitted
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/pages" \
+            -f "source[branch]=gh-pages" -f "source[path]=/" >/dev/null 2>&1 || \
+          gh api --method PUT "repos/${GITHUB_REPOSITORY}/pages" \
+            -f "build_type=legacy" -f "source[branch]=gh-pages" -f "source[path]=/" >/dev/null 2>&1 || true
+
+          echo "### H2Know HTML5 Web App + Android APK Published" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Published 1:1 Android Simulator Web App to branch: \`gh-pages\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Direct Android APK download included at: \`/release/H2Know-latest.apk\`" >> "$GITHUB_STEP_SUMMARY"
+
