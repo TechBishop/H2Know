@@ -13,6 +13,7 @@ import com.example.data.remote.WaterIssueDocument
 import com.example.data.local.WatchedSystemEntity
 import com.example.data.repository.FirestoreWaterRepository
 import com.example.data.repository.MonetizationConfig
+import com.example.data.repository.ProviderMemory
 import com.example.data.repository.ReferenceWaterData
 import com.example.data.repository.WaterRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -64,7 +65,8 @@ data class H2KnowUiState(
     val reportIssuePrefillContaminant: Contaminant? = null,
     val issueStatusFilter: String = "all", // "all", "open", "resolved"
     val cloudStatusBanner: String? = null,
-    val isSavingHistory: Boolean = false
+    val isSavingHistory: Boolean = false,
+    val utilityHits: List<WaterSystemSummary> = emptyList()
 )
 
 class H2KnowViewModel(
@@ -160,22 +162,15 @@ class H2KnowViewModel(
             return
         }
 
-        // If providers for this exact ZIP are already loaded and user pressed Inspect, jump right into the report!
-        val currentState = _uiState.value
-        if (autoSelectPrimary && currentState.currentPlace?.zip == targetZip && currentState.providers.isNotEmpty()) {
-            val primary = currentState.providers.firstOrNull { it.isPrimary } ?: currentState.providers.first()
-            selectProvider(primary.pwsid, targetZip)
-            return
-        }
-
         _uiState.update {
             it.copy(
                 zipQuery = targetZip,
                 isSearching = true,
                 searchError = null,
-                screen = if (autoSelectPrimary) "results" else "search",
-                isLoadingSystem = autoSelectPrimary,
-                systemError = null
+                screen = "search",
+                isLoadingSystem = false,
+                systemError = null,
+                utilityHits = emptyList()
             )
         }
         viewModelScope.launch {
@@ -202,9 +197,9 @@ class H2KnowViewModel(
                             searchError = null
                         )
                     }
-                    if (autoSelectPrimary) {
-                        val primary = systems.firstOrNull { it.isPrimary } ?: systems.first()
-                        selectProvider(primary.pwsid, place.zip)
+                    val remembered = ProviderMemory.recall(place.zip)
+                    if (remembered != null && systems.any { it.pwsid == remembered }) {
+                        selectProvider(remembered, place.zip)
                     }
                 }
             }.onFailure { err ->
@@ -220,7 +215,23 @@ class H2KnowViewModel(
         }
     }
 
+    fun changeProvider() {
+        _uiState.update {
+            it.copy(screen = "search", isLoadingSystem = false, systemError = null)
+        }
+    }
+
+    fun searchUtility(query: String) {
+        val stateCode = _uiState.value.currentPlace?.state ?: return
+        viewModelScope.launch {
+            val hits = runCatching { waterRepository.searchSystems(stateCode, query) }.getOrDefault(emptyList())
+            _uiState.update { it.copy(utilityHits = hits) }
+        }
+    }
+
     fun selectProvider(pwsid: String, zipHint: String? = null, autoLogHistory: Boolean = true) {
+        val zip = zipHint ?: _uiState.value.currentPlace?.zip
+        if (!zip.isNullOrBlank()) ProviderMemory.remember(zip, pwsid)
         val currentPlace = _uiState.value.currentPlace
             ?: zipHint?.let { ReferenceWaterData.placeFallback(it) }
         _uiState.update {

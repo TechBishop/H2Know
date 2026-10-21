@@ -108,7 +108,10 @@ data class WaterSystemSummary(
     val currentScore: Int,
     val fiveYearTrend: String, // "Improving", "Stable", "Declining"
     val fiveYearDeltaPts: Int,
-    val openTicketCount: Int
+    val openTicketCount: Int,
+    val county: String = "",
+    val listedForPlace: Boolean = false,
+    val homeCounty: Boolean = true
 )
 
 data class Contaminant(
@@ -289,5 +292,9 @@ data class WaterSystemReport(
     val lastUpdated: String,
     val sourceDescription: String,
     val labSamplesReported: Int = 0,
-    val recordNote: String = ""
+    val recordNote: String = "",
+    val phone: String = "Not listed",
+    val contactAddress: String = "Not listed",
+    val adminName: String = "Not listed",
+    val serviceConnections: Int = 0
 )

@@ -92,7 +92,8 @@ fun ProductReport(
     watched: Boolean,
     notice: String?,
     onToggleWatch: () -> Unit,
-    onDismissNotice: () -> Unit
+    onDismissNotice: () -> Unit,
+    onChangeProvider: () -> Unit = {}
 ) {
     val palette = H2KnowThemeTokens.colors
     val context = LocalContext.current
@@ -124,6 +125,9 @@ fun ProductReport(
                 )
             }
             Text(text = verdictFor(report), style = MaterialTheme.typography.titleMedium, color = palette.ink)
+            Button(onClick = onChangeProvider, colors = ButtonDefaults.textButtonColors(contentColor = palette.brand)) {
+                Text("Change provider")
+            }
             Text(
                 text = "${report.name} · ${report.lastUpdated}",
                 style = MaterialTheme.typography.bodyMedium,
@@ -154,7 +158,24 @@ fun ProductReport(
             Fact("Source", report.sourceType)
             Fact("Operator", report.ownerType)
             Fact("EPA ID", report.pwsid)
+            Fact("Phone", report.phone)
+            Fact("Address", report.contactAddress)
+            Fact("Contact", report.adminName)
+            Fact("Connections", if (report.serviceConnections > 0) String.format(Locale.US, "%,d", report.serviceConnections) else "Not listed")
             Fact("Drought", ReferenceWaterData.droughtLabel(report.droughtLevel))
+            Text(
+                "A consumer confidence report link is not in this feed.",
+                color = palette.ink3,
+                style = MaterialTheme.typography.bodySmall
+            )
+            if (report.reportUrl.isNotBlank()) {
+                Button(
+                    onClick = {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(report.reportUrl)))
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = palette.brand)
+                ) { Text("EPA facility record") }
+            }
             Text(
                 text = "The gallon guide below is a planning figure for one person, not a meter reading from this utility.",
                 style = MaterialTheme.typography.bodySmall,
@@ -197,7 +218,7 @@ fun ProductReport(
                 color = palette.ink2,
                 modifier = Modifier.padding(top = 8.dp)
             )
-            report.violations.take(8).forEach { v ->
+            report.violations.forEach { v ->
                 Text(
                     text = "${v.date} · ${v.contaminant} · ${v.status.replaceFirstChar { it.uppercase() }}",
                     color = palette.ink3,

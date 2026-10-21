@@ -165,6 +165,17 @@
       const detected = Math.round(latest.value * 1000) / 1000;
       const exceedsMcl = meta.mcl != null && detected > meta.mcl;
       const exceedsHealthGoal = meta.phg != null && detected > meta.phg;
+      const byYear = {};
+      sorted.forEach((sample) => {
+        const year = String(sample.date || "").slice(0, 4);
+        if (!/^\d{4}$/.test(year) || byYear[year]) return;
+        byYear[year] = sample;
+      });
+      const history = Object.keys(byYear).sort().map((year) => ({
+        year: Number(year),
+        value: Math.round(byYear[year].value * 1000) / 1000,
+        date: byYear[year].date
+      }));
       return {
         code,
         name: meta.name,
@@ -179,7 +190,8 @@
         healthNote: meta.healthNote,
         pfas: meta.pfas,
         reported: true,
-        sampleDate: latest.date || null
+        sampleDate: latest.date || null,
+        history
       };
     });
   }
@@ -200,17 +212,21 @@
       const type = health || /mcl/i.test(cat) ? "health" : (cat.toUpperCase() === "MR" ? "monitoring" : (cat.toUpperCase() === "TT" ? "treatment" : "other"));
       const code = field(row, "contaminant_code", "CONTAMINANT_CODE");
       const meta = CATALOG[code];
+      const rule = field(row, "violation_code", "VIOLATION_CODE") || field(row, "viol_type_code", "VIOL_TYPE_CODE");
       parsed.push({
         id: `${pwsid}-${field(row, "violation_id", "VIOLATION_ID") || i + 1}`,
         date: date.iso,
         year: date.year,
         contaminant: meta ? meta.plainName : "Compliance item",
+        contaminantCode: code,
+        rule: rule || "Not listed",
         type,
         status,
+        healthText: meta ? meta.healthNote : "Health-effects text for this rule is not in the lead-and-copper guide.",
         description: `${health ? "Health-based standard" : type === "monitoring" ? "Monitoring or reporting" : type === "treatment" ? "Treatment technique" : "Compliance record"}. ${status[0].toUpperCase()}${status.slice(1)}. A compliance-period end date is not treated as returned to compliance.`
       });
     });
-    return parsed.sort((a, b) => b.date.localeCompare(a.date)).slice(0, 45);
+    return parsed.sort((a, b) => b.date.localeCompare(a.date));
   }
 
   function scoreSystem(violations, contaminants, violationsLoaded, samplesLoaded) {
@@ -343,66 +359,292 @@
     }
   }
 
-  async function fetchCountyName(lat, lon) {
+  function normToken(value) {
+    return String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  }
+
+  async function mapPool(items, limit, fn) {
+    const out = new Array(items.length);
+    let cursor = 0;
+    const workers = Math.min(limit, items.length);
+    async function worker() {
+      while (cursor < items.length) {
+        const index = cursor;
+        cursor += 1;
+        out[index] = await fn(items[index], index);
+      }
+    }
+    await Promise.all(Array.from({ length: workers }, () => worker()));
+    return out;
+  }
+
+  async function fetchCounty(lat, lon) {
     const resp = await fetch(`https://geo.fcc.gov/api/census/area?lat=${lat}&lon=${lon}&format=json`, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(12000) });
-    if (!resp.ok) return "";
+    if (!resp.ok) return null;
     const body = await resp.json();
-    const name = body.results && body.results[0] && body.results[0].county_name || "";
-    return String(name).replace(/ County$/i, "").trim();
+    const row = body.results && body.results[0];
+    if (!row) return null;
+    const name = String(row.county_name || "").replace(/ County$/i, "").trim();
+    if (!name) return null;
+    return { name, fips: String(row.county_fips || ""), state: row.state_code || "" };
+  }
+
+  let adjacencyPromise = null;
+
+  function loadAdjacency() {
+    if (!adjacencyPromise) {
+      adjacencyPromise = fetch("./counties.json", { signal: AbortSignal.timeout(20000) })
+        .then((resp) => {
+          if (!resp.ok) throw new Error("adjacency");
+          return resp.json();
+        })
+        .then((raw) => {
+          const map = {};
+          Object.keys(raw || {}).forEach((fips) => {
+            map[fips] = (raw[fips] || []).map((item) => {
+              const split = String(item).split(",");
+              return { name: split[0], state: split[1] || "" };
+            }).filter((item) => item.name && item.state);
+          });
+          return map;
+        })
+        .catch((err) => {
+          adjacencyPromise = null;
+          throw err;
+        });
+    }
+    return adjacencyPromise;
+  }
+
+  async function fetchGeoCounty(county, state) {
+    const rows = [];
+    const enc = encodeURIComponent(county);
+    const st = encodeURIComponent(state);
+    let start = 0;
+    const page = 100;
+    while (start < 600) {
+      let batch = [];
+      try {
+        batch = await fetchJson(`${EPA}/GEOGRAPHIC_AREA/COUNTY_SERVED/${enc}/PRIMACY_AGENCY_CODE/${st}/PWS_TYPE_CODE/CWS/PWS_ACTIVITY_CODE/A/rows/${start}:${start + page}/JSON`);
+      } catch (_) {
+        if (start === 0) throw _;
+        break;
+      }
+      if (!batch.length) break;
+      rows.push(...batch);
+      if (batch.length < page) break;
+      start += page;
+    }
+    return rows;
+  }
+
+  function rememberGeo(index, row, meta) {
+    const id = field(row, "pwsid", "PWSID");
+    if (!id) return;
+    const slot = index[id] || (index[id] = {
+      pwsid: id,
+      cities: [],
+      zips: [],
+      county: meta.county,
+      state: meta.state,
+      home: meta.home
+    });
+    if (!slot.home && meta.home) slot.home = true;
+    const city = field(row, "city_served", "CITY_SERVED");
+    const zip = field(row, "zip_code_served", "ZIP_CODE_SERVED");
+    if (city && !slot.cities.includes(city)) slot.cities.push(city);
+    if (zip && !slot.zips.includes(zip)) slot.zips.push(zip);
+    if (!slot.county && meta.county) slot.county = meta.county;
+  }
+
+  async function hydrateSystems(ids) {
+    const rows = await mapPool(ids, 6, async (id) => {
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+          const found = await fetchJson(`${EPA}/WATER_SYSTEM/PWSID/${encodeURIComponent(id)}/JSON`);
+          return found[0] || null;
+        } catch (_) {
+          if (attempt === 1) return null;
+        }
+      }
+      return null;
+    });
+    return rows.filter(Boolean);
+  }
+
+  function summaryFromSystem(obj, extra) {
+    const pwsid = field(obj, "pwsid", "PWSID");
+    const cityName = field(obj, "city_name", "CITY_NAME");
+    const zipCode = field(obj, "zip_code", "ZIP_CODE");
+    const address = [field(obj, "address_line1", "ADDRESS_LINE1"), cityName, zipCode].filter(Boolean).join(", ");
+    return {
+      pwsid,
+      name: field(obj, "pws_name", "PWS_NAME") || pwsid,
+      city: (extra && extra.city) || cityName,
+      state: field(obj, "state_code", "STATE_CODE") || (extra && extra.state) || "",
+      zip: (extra && extra.zip) || "",
+      population: Number(field(obj, "population_served_count", "POPULATION_SERVED_COUNT")) || 0,
+      sourceType: sourceLabel(field(obj, "primary_source_code", "PRIMARY_SOURCE_CODE")),
+      county: (extra && extra.county) || "",
+      listed: Boolean(extra && extra.listed),
+      home: extra ? extra.home !== false : true,
+      phone: field(obj, "phone_number", "PHONE_NUMBER"),
+      address,
+      admin: field(obj, "admin_name", "ADMIN_NAME"),
+      connections: Number(field(obj, "service_connections_count", "SERVICE_CONNECTIONS_COUNT")) || 0,
+      currentScore: -1,
+      isPrimary: false
+    };
+  }
+
+  function providerRank(provider) {
+    if (provider.listed) return 0;
+    if (provider.home) return 1;
+    return 2;
   }
 
   async function fetchProvidersByZip(zip) {
     const place = await fetchPlace(zip);
-    const county = await fetchCountyName(place.lat, place.lon).catch(() => "");
+    const county = await fetchCounty(place.lat, place.lon).catch(() => null);
     if (!county) throw new Error("This ZIP could not be matched to a county, so no water system was chosen.");
-    place.county = county;
-    let geo;
+    place.county = county.name;
+    place.fips = county.fips;
+    const index = {};
+    let homeGeo;
     try {
-      const enc = encodeURIComponent(county);
-      const state = encodeURIComponent(place.state);
-      geo = await fetchJson(`${EPA}/GEOGRAPHIC_AREA/COUNTY_SERVED/${enc}/PRIMACY_AGENCY_CODE/${state}/PWS_TYPE_CODE/CWS/PWS_ACTIVITY_CODE/A/rows/0:40/JSON`);
+      homeGeo = await fetchGeoCounty(county.name, place.state);
     } catch (_) {
       throw new Error("The EPA service-area list could not be reached. Try again in a moment.");
     }
-    const ids = [];
-    geo.forEach((row) => {
-      const id = field(row, "pwsid", "PWSID");
-      if (id && !ids.includes(id)) ids.push(id);
-    });
-    if (!ids.length) throw new Error(`No community water system was listed for ${county} County, ${place.state}.`);
-    const systems = (await Promise.all(ids.slice(0, 24).map(async (id) => {
+    homeGeo.forEach((row) => rememberGeo(index, row, { county: county.name, state: place.state, home: true }));
+    const homeIds = Object.keys(index);
+    if (!homeIds.length) throw new Error(`No community water system was listed for ${county.name} County, ${place.state}.`);
+    const homeSystems = await hydrateSystems(homeIds);
+    const homeProviders = homeSystems.map((obj) => {
+      const id = field(obj, "pwsid", "PWSID");
+      const slot = index[id] || { cities: [], zips: [], county: county.name, home: true };
+      const listed = slot.cities.some((city) => normToken(city) === normToken(place.city)) || slot.zips.includes(zip);
+      return summaryFromSystem(obj, { city: place.city, state: place.state, zip, county: slot.county || county.name, listed, home: true });
+    }).filter((p) => p.pwsid);
+    const largest = homeProviders.reduce((max, p) => Math.max(max, p.population || 0), 0);
+    const rural = largest < 100000;
+    place.rural = rural;
+    if (rural && county.fips) {
       try {
-        const rows = await fetchJson(`${EPA}/WATER_SYSTEM/PWSID/${encodeURIComponent(id)}/JSON`);
-        return rows[0] || null;
+        const neighbors = (await loadAdjacency())[county.fips] || [];
+        place.neighbors = neighbors.map((n) => n.name);
+        for (const neighbor of neighbors) {
+          let rows = [];
+          try { rows = await fetchGeoCounty(neighbor.name, neighbor.state); }
+          catch (_) { continue; }
+          rows.forEach((row) => rememberGeo(index, row, { county: neighbor.name, state: neighbor.state, home: false }));
+        }
       } catch (_) {
-        return null;
+        place.neighbors = [];
       }
-    }))).filter(Boolean);
-    const providers = systems.map((obj) => ({
-      pwsid: field(obj, "pwsid", "PWSID"),
-      name: field(obj, "pws_name", "PWS_NAME") || field(obj, "pwsid", "PWSID"),
-      city: place.city,
-      state: field(obj, "state_code", "STATE_CODE") || place.state,
-      zip,
-      population: Number(field(obj, "population_served_count", "POPULATION_SERVED_COUNT")) || 0,
-      sourceType: sourceLabel(field(obj, "primary_source_code", "PRIMARY_SOURCE_CODE")),
-      currentScore: -1,
-      isPrimary: false
-    })).filter((p) => p.pwsid).sort((a, b) => b.population - a.population).slice(0, 8);
-    providers.forEach((p, i) => { p.isPrimary = i === 0; });
-    if (!providers.length) throw new Error(`No community water system was listed for ${county} County, ${place.state}.`);
+    } else {
+      place.neighbors = [];
+    }
+    const extraIds = Object.keys(index).filter((id) => !homeIds.includes(id));
+    const extraSystems = extraIds.length ? await hydrateSystems(extraIds) : [];
+    const extras = extraSystems.map((obj) => {
+      const id = field(obj, "pwsid", "PWSID");
+      const slot = index[id] || { cities: [], zips: [], county: "", home: false };
+      const listed = slot.cities.some((city) => normToken(city) === normToken(place.city)) || slot.zips.includes(zip);
+      return summaryFromSystem(obj, { city: place.city, state: slot.state || place.state, zip, county: slot.county, listed, home: Boolean(slot.home) });
+    }).filter((p) => p.pwsid);
+    const providers = homeProviders.concat(extras).sort((a, b) => (
+      providerRank(a) - providerRank(b) || a.name.localeCompare(b.name)
+    ));
+    if (!providers.length) throw new Error(`No community water system was listed for ${county.name} County, ${place.state}.`);
     return { place, providers };
+  }
+
+  async function searchSystems(state, query) {
+    const q = String(query || "").trim();
+    if (q.length < 2) return [];
+    const compact = q.replace(/\s/g, "").toUpperCase();
+    if (/^[A-Z]{2}\d{3,9}$/.test(compact)) {
+      const rows = await fetchJson(`${EPA}/WATER_SYSTEM/PWSID/${encodeURIComponent(compact)}/JSON`).catch(() => []);
+      return rows.filter(Boolean).map((obj) => summaryFromSystem(obj, { state, home: false, listed: false })).filter((p) => p.pwsid);
+    }
+    const st = String(state || "").trim().toUpperCase();
+    if (!st) return [];
+    const rows = await fetchJson(`${EPA}/WATER_SYSTEM/PRIMACY_AGENCY_CODE/${encodeURIComponent(st)}/PWS_TYPE_CODE/CWS/PWS_ACTIVITY_CODE/A/PWS_NAME/CONTAINING/${encodeURIComponent(q)}/rows/0:40/JSON`).catch(() => []);
+    return rows.filter(Boolean).map((obj) => summaryFromSystem(obj, { state: st, home: false, listed: false })).filter((p) => p.pwsid);
+  }
+
+  function explainersFor(contaminants) {
+    const byCode = {};
+    (contaminants || []).forEach((c) => { byCode[c.code] = c; });
+    return Object.keys(CATALOG).map((code) => {
+      const meta = CATALOG[code];
+      const hit = byCode[code];
+      return {
+        code,
+        plainName: meta.plainName,
+        category: meta.category,
+        healthNote: meta.healthNote,
+        unit: meta.unit,
+        mcl: meta.mcl,
+        phg: meta.phg,
+        measured: Boolean(hit),
+        detected: hit ? hit.detected : null
+      };
+    });
+  }
+
+  async function fetchCountyDroughtTrend(fips) {
+    const unavailable = { category: "unknown", trend: "not available", note: "County drought trend is not available." };
+    if (!fips) return unavailable;
+    const end = new Date();
+    const start = new Date(end.getTime() - 80 * 7 * 24 * 60 * 60 * 1000);
+    const stamp = (d) => `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+    const url = `https://usdmdataservices.unl.edu/api/CountyStatistics/GetDroughtSeverityStatisticsByAreaPercent?aoi=${encodeURIComponent(fips)}&startdate=${encodeURIComponent(stamp(start))}&enddate=${encodeURIComponent(stamp(end))}&statisticsType=1`;
+    try {
+      const resp = await fetch(url, { headers: { Accept: "text/csv" }, signal: AbortSignal.timeout(15000) });
+      if (!resp.ok) return unavailable;
+      const lines = (await resp.text()).trim().split(/\r?\n/).filter(Boolean);
+      if (lines.length < 2) return unavailable;
+      const header = lines[0].split(",").map((cell) => cell.trim());
+      const at = (name) => header.findIndex((cell) => cell.toLowerCase() === name.toLowerCase());
+      const rows = lines.slice(1).map((line) => {
+        const cols = line.split(",");
+        const num = (name) => Number(cols[at(name)]) || 0;
+        return { date: cols[at("MapDate")], D0: num("D0"), D1: num("D1"), D2: num("D2"), D3: num("D3"), D4: num("D4") };
+      }).filter((row) => row.date);
+      if (!rows.length) return unavailable;
+      const categoryOf = (row) => ["D4", "D3", "D2", "D1", "D0"].find((key) => row[key] > 0) || "none";
+      const latest = rows[rows.length - 1];
+      const target = String(Number(latest.date) - 10000);
+      let prior = rows[0];
+      rows.forEach((row) => { if (row.date <= target) prior = row; });
+      const order = { none: 0, D0: 1, D1: 2, D2: 3, D3: 4, D4: 5 };
+      const nowCat = categoryOf(latest);
+      const thenCat = categoryOf(prior);
+      const trend = order[nowCat] > order[thenCat] ? "worse" : (order[nowCat] < order[thenCat] ? "easier" : "steady");
+      return {
+        category: nowCat,
+        trend,
+        latestDate: latest.date,
+        priorDate: prior.date,
+        note: `County statistic, separate from the point on the map. Highest category covering any of the county: ${droughtLabel(nowCat)}. A year earlier it was ${droughtLabel(thenCat)}, so the category is ${trend}.`
+      };
+    } catch (_) {
+      return unavailable;
+    }
   }
 
   async function loadSystemReport(summary, place) {
     const pwsid = summary.pwsid;
-    const [sysRows, violRows, lcrRows, sampleRows, geoRows, drought] = await Promise.all([
+    const [sysRows, violRows, lcrRows, sampleRows, geoRows, drought, droughtTrend] = await Promise.all([
       fetchJson(`${EPA}/WATER_SYSTEM/PWSID/${encodeURIComponent(pwsid)}/JSON`).catch(() => null),
-      fetchJson(`${EPA}/VIOLATION/PWSID/${encodeURIComponent(pwsid)}/rows/0:120/JSON`).catch(() => null),
-      fetchJson(`${EPA}/LCR_SAMPLE_RESULT/PWSID/${encodeURIComponent(pwsid)}/rows/0:80/JSON`).catch(() => null),
-      fetchJson(`${EPA}/LCR_SAMPLE/PWSID/${encodeURIComponent(pwsid)}/rows/0:80/JSON`).catch(() => null),
+      fetchJson(`${EPA}/VIOLATION/PWSID/${encodeURIComponent(pwsid)}/rows/0:200/JSON`).catch(() => null),
+      fetchJson(`${EPA}/LCR_SAMPLE_RESULT/PWSID/${encodeURIComponent(pwsid)}/rows/0:300/JSON`).catch(() => null),
+      fetchJson(`${EPA}/LCR_SAMPLE/PWSID/${encodeURIComponent(pwsid)}/rows/0:300/JSON`).catch(() => null),
       fetchJson(`${EPA}/GEOGRAPHIC_AREA/PWSID/${encodeURIComponent(pwsid)}/JSON`).catch(() => []),
-      place ? fetchDrought(place.lat, place.lon) : { level: "unknown", description: "Drought status could not be loaded." }
+      place ? fetchDrought(place.lat, place.lon) : { level: "unknown", description: "Drought status could not be loaded." },
+      place && place.fips ? fetchCountyDroughtTrend(place.fips) : { category: "unknown", trend: "not available", note: "County drought trend is not available." }
     ]);
     if (sysRows === null) throw new Error("The EPA water-system record could not be loaded.");
     const sys = sysRows[0] || {};
@@ -434,6 +676,11 @@
     const name = field(sys, "pws_name", "PWS_NAME") || summary.name || pwsid;
     const city = (place && place.city) || field(sys, "city_name", "CITY_NAME") || summary.city || "Not listed";
     const state = field(sys, "state_code", "STATE_CODE") || summary.state || (place && place.state) || "";
+    const phone = field(sys, "phone_number", "PHONE_NUMBER") || summary.phone || "";
+    const admin = field(sys, "admin_name", "ADMIN_NAME") || summary.admin || "";
+    const org = field(sys, "org_name", "ORG_NAME") || "";
+    const connections = Number(field(sys, "service_connections_count", "SERVICE_CONNECTIONS_COUNT")) || summary.connections || 0;
+    const address = [field(sys, "address_line1", "ADDRESS_LINE1"), field(sys, "city_name", "CITY_NAME"), field(sys, "zip_code", "ZIP_CODE")].filter(Boolean).join(", ") || summary.address || "";
     const report = {
       pwsid,
       name,
@@ -449,6 +696,20 @@
       tenYearScoreDelta: 0,
       droughtLevel: drought.level,
       droughtDescription: drought.description,
+      droughtTrend,
+      phone: phone || "Not listed",
+      admin: admin || "Not listed",
+      org: org || "Not listed",
+      connections,
+      address: address || "Not listed",
+      echoUrl: `https://echo.epa.gov/detailed-facility-report?fid=${encodeURIComponent(pwsid)}`,
+      ccrNote: "A consumer confidence report link is not in this feed.",
+      explainers: explainersFor(contaminants),
+      filterGuide: [
+        { name: "NSF/ANSI 53", note: "Health-related reduction, including lead, when that contaminant is printed on the certification." },
+        { name: "NSF/ANSI 58", note: "Reverse osmosis, used for a broader set of dissolved contaminants." },
+        { name: "NSF/ANSI 42", note: "Aesthetic chlorine, taste, and odor. This standard is not a health claim by itself." }
+      ],
       contaminants,
       violations,
       recordNote,
@@ -466,5 +727,5 @@
     return report;
   }
 
-  window.H2KnowData = { ZIP_PRESETS, fmtVal, droughtLabel, fetchProvidersByZip, loadSystemReport };
+  window.H2KnowData = { ZIP_PRESETS, fmtVal, droughtLabel, fetchProvidersByZip, searchSystems, loadSystemReport };
 })();

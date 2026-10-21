@@ -11,11 +11,17 @@
   const HISTORY_KEY = "h2know_cloud_history_v3";
   const ISSUES_KEY = "h2know_cloud_issues_v3";
   const WATCH_KEY = "h2know_watch_v1";
+  const CHOICE_KEY = "h2know_provider_choice_v1";
 
   const state = {
     isGuest: true,
+    mode: "home",
     place: null,
     providers: [],
+    utilityHits: [],
+    listQuery: "",
+    searchingUtilities: false,
+    focusSearch: false,
     report: null,
     loadingZip: null,
     requestId: 0,
@@ -52,6 +58,34 @@
     return String(value ?? "").replace(/[&<>"']/g, (ch) => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
     }[ch]));
+  }
+
+  function readChoices() {
+    try { return JSON.parse(localStorage.getItem(CHOICE_KEY) || "{}"); }
+    catch (_) { return {}; }
+  }
+
+  function rememberChoice(zip, pwsid) {
+    const map = readChoices();
+    map[zip] = pwsid;
+    try { localStorage.setItem(CHOICE_KEY, JSON.stringify(map)); } catch (_) {}
+  }
+
+  function icon(body) {
+    return `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
+  }
+
+  const ICONS = {
+    drop: icon('<path d="M12 3s6 7 6 11a6 6 0 0 1-12 0c0-4 6-11 6-11z"/>'),
+    list: icon('<path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1" fill="currentColor" stroke="none"/><circle cx="4" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="4" cy="18" r="1" fill="currentColor" stroke="none"/>'),
+    pin: icon('<path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.2"/>'),
+    filter: icon('<path d="M4 5h16l-6 7v6l-4 2v-8z"/>'),
+    alert: icon('<path d="M12 4 3 19h18z"/><path d="M12 10v4M12 17h.01"/>'),
+    book: icon('<path d="M5 5h10a4 4 0 0 1 4 4v11H8a3 3 0 0 0-3 3z"/><path d="M5 5v18"/>')
+  };
+
+  function peopleCount(n) {
+    return n > 0 ? Number(n).toLocaleString("en-US") : "Not listed";
   }
 
   function displayName(name) {
@@ -284,10 +318,87 @@
     `;
   }
 
+  function sampleHistory(sample, label) {
+    if (!sample || !sample.history || !sample.history.length) {
+      return `<p class="prose">${esc(label)} history is not in this record.</p>`;
+    }
+    const max = Math.max(...sample.history.map((point) => point.value), 0.0001);
+    return `
+      <p class="prose">${esc(label)}</p>
+      <div class="history-bars">
+        ${sample.history.map((point) => `
+          <div>
+            <span>${esc(point.year)}</span>
+            <i style="width:${Math.max(4, (point.value / max) * 100).toFixed(1)}%"></i>
+            <span>${esc(D.fmtVal(point.value))} ${esc(sample.unit)}</span>
+          </div>
+        `).join("")}
+      </div>
+    `;
+  }
+
+  function providerButton(p, action) {
+    const where = [p.county, p.state].filter(Boolean).join(", ");
+    return `
+      <li>
+        <button type="button" class="provider-row" data-action="${action}" data-pwsid="${esc(p.pwsid)}">
+          <strong>${esc(displayName(p.name))}${p.listed ? '<span class="badge">Listed for this city</span>' : ""}</strong>
+          <span class="provider-meta">${esc(p.pwsid)} · ${esc(peopleCount(p.population))} people${where ? ` · ${esc(where)}` : ""}</span>
+        </button>
+      </li>
+    `;
+  }
+
+  function visibleProviders() {
+    const q = state.listQuery.trim().toLowerCase();
+    if (!q) return state.providers;
+    return state.providers.filter((p) => p.name.toLowerCase().includes(q) || String(p.pwsid).toLowerCase().includes(q));
+  }
+
+  function renderPicker() {
+    const host = $("report");
+    const place = state.place;
+    const rows = visibleProviders();
+    const neighborNote = place && place.neighbors && place.neighbors.length
+      ? `Neighboring counties are included: ${place.neighbors.join(", ")}.`
+      : (place && place.rural
+        ? "Neighboring counties could not be loaded, so this list is the home county only."
+        : "This county’s largest system serves 100,000 or more people, so the list stays in the home county. Search the state for a system outside it.");
+    host.innerHTML = `
+      <section class="report picker">
+        <h2>${ICONS.list} Choose a water system</h2>
+        <p class="picker-lead">${place ? `${esc(place.county || place.city)} County, ${esc(place.state)} · ${esc(place.zip)}` : ""} ${state.providers.length} community systems. Tap one. Nothing is opened until you do.</p>
+        <p class="prose">${esc(neighborNote)}</p>
+        <div class="utility-search">
+          <label class="sr" for="utilitySearch">Find a utility by name or PWSID</label>
+          <input id="utilitySearch" type="search" placeholder="Name or PWSID" value="${esc(state.listQuery)}" autocomplete="off" />
+          <button type="button" class="text-btn" data-action="search-state">${state.searchingUtilities ? "Searching" : "Search state"}</button>
+        </div>
+        <ul class="providers">
+          ${rows.map((p) => providerButton(p, "open-provider")).join("") || `<li><p class="prose">No system in this list matches that text.</p></li>`}
+        </ul>
+        ${state.utilityHits.length ? `
+          <h2>${ICONS.book} Statewide matches</h2>
+          <ul class="providers">
+            ${state.utilityHits.map((p) => providerButton(p, "open-hit")).join("")}
+          </ul>
+        ` : ""}
+      </section>
+    `;
+    if (state.focusSearch) {
+      const field = $("utilitySearch");
+      if (field) {
+        field.focus();
+        const end = field.value.length;
+        field.setSelectionRange(end, end);
+      }
+      state.focusSearch = false;
+    }
+  }
+
   function renderReport() {
     const r = state.report;
     const host = $("report");
-    document.body.classList.toggle("has-report", Boolean(r));
     if (!r) {
       host.innerHTML = "";
       return;
@@ -334,21 +445,30 @@
     const watches = readStore(WATCH_KEY);
     const watched = watches.some((w) => w.pwsid === r.pwsid);
 
+    const scoreValue = r.qualityScore < 0 ? 0 : r.qualityScore;
+    const lead = r.contaminants.find((c) => c.code === "PB90");
+    const copper = r.contaminants.find((c) => c.code === "CU90");
     host.innerHTML = `
       <article class="report" id="reportTop">
         <header class="score-block">
-          <div>
-            <p class="place-line">${esc(displayName(r.city))}, ${esc(r.state)} · ${esc(r.zip)}</p>
-            <div class="score-row">
-              <p class="score"><span class="sr">Water score </span>${r.qualityScore < 0 ? "—" : esc(r.qualityScore)}<span class="sr"> out of 100</span></p>
+          <div class="score-ring" style="--score:${scoreValue}">
+            <svg viewBox="0 0 120 120" aria-hidden="true">
+              <circle class="ring-track" cx="60" cy="60" r="52"></circle>
+              <circle class="ring-value" cx="60" cy="60" r="52"></circle>
+            </svg>
+            <div class="score-center">
+              <p class="score"><span class="sr">Water score </span><span class="score-num" data-count="${r.qualityScore < 0 ? "" : esc(r.qualityScore)}">${r.qualityScore < 0 ? "—" : esc(r.qualityScore)}</span></p>
               <span class="score-denom" aria-hidden="true">/ 100</span>
             </div>
           </div>
           <div class="score-copy">
+            <p class="place-line">${esc(displayName(r.city))}, ${esc(r.state)} · ${esc(r.zip)}</p>
             <p class="verdict">${esc(verdict(r))}</p>
             <p class="meta-line">${esc(displayName(r.name))} · ${esc(formatDay(r.lastUpdated))}</p>
             <div class="score-actions">
+              <button type="button" class="linkish" data-action="change-provider">Change provider</button>
               <button type="button" class="linkish" data-action="share-report">Share</button>
+              <button type="button" class="linkish" data-action="download-report">Download</button>
               ${state.isGuest
                 ? `<button type="button" class="linkish" data-action="ask-sign-in">Save on this device</button>`
                 : `<button type="button" class="linkish" data-action="save-snapshot">Save lookup</button>`}
@@ -359,7 +479,7 @@
 
         <div class="stack">
           <section class="card" aria-labelledby="readingsHeading">
-            <h2 id="readingsHeading">Contaminants</h2>
+            <h2 id="readingsHeading">${ICONS.drop} Contaminants</h2>
             <p class="card-lead">Lab value beside the health goal. Bar length is the lab value against the legal limit.</p>
             ${top.length ? top.map((c) => readingRow(c)).join("") : `<p class="prose">No lead or copper sample was in the public record.</p>`}
             <details class="fold" data-panel="readings"${openAttr("readings")}>
@@ -373,17 +493,42 @@
                 ${allReadings.map((c) => readingRow(c)).join("") || `<p class="more">Nothing in this group.</p>`}
               </div>
             </details>
+            <details class="fold" data-panel="history-samples"${openAttr("history-samples")}>
+              <summary>Lead and copper by year</summary>
+              <div class="fold-body">
+                ${sampleHistory(lead, "Lead")}
+                ${sampleHistory(copper, "Copper")}
+                <p class="more">Each year uses the latest lead or copper sample in the public table. Years with no sample are left out. Other contaminants are not estimated.</p>
+              </div>
+            </details>
+            <details class="fold" data-panel="explainers"${openAttr("explainers")}>
+              <summary>What these names mean</summary>
+              <div class="fold-body">
+                ${(r.explainers || []).map((item) => `
+                  <div class="reading">
+                    <div class="reading-hit">
+                      <span class="name">${esc(item.plainName)}</span>
+                      <span class="value">${item.measured ? esc(D.fmtVal(item.detected) + " " + item.unit) : "Not in this record"}</span>
+                      <span class="cat">${esc(item.category)}</span>
+                      <span class="goal">limit ${esc(D.fmtVal(item.mcl))} ${esc(item.unit)}</span>
+                    </div>
+                    <p class="expand">${esc(item.healthNote)}</p>
+                  </div>
+                `).join("")}
+              </div>
+            </details>
           </section>
 
           <div class="pair">
             <section class="card" aria-labelledby="sourceHeading">
-              <h2 id="sourceHeading">Source and utility</h2>
+              <h2 id="sourceHeading">${ICONS.pin} Source and utility</h2>
               <p class="utility-name">${esc(displayName(r.name))}</p>
               <p class="utility-sub">${esc(r.sourceType)} · ${esc(r.ownerType)}</p>
               <ul class="facts">
                 <li><span>Serves</span><span>${r.population > 0 ? esc(r.population.toLocaleString()) : "Not listed"}</span></li>
                 <li><span>Area</span><span>${esc([displayName(r.city), r.state, county].filter(Boolean).join(", "))}</span></li>
                 <li><span>EPA ID</span><span>${esc(r.pwsid)}</span></li>
+                <li><span>Phone</span><span>${esc(r.phone || "Not listed")}</span></li>
                 <li><span>Drought</span><span>${esc(droughtName)}</span></li>
                 <li><span>Compliance</span><span>${esc(complianceLine(r))}</span></li>
               </ul>
@@ -405,7 +550,11 @@
                       <span class="${String(r.droughtLevel).toLowerCase() === lvl.toLowerCase() ? "is-on" : ""}">${lvl === "none" ? "None" : esc(lvl)}</span>
                     `).join("")}
                   </div>
-                  <p class="prose">${esc(r.droughtDescription)}</p>
+                  <p class="prose">${esc(r.droughtDescription)} This is the point on the map, not the countywide statistic.</p>
+                  <p class="prose">${esc(r.droughtTrend && r.droughtTrend.note ? r.droughtTrend.note : "County drought trend is not available.")}</p>
+                  <p class="prose">Contact ${esc(r.admin || "Not listed")}${r.org && r.org !== "Not listed" ? `, ${esc(r.org)}` : ""}. Address: ${esc(r.address || "Not listed")}. Service connections: ${r.connections > 0 ? esc(r.connections.toLocaleString("en-US")) : "Not listed"}.</p>
+                  <p class="prose">${esc(r.ccrNote || "A consumer confidence report link is not in this feed.")}</p>
+                  <p><a class="linkish" href="${esc(r.echoUrl)}" target="_blank" rel="noopener noreferrer">EPA facility record</a></p>
                   <p class="prose">${useCut
                     ? `Planning figure, not a utility meter reading: ${esc(r.usage.recommendedGallonsPerDay)} gallons per person, down from ${esc(r.usage.normalGallonsPerDay)} while this drought category holds.`
                     : `Planning figure, not a utility meter reading: ${esc(r.usage.recommendedGallonsPerDay)} gallons per person.`}</p>
@@ -414,7 +563,7 @@
             </section>
 
             <section class="card" aria-labelledby="filterHeading">
-              <h2 id="filterHeading">Filter</h2>
+              <h2 id="filterHeading">${ICONS.filter} Filter</h2>
               ${r.product ? `
                 <p class="card-lead">${esc(r.product.title)}${r.product.optional ? " · optional" : ""}</p>
                 <p class="filter-line">${esc(r.product.matchReason)}</p>
@@ -426,11 +575,25 @@
                 <p class="card-lead">No filter is indicated by the samples in this record.</p>
                 <p class="prose">Nothing reported here is over a legal limit, and lead was not detected. A filter is not suggested from a contaminant this record does not contain.</p>
               `}
+              <details class="fold" data-panel="guide"${openAttr("guide")}>
+                <summary>Filter guide</summary>
+                <div class="fold-body">
+                  <ul class="steps">
+                    ${(r.filterGuide || []).map((item) => `
+                      <li>
+                        <h3>${esc(item.name)}</h3>
+                        <p class="prose">${esc(item.note)}</p>
+                      </li>
+                    `).join("")}
+                  </ul>
+                  <p class="more">One product link appears only when this system’s lead or copper sample calls for it. Prices and extra products are not invented.</p>
+                </div>
+              </details>
             </section>
           </div>
 
           <section class="card" aria-labelledby="trendHeading">
-            <h2 id="trendHeading">Record</h2>
+            <h2 id="trendHeading">${ICONS.alert} Record</h2>
             <p class="card-lead">${openViolations ? `${openViolations} open compliance ${openViolations === 1 ? "item" : "items"}.` : "No open compliance items in this record."} The line is a count of records, not a score.</p>
             ${sparkline(ten)}
             <p class="trend-line">${esc(deltaPhrase(ten, "ten years"))}</p>
@@ -466,8 +629,9 @@
                         <h3>${esc(formatDay(v.date))}</h3>
                         <span class="v-status v-${esc(v.status)}">${esc(v.status === "addressed" ? "Addressed" : v.status === "open" ? "Open" : "Resolved")}</span>
                       </div>
-                      <p class="prose">${esc(v.contaminant)}</p>
+                      <p class="prose">${esc(v.contaminant)} · rule ${esc(v.rule || "Not listed")}</p>
                       <p class="prose">${esc(v.description)}</p>
+                      <p class="prose">${esc(v.healthText || "")}</p>
                     </li>
                   `).join("")}
                 </ol>
@@ -499,10 +663,10 @@
               <ul class="providers">
                 ${state.providers.map((p, idx) => `
                   <li class="row-between">
-                    <button type="button" class="linkish" data-action="open-provider" data-idx="${idx}">
+                    <button type="button" class="linkish" data-action="open-provider" data-pwsid="${esc(p.pwsid)}">
                       ${esc(displayName(p.name))}${p.pwsid === r.pwsid ? " · showing" : ""}
                     </button>
-                    <span class="prose">${esc(p.population.toLocaleString())} · ${esc(p.sourceType)}</span>
+                    <span class="prose">${esc(p.pwsid)} · ${esc(peopleCount(p.population))}</span>
                   </li>
                 `).join("")}
               </ul>
@@ -573,13 +737,35 @@
     `;
   }
 
+  function animateScore() {
+    if (reducedMotion || state.mode !== "report") return;
+    const el = document.querySelector(".score-num");
+    if (!el) return;
+    const raw = el.getAttribute("data-count");
+    if (!raw) return;
+    const target = Number(raw);
+    if (!Number.isFinite(target) || target < 0) return;
+    const start = performance.now();
+    function tick(now) {
+      const t = Math.min(1, (now - start) / 700);
+      const eased = 1 - Math.pow(1 - t, 3);
+      el.textContent = String(Math.round(target * eased));
+      if (t < 1) requestAnimationFrame(tick);
+    }
+    el.textContent = "0";
+    requestAnimationFrame(tick);
+  }
+
   function render() {
     renderAccount();
     renderHomeExtra();
-    renderReport();
+    document.body.classList.toggle("has-report", state.mode !== "home");
+    if (state.mode === "pick") renderPicker();
+    else renderReport();
     $("zipButton").textContent = state.loadingZip ? "Looking up" : "Look up";
     $("zipButton").disabled = Boolean(state.loadingZip);
     $("zipForm").setAttribute("aria-busy", state.loadingZip ? "true" : "false");
+    animateScore();
   }
 
   function watchChangeNote(report) {
@@ -691,7 +877,9 @@
     state.chartCode = null;
     state.open = new Set();
     state.note = watchChangeNote(report);
+    state.mode = "report";
     state.loadingZip = null;
+    if (report.zip) rememberChoice(report.zip, report.pwsid);
     setNote("", false);
     if (!state.isGuest) saveSnapshot(report, false);
     $("zipInput").value = report.zip;
@@ -716,9 +904,19 @@
       if (requestId !== state.requestId) return;
       state.place = res.place;
       state.providers = res.providers;
-      const primary = res.providers.find((p) => p.isPrimary) || res.providers[0];
+      state.utilityHits = [];
+      state.listQuery = "";
+      const remembered = readChoices()[clean];
+      const match = remembered && res.providers.find((p) => p.pwsid === remembered);
       setNote("", false);
-      await openProvider(primary, requestId);
+      if (match) {
+        await openProvider(match, requestId);
+      } else {
+        state.report = null;
+        state.mode = "pick";
+        state.loadingZip = null;
+        render();
+      }
     } catch (err) {
       if (requestId !== state.requestId) return;
       state.loadingZip = null;
@@ -869,14 +1067,31 @@
       render();
       return;
     }
-    if (action === "open-provider") {
-      const picked = state.providers[Number(el.getAttribute("data-idx"))];
+    if (action === "open-provider" || action === "open-hit") {
+      const id = el.getAttribute("data-pwsid");
+      const pool = action === "open-hit" ? state.utilityHits : state.providers;
+      const picked = pool.find((p) => p.pwsid === id);
       if (!picked) return;
+      if (action === "open-hit" && !state.providers.some((p) => p.pwsid === picked.pwsid)) {
+        state.providers = state.providers.concat(picked);
+      }
       state.requestId += 1;
-      state.loadingZip = state.report ? state.report.zip : null;
+      state.loadingZip = (state.place && state.place.zip) || (state.report && state.report.zip) || null;
       setNote("Checking public water records.", false);
       render();
       openProvider(picked, state.requestId);
+      return;
+    }
+    if (action === "change-provider") {
+      if (!state.providers.length) return;
+      state.report = null;
+      state.mode = "pick";
+      state.note = "";
+      render();
+      return;
+    }
+    if (action === "search-state") {
+      searchUtilities();
       return;
     }
     if (action === "toggle-reading") {
@@ -959,6 +1174,35 @@
       state.open.add("notes");
       render();
     }
+  });
+
+  async function searchUtilities() {
+    const q = state.listQuery.trim();
+    if (!state.place || q.length < 2) {
+      setNote("Enter a utility name or a PWSID.", true);
+      return;
+    }
+    state.searchingUtilities = true;
+    state.focusSearch = true;
+    render();
+    try {
+      state.utilityHits = await D.searchSystems(state.place.state, q);
+      state.searchingUtilities = false;
+      setNote(state.utilityHits.length ? "" : `No community system in ${state.place.state} matched that search.`, !state.utilityHits.length);
+    } catch (err) {
+      state.utilityHits = [];
+      state.searchingUtilities = false;
+      setNote(err.message || "That search did not complete.", true);
+    }
+    state.focusSearch = true;
+    render();
+  }
+
+  $("report").addEventListener("input", (event) => {
+    if (event.target.id !== "utilitySearch") return;
+    state.listQuery = event.target.value;
+    state.focusSearch = true;
+    render();
   });
 
   $("report").addEventListener("toggle", (event) => {
