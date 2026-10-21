@@ -67,6 +67,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.data.local.H2KnowDatabase
 import com.example.data.local.UserPreferenceEntity
 import com.example.data.repository.FirestoreWaterRepository
+import com.example.data.repository.MonetizationConfig
 import com.example.data.repository.WaterRepository
 import com.example.ui.H2KnowViewModel
 import com.example.ui.auth.AuthScreen
@@ -89,6 +90,7 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        MonetizationConfig.load(this)
         enableEdgeToEdge()
         setContent {
             AppNavigation()

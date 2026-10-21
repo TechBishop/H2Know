@@ -509,18 +509,24 @@
             </details>
           ` : ""}
 
-          <section class="card" aria-labelledby="premiumHeading">
-            <h2 id="premiumHeading">Saved addresses</h2>
-            <p class="card-lead">One address is included. The next time you open it on this device, H2Know compares the score and the number of open violations.</p>
+          <section class="card" aria-labelledby="savedHeading">
+            <h2 id="savedHeading">Saved addresses</h2>
+            <p class="card-lead">${premiumOn()
+              ? (String(window.H2KnowConfig.STRIPE_PAYMENT_LINK || "").trim()
+                ? `Checkout is connected. You can save up to ${savedAddressLimit()} addresses on this device.`
+                : "One address is included. The next time you open it on this device, H2Know compares the score and the number of open violations.")
+              : "Save an address on this device. The next time you open it, H2Know compares the score and the number of open violations."}</p>
             <p class="prose">${watched ? "This address is saved on this device." : "Save this address to check it again later."}</p>
             <div class="inline-actions">
               <button type="button" class="linkish" data-action="toggle-watch">${watched ? "Remove address" : "Save address"}</button>
               <button type="button" class="linkish" data-action="download-report">Download report</button>
             </div>
-            <p class="more">Downloading this report is free. Extra saved addresses are the paid tier.</p>
-            ${window.H2KnowConfig.STRIPE_PAYMENT_LINK
-              ? `<p><a class="linkish" href="${esc(window.H2KnowConfig.STRIPE_PAYMENT_LINK)}" target="_blank" rel="noopener noreferrer">Open checkout</a></p>`
-              : `<p class="more">Payments are not connected. Set STRIPE_PAYMENT_LINK in config.js when you have a Stripe Payment Link. Nothing is charged from this build.</p>`}
+            ${premiumOn() ? `
+              <p class="more">Downloading this report is free. Extra saved addresses are the paid tier.</p>
+              ${String(window.H2KnowConfig.STRIPE_PAYMENT_LINK || "").trim()
+                ? `<p><a class="linkish" href="${esc(window.H2KnowConfig.STRIPE_PAYMENT_LINK)}" target="_blank" rel="noopener noreferrer">Open checkout</a></p>`
+                : `<p class="more">Payments are not connected. Set STRIPE_PAYMENT_LINK in config.js when you have a Stripe Payment Link. Nothing is charged from this build.</p>`}
+            ` : ""}
           </section>
 
           <details class="card fold" data-panel="notes"${openAttr("notes")}>
@@ -595,6 +601,18 @@
     return notes.join(" ");
   }
 
+  function premiumOn() {
+    return Boolean(window.H2KnowConfig && window.H2KnowConfig.PREMIUM_ENABLED === true);
+  }
+
+  function savedAddressLimit() {
+    if (!premiumOn()) return Infinity;
+    const cfg = window.H2KnowConfig || {};
+    const free = Number(cfg.FREE_SAVED_ADDRESSES) || 1;
+    const paid = Number(cfg.PAID_SAVED_ADDRESSES) || 8;
+    return String(cfg.STRIPE_PAYMENT_LINK || "").trim() ? paid : free;
+  }
+
   function toggleWatch(report) {
     const watches = readStore(WATCH_KEY);
     const existing = watches.find((w) => w.pwsid === report.pwsid);
@@ -603,8 +621,10 @@
       state.note = "Removed from saved addresses.";
       return;
     }
-    if (watches.length >= (window.H2KnowConfig.FREE_SAVED_ADDRESSES || 1)) {
-      state.note = "One saved address is included. Extra addresses need a payment link, and none is configured yet.";
+    if (watches.length >= savedAddressLimit()) {
+      state.note = String(window.H2KnowConfig.STRIPE_PAYMENT_LINK || "").trim()
+        ? `Saved addresses are full (${savedAddressLimit()}). Remove one to add another.`
+        : "One saved address is included. Set STRIPE_PAYMENT_LINK in config.js to unlock more.";
       return;
     }
     watches.unshift({
@@ -827,7 +847,7 @@
     if (action === "toggle-watch" && state.report) {
       toggleWatch(state.report);
       rememberPanels();
-      state.open.add("premium");
+      state.open.add("saved");
       render();
       return;
     }

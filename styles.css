@@ -95,6 +95,19 @@ a { color: var(--muted); }
   text-decoration: none;
 }
 
+.beta {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 7px 2px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  color: var(--accent);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  vertical-align: 2px;
+}
+
 .text-btn {
   color: var(--muted);
   font-size: 14px;
@@ -169,6 +182,37 @@ main {
 .zip-form input:focus { outline: none; }
 
 .zip-form:focus-within { border-bottom-color: var(--accent); }
+
+.download-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 22px 0 0;
+  max-width: 46em;
+}
+
+.download-note {
+  margin: 0;
+  flex: 1;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.download {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.download:hover { border-color: var(--accent); }
 
 .zip-form button {
   flex-shrink: 0;
@@ -378,7 +422,7 @@ body.has-report .top {
 
 .flag-good { color: var(--good); }
 .flag-quiet { color: var(--muted); }
-.disclosure { color: var(--faint); font-size: 0.92rem; }
+.disclosure { color: var(--muted); font-size: 0.92rem; }
 .flag-warn { color: var(--warn); }
 .flag-bad { color: var(--bad); }
 
@@ -802,6 +846,7 @@ details[open] > summary::after { content: "–"; }
 }
 
 @media (max-width: 560px) {
+  .download-row { flex-direction: column; align-items: flex-start; }
   .zip-form { max-width: none; }
   .zip-form input { font-size: 24px; letter-spacing: 0.08em; }
   .utility-name { font-size: 24px; }

@@ -276,10 +276,14 @@ class H2KnowViewModel(
         val report = _uiState.value.activeReport ?: return
         viewModelScope.launch {
             val current = watchedSystems.value.find { it.pwsid == report.pwsid }
-            if (current == null && watchedSystems.value.size >= MonetizationConfig.FREE_SAVED_ADDRESSES) {
+            if (current == null && watchedSystems.value.size >= MonetizationConfig.savedAddressLimit) {
                 _uiState.update {
                     it.copy(
-                        cloudStatusBanner = "One saved address is included. Extra addresses need a payment link, and none is configured yet."
+                        cloudStatusBanner = if (MonetizationConfig.checkoutConfigured) {
+                            "Saved addresses are full (${MonetizationConfig.savedAddressLimit}). Remove one to add another."
+                        } else {
+                            "One saved address is included. Set STRIPE_PAYMENT_LINK in config.js to unlock more."
+                        }
                     )
                 }
                 return@launch

@@ -198,14 +198,33 @@ fun H2KnowStreamlinedTopBar(
                     }
 
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = title,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = palette.ink,
-                            fontWeight = FontWeight.ExtraBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = title,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = palette.ink,
+                                fontWeight = FontWeight.ExtraBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
+                            )
+                            Surface(
+                                shape = RoundedCornerShape(999.dp),
+                                color = palette.brand.copy(alpha = 0.12f),
+                                border = BorderStroke(1.dp, palette.brand.copy(alpha = 0.45f))
+                            ) {
+                                Text(
+                                    text = "Beta",
+                                    color = palette.brand,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
+                                )
+                            }
+                        }
                         Text(
                             text = subtitle ?: (userEmail ?: "Know your tap water"),
                             style = MaterialTheme.typography.bodySmall,

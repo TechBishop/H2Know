@@ -229,7 +229,7 @@ fun ProductReport(
                 }
                 if (MonetizationConfig.AMAZON_ASSOCIATE_TAG.isBlank()) {
                     Text(
-                        "Affiliate tag is empty. Set AMAZON_ASSOCIATE_TAG when you have an Associates ID. No tag is sent until then.",
+                        "Affiliate tag is empty. Set AMAZON_ASSOCIATE_TAG in config.js when you have an Associates ID. No tag is sent until then.",
                         color = palette.ink3,
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(top = 6.dp)
@@ -240,7 +240,14 @@ fun ProductReport(
 
         ReportCard(
             title = "Saved addresses",
-            lead = "One address is included. Alerts compare the score and open-violation count the next time you open a saved address on this device."
+            lead = when {
+                !MonetizationConfig.premiumEnabled ->
+                    "Save an address on this device. The next time you open it, H2Know compares the score and the number of open violations."
+                MonetizationConfig.checkoutConfigured ->
+                    "Checkout is connected. You can save up to ${MonetizationConfig.savedAddressLimit} addresses on this device."
+                else ->
+                    "One address is included. Set STRIPE_PAYMENT_LINK in config.js to unlock more. Alerts compare the score and open-violation count the next time you open a saved address."
+            }
         ) {
             Text(
                 if (watched) "This address is saved on this device." else "Save this address to be told if the score or open violations change.",
@@ -266,25 +273,27 @@ fun ProductReport(
             ) {
                 Text("Download report")
             }
-            Text(
-                "Downloading this report is free. Extra saved addresses are the paid tier.",
-                color = palette.ink3,
-                style = MaterialTheme.typography.bodySmall
-            )
-            if (MonetizationConfig.checkoutConfigured) {
-                Button(
-                    onClick = {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(MonetizationConfig.STRIPE_PAYMENT_LINK)))
-                    },
-                    colors = ButtonDefaults.textButtonColors(contentColor = palette.brand)
-                ) { Text("Open checkout") }
-            } else {
+            if (MonetizationConfig.premiumEnabled) {
                 Text(
-                    "Payments are not connected. Set STRIPE_PAYMENT_LINK to a Stripe Payment Link when you are ready. Nothing is charged from this build.",
+                    "Downloading this report is free. Extra saved addresses are the paid tier.",
                     color = palette.ink3,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 6.dp)
+                    style = MaterialTheme.typography.bodySmall
                 )
+                if (MonetizationConfig.checkoutConfigured) {
+                    Button(
+                        onClick = {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(MonetizationConfig.STRIPE_PAYMENT_LINK)))
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = palette.brand)
+                    ) { Text("Open checkout") }
+                } else {
+                    Text(
+                        "Payments are not connected. Set STRIPE_PAYMENT_LINK in config.js when you have a Stripe Payment Link. Nothing is charged from this build.",
+                        color = palette.ink3,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 6.dp)
+                    )
+                }
             }
         }
     }

@@ -7,7 +7,7 @@
 <meta name="description" content="H2Know gives any U.S. ZIP code a plain 0–100 tap water score from public EPA records." />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<title>H2Know</title>
+<title>H2Know Beta</title>
 <link rel="manifest" href="./manifest.json" />
 <link rel="icon" href="./icons/icon-192.png" />
 <link rel="apple-touch-icon" href="./icons/icon-192.png" />
@@ -19,7 +19,7 @@
 <body>
 <div class="shell">
   <header class="top">
-    <a class="mark" href="./">H2Know</a>
+    <a class="mark" href="./">H2Know <span class="beta">Beta</span></a>
     <button type="button" id="accountBtn" class="text-btn">Sign in</button>
   </header>
 
@@ -36,6 +36,10 @@
         <button type="submit" id="zipButton">Look up</button>
       </form>
       <p id="formNote" class="form-note" role="status"></p>
+      <div class="download-row">
+        <a class="download" href="https://github.com/TechBishop/H2Know/releases/latest/download/H2Know.apk">Download for Android</a>
+        <p class="download-note">Beta APK. Android may ask you to allow installs from your browser and Play Protect may show a warning, since it's not on the Play Store yet.</p>
+      </div>
       <div id="presets" class="presets"></div>
       <div id="homeExtra"></div>
     </section>
@@ -50,7 +54,7 @@
       <button type="button" data-action="open-privacy">Privacy</button>
       <button type="button" data-action="open-support">Support</button>
       <button type="button" data-action="share-site">Share</button>
-      <a id="apkLink" href="release/H2Know-latest.apk">Android app</a>
+      <a href="https://github.com/TechBishop/H2Know/releases/latest/download/H2Know.apk">Download for Android</a>
     </p>
   </footer>
 </div>
@@ -146,11 +150,5 @@
 <script src="./config.js"></script>
 <script src="./data.js"></script>
 <script src="./app.js"></script>
-<script>
-  if (/\/(v2|preview)\//.test(location.pathname)) {
-    var apk = document.getElementById("apkLink");
-    if (apk) apk.href = "../release/H2Know-latest.apk";
-  }
-</script>
 </body>
 </html>
