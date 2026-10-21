@@ -235,10 +235,13 @@ class H2KnowViewModel(
                 val defaultCont = report.contaminants.firstOrNull { it.exceedsHealthGoal }?.code
                     ?: report.contaminants.firstOrNull()?.code
                     ?: "PB90"
-                _uiState.update {
-                    it.copy(
+                _uiState.update { state ->
+                    state.copy(
                         isLoadingSystem = false,
                         activeReport = report,
+                        providers = state.providers.map { prov ->
+                            if (prov.pwsid == report.pwsid) prov.copy(currentScore = report.qualityScore) else prov
+                        },
                         selectedWhyContaminantCode = defaultCont,
                         systemError = null
                     )
