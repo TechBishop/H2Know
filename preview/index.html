@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0c0e11" />
+<meta name="description" content="H2Know gives any U.S. ZIP code a plain 0–100 tap water score from public EPA records." />
+<title>H2Know</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+<div class="shell">
+  <header class="top">
+    <a class="mark" href="./">H2Know</a>
+    <button type="button" id="accountBtn" class="text-btn">Sign in</button>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">Public water records</p>
+        <h1>Your tap water, scored.</h1>
+        <p class="lede">A 0–100 score for any U.S. ZIP code, from public water records.</p>
+      </div>
+      <form id="zipForm" class="zip-form" autocomplete="off">
+        <label class="sr" for="zipInput">Five-digit ZIP code</label>
+        <input id="zipInput" type="text" inputmode="numeric" maxlength="5" pattern="[0-9]*" placeholder="ZIP code" autocomplete="postal-code" enterkeyhint="search" />
+        <button type="submit" id="zipButton">Look up</button>
+      </form>
+      <p id="formNote" class="form-note" role="status"></p>
+      <div id="presets" class="presets"></div>
+      <div id="homeExtra"></div>
+    </section>
+    <div id="report"></div>
+  </main>
+
+  <footer class="site-footer">
+    <p>Published independently by Aegis Civic Labs.</p>
+    <p>H2Know is not affiliated with or endorsed by the U.S. Environmental Protection Agency, the U.S. Geological Survey, or any municipal water utility.</p>
+    <p>Scores, contaminant comparisons, and drought context come from public EPA SDWIS records and the U.S. Drought Monitor. They are for civic context, not medical advice or a certified test of your tap. Optional sign-in stores lookup history and resident notes with Firebase Firestore.</p>
+    <p class="footer-links">
+      <button type="button" data-action="open-privacy">Privacy</button>
+      <button type="button" data-action="open-support">Support</button>
+      <button type="button" data-action="share-site">Share</button>
+      <a href="../release/H2Know-latest.apk" download="H2Know-latest.apk">Android app</a>
+    </p>
+  </footer>
+</div>
+
+<div id="accountDialog" class="backdrop" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="accountTitle">
+    <div class="dialog-head">
+      <h2 id="accountTitle">Sign in</h2>
+      <button type="button" class="text-btn" data-action="close-dialog" data-dialog="accountDialog">Close</button>
+    </div>
+    <p>Sign in to keep ZIP lookups and to report a local water issue. History is stored for your account with Firebase Firestore. You can look up any ZIP without an account.</p>
+    <div class="dialog-actions">
+      <button type="button" class="text-btn" data-action="close-dialog" data-dialog="accountDialog">Continue as guest</button>
+      <button type="button" class="primary" data-action="confirm-sign-in">Sign in with Google</button>
+    </div>
+  </div>
+</div>
+
+<div id="privacyDialog" class="backdrop" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="privacyTitle">
+    <div class="dialog-head">
+      <h2 id="privacyTitle">Privacy and EPA notice</h2>
+      <button type="button" class="text-btn" data-action="close-dialog" data-dialog="privacyDialog">Close</button>
+    </div>
+    <div class="legal-block">
+      <h3>Not a government site</h3>
+      <p>H2Know is published independently by Aegis Civic Labs. It does not represent, and is not affiliated with or endorsed by, the U.S. Environmental Protection Agency, the U.S. Geological Survey, or any state or municipal water utility.</p>
+      <p>System IDs, violation history, lead and copper samples, and drought status come from public federal sources: the EPA SDWIS database and the U.S. Drought Monitor.</p>
+    </div>
+    <div class="legal-block">
+      <h3>What is stored</h3>
+      <p>ZIP lookups work without an account. A ZIP is sent only to public EPA Envirofacts and Zippopotam endpoints to find the local utility.</p>
+      <p>If you sign in, saved lookups and resident notes are stored with Firebase Firestore. You can delete any saved lookup or note. H2Know does not run ads and does not sell user data.</p>
+    </div>
+    <div class="legal-block">
+      <h3>Not a lab test</h3>
+      <p>Scores and filter notes are for civic context. They are not medical advice and they are not a certified test of the plumbing in your home. For a certified test, use an EPA-accredited drinking water laboratory.</p>
+    </div>
+    <div class="dialog-actions">
+      <button type="button" class="primary" data-action="close-dialog" data-dialog="privacyDialog">Done</button>
+    </div>
+  </div>
+</div>
+
+<div id="supportDialog" class="backdrop" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="supportTitle">
+    <div class="dialog-head">
+      <h2 id="supportTitle">Support H2Know</h2>
+      <button type="button" class="text-btn" data-action="close-dialog" data-dialog="supportDialog">Close</button>
+    </div>
+    <p>This opens the Buy Me a Coffee page in a new tab.</p>
+    <div class="dialog-actions">
+      <button type="button" class="text-btn" data-action="close-dialog" data-dialog="supportDialog">Stay here</button>
+      <a class="primary" style="display:inline-flex;align-items:center;text-decoration:none" href="https://buymeacoffee.com/bishopsfolly" target="_blank" rel="noopener noreferrer" data-action="close-dialog" data-dialog="supportDialog">Open page</a>
+    </div>
+  </div>
+</div>
+
+<div id="shareDialog" class="backdrop" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="shareTitle">
+    <div class="dialog-head">
+      <h2 id="shareTitle">Share this score</h2>
+      <button type="button" class="text-btn" data-action="close-dialog" data-dialog="shareDialog">Close</button>
+    </div>
+    <p id="shareText" class="share-text"></p>
+    <div class="dialog-actions">
+      <button type="button" class="text-btn" id="copyShareBtn">Copy</button>
+      <button type="button" class="primary" id="nativeShareBtn">Share</button>
+    </div>
+  </div>
+</div>
+
+<div id="issueDialog" class="backdrop" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="issueTitle">
+    <div class="dialog-head">
+      <h2 id="issueTitle">Report an issue</h2>
+      <button type="button" class="text-btn" data-action="close-dialog" data-dialog="issueDialog">Close</button>
+    </div>
+    <p id="issueContext"></p>
+    <div class="seg" id="issueCategories" role="group" aria-label="Category"></div>
+    <label class="sr" for="issueTitleInput">Summary</label>
+    <input id="issueTitleInput" class="field" type="text" maxlength="140" placeholder="Short summary" />
+    <label class="sr" for="issueDescInput">What you noticed</label>
+    <textarea id="issueDescInput" class="area" maxlength="600" placeholder="What you noticed, and when it started"></textarea>
+    <div class="seg" id="issueSeverity" role="group" aria-label="Severity"></div>
+    <div class="dialog-actions">
+      <button type="button" class="text-btn" data-action="close-dialog" data-dialog="issueDialog">Cancel</button>
+      <button type="button" class="primary" id="submitIssueBtn">Save note</button>
+    </div>
+  </div>
+</div>
+
+<script src="./data.js"></script>
+<script src="./ui.js"></script>
+</body>
+</html>
