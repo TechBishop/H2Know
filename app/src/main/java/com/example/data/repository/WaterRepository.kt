@@ -1,5 +1,6 @@
 package com.example.data.repository
 
+import android.content.Context
 import com.example.data.local.CommunityTicketEntity
 import com.example.data.local.H2KnowDao
 import com.example.data.local.UserPreferenceEntity
@@ -17,6 +18,8 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -31,7 +34,10 @@ import java.util.concurrent.TimeUnit
 import kotlin.math.min
 import kotlin.math.roundToInt
 
-class WaterRepository(private val dao: H2KnowDao) {
+class WaterRepository(
+    private val dao: H2KnowDao,
+    private val appContext: Context? = null
+) {
 
     private val httpClient = OkHttpClient.Builder()
         .connectTimeout(12, TimeUnit.SECONDS)
@@ -40,6 +46,7 @@ class WaterRepository(private val dao: H2KnowDao) {
 
     private val systemReportCache = java.util.concurrent.ConcurrentHashMap<String, WaterSystemReport>()
     private val droughtCache = java.util.concurrent.ConcurrentHashMap<String, Pair<String, String>>()
+    private var adjacencyCache: Map<String, List<Pair<String, String>>>? = null
 
     val watchedSystems: Flow<List<WatchedSystemEntity>> = dao.observeWatchedSystems()
     val allCommunityTickets: Flow<List<CommunityTicketEntity>> = dao.observeAllCommunityTickets()
@@ -124,35 +131,29 @@ class WaterRepository(private val dao: H2KnowDao) {
 
             // A system's ZIP in SDWIS is often its mailing address, not the area it serves.
             // Match active community systems whose service area is this ZIP's county.
-            val liveRows = fetchEpaSystems(place)
-            val summaries = liveRows.map { obj ->
-                val pwsid = obj.optString("pwsid", obj.optString("PWSID", ""))
-                val name = obj.optString("pws_name", obj.optString("PWS_NAME", pwsid)).ifBlank { pwsid }
-                val city = obj.optString("city_name", obj.optString("CITY_NAME", place.city)).ifBlank { place.city }
-                val st = obj.optString("state_code", obj.optString("STATE_CODE", place.state)).ifBlank { place.state }
-                val pop = obj.optString("population_served_count", obj.optString("POPULATION_SERVED_COUNT", "0"))
-                    .toIntOrNull() ?: 0
-                val srcCode = obj.optString("primary_source_code", obj.optString("PRIMARY_SOURCE_CODE", ""))
-                WaterSystemSummary(
-                    pwsid = pwsid,
-                    name = name,
-                    city = city,
-                    state = st,
-                    zip = cleanZip,
-                    population = pop,
-                    sourceType = sourceLabel(srcCode),
-                    isPrimary = false,
-                    currentScore = -1,
-                    fiveYearTrend = "Unknown",
-                    fiveYearDeltaPts = 0,
-                    openTicketCount = 0
-                )
-            }.sortedByDescending { it.population }
-                .take(8)
-                .mapIndexed { index, summary -> summary.copy(isPrimary = index == 0) }
-
+            val summaries = fetchEpaSystems(place, cleanZip)
             Pair(place, summaries)
         }
+
+    suspend fun searchSystems(state: String, query: String): List<WaterSystemSummary> = withContext(Dispatchers.IO) {
+        val q = query.trim()
+        if (q.length < 2) return@withContext emptyList()
+        val compact = q.replace(" ", "").uppercase(Locale.US)
+        val rows = if (Regex("^[A-Z]{2}\\d{3,9}$").matches(compact)) {
+            fetchJsonArray("$EPA_BASE/WATER_SYSTEM/PWSID/$compact/JSON")
+        } else {
+            val st = state.trim().uppercase(Locale.US)
+            if (st.isBlank()) return@withContext emptyList()
+            val enc = URLEncoder.encode(q, "UTF-8")
+            fetchJsonArray("$EPA_BASE/WATER_SYSTEM/PRIMACY_AGENCY_CODE/$st/PWS_TYPE_CODE/CWS/PWS_ACTIVITY_CODE/A/PWS_NAME/CONTAINING/$enc/rows/0:40/JSON")
+        } ?: return@withContext emptyList()
+        buildList {
+            for (i in 0 until rows.length()) {
+                val obj = rows.optJSONObject(i) ?: continue
+                add(summaryFromSystem(obj, state, "", "", home = false, listed = false))
+            }
+        }
+    }
 
     suspend fun loadSystemReport(pwsid: String, place: PlaceInfo?): WaterSystemReport =
         withContext(Dispatchers.IO) {
@@ -316,6 +317,14 @@ class WaterRepository(private val dao: H2KnowDao) {
                     usage = WaterUsageTarget(normalGpd, recommendedGpd),
                     reportUrl = "https://echo.epa.gov/detailed-facility-report?fid=${URLEncoder.encode(pwsid, "UTF-8")}",
                     lastUpdated = todayStr,
+                    phone = field("phone_number", "PHONE_NUMBER").ifBlank { "Not listed" },
+                    contactAddress = listOf(
+                        field("address_line1", "ADDRESS_LINE1"),
+                        field("city_name", "CITY_NAME"),
+                        field("zip_code", "ZIP_CODE")
+                    ).filter { it.isNotBlank() }.joinToString(", ").ifBlank { "Not listed" },
+                    adminName = field("admin_name", "ADMIN_NAME").ifBlank { "Not listed" },
+                    serviceConnections = field("service_connections_count", "SERVICE_CONNECTIONS_COUNT").toIntOrNull() ?: 0,
                     sourceDescription = "$name serves $people in $city, $state${if (county.isNotBlank()) " ($county County)" else ""}. Source: $sourceType. Operator: $ownerType. This is a community system EPA lists in that county. A ZIP on a water system is often a mailing address, not the pipes at that ZIP. Figures come from EPA SDWIS and the U.S. Drought Monitor. $recordNote",
                     labSamplesReported = contaminants.count { it.reported },
                     recordNote = recordNote
@@ -500,34 +509,203 @@ class WaterRepository(private val dao: H2KnowDao) {
         }
     }
 
-    private suspend fun fetchEpaSystems(place: PlaceInfo): List<JSONObject> {
-        val county = fetchCountyName(place.lat, place.lon)
+    private data class GeoSlot(
+        val pwsid: String,
+        val cities: MutableList<String> = mutableListOf(),
+        val zips: MutableList<String> = mutableListOf(),
+        var county: String,
+        var state: String,
+        var home: Boolean
+    )
+
+    private suspend fun fetchEpaSystems(place: PlaceInfo, zip: String): List<WaterSystemSummary> {
+        val county = fetchCountyInfo(place.lat, place.lon)
             ?: throw IllegalStateException("This ZIP could not be matched to a county, so no water system was chosen.")
-        val encCounty = URLEncoder.encode(county, "UTF-8")
-        val state = place.state.uppercase(Locale.US)
-        val geo = fetchJsonArray(
-            "$EPA_BASE/GEOGRAPHIC_AREA/COUNTY_SERVED/$encCounty/PRIMACY_AGENCY_CODE/$state/PWS_TYPE_CODE/CWS/PWS_ACTIVITY_CODE/A/rows/0:40/JSON"
-        ) ?: throw IllegalStateException("The EPA service-area list could not be reached. Try again in a moment.")
-        val ids = linkedSetOf<String>()
+        val index = linkedMapOf<String, GeoSlot>()
+        val homeGeo = fetchGeoCounty(county.name, place.state)
+        absorbGeo(index, homeGeo, county.name, place.state, home = true)
+        val homeIds = index.keys.toList()
+        if (homeIds.isEmpty()) {
+            throw IllegalStateException("No community water system was listed for ${county.name} County, ${place.state}.")
+        }
+        val homeRows = hydrateSystems(homeIds)
+        val homeSummaries = homeRows.map { summaryFromGeo(it, index, place, zip, fallbackCounty = county.name) }
+        val largest = homeSummaries.maxOfOrNull { it.population } ?: 0
+        if (largest < 100_000 && county.fips.isNotBlank()) {
+            val neighbors = loadAdjacency()[county.fips].orEmpty()
+            for ((name, state) in neighbors) {
+                val rows = try {
+                    fetchGeoCounty(name, state)
+                } catch (_: Exception) {
+                    continue
+                }
+                absorbGeo(index, rows, name, state, home = false)
+            }
+        }
+        val extraIds = index.keys.filter { it !in homeIds }
+        val extraRows = if (extraIds.isEmpty()) emptyList() else hydrateSystems(extraIds)
+        val extras = extraRows.map { summaryFromGeo(it, index, place, zip, fallbackCounty = "") }
+        return (homeSummaries + extras).sortedWith(
+            compareBy<WaterSystemSummary> { if (it.listedForPlace) 0 else if (it.homeCounty) 1 else 2 }
+                .thenBy { it.name }
+        )
+    }
+
+    private fun summaryFromGeo(
+        obj: JSONObject,
+        index: Map<String, GeoSlot>,
+        place: PlaceInfo,
+        zip: String,
+        fallbackCounty: String
+    ): WaterSystemSummary {
+        val id = obj.optString("pwsid", obj.optString("PWSID", ""))
+        val slot = index[id]
+        val cityKey = place.city.uppercase(Locale.US).replace(Regex("[^A-Z0-9]"), "")
+        val listed = slot?.cities?.any {
+            it.uppercase(Locale.US).replace(Regex("[^A-Z0-9]"), "") == cityKey
+        } == true || slot?.zips?.contains(zip) == true
+        return summaryFromSystem(
+            obj = obj,
+            state = slot?.state ?: place.state,
+            zip = zip,
+            county = slot?.county ?: fallbackCounty,
+            home = slot?.home ?: true,
+            listed = listed
+        ).copy(city = place.city.ifBlank { obj.optString("city_name", "") })
+    }
+
+    private fun summaryFromSystem(
+        obj: JSONObject,
+        state: String,
+        zip: String,
+        county: String,
+        home: Boolean,
+        listed: Boolean
+    ): WaterSystemSummary {
+        val pwsid = obj.optString("pwsid", obj.optString("PWSID", ""))
+        val name = obj.optString("pws_name", obj.optString("PWS_NAME", pwsid)).ifBlank { pwsid }
+        val pop = obj.optString("population_served_count", obj.optString("POPULATION_SERVED_COUNT", "0")).toIntOrNull() ?: 0
+        val src = obj.optString("primary_source_code", obj.optString("PRIMARY_SOURCE_CODE", ""))
+        return WaterSystemSummary(
+            pwsid = pwsid,
+            name = name,
+            city = obj.optString("city_name", obj.optString("CITY_NAME", "")),
+            state = obj.optString("state_code", obj.optString("STATE_CODE", state)).ifBlank { state },
+            zip = zip,
+            population = pop,
+            sourceType = sourceLabel(src),
+            isPrimary = false,
+            currentScore = -1,
+            fiveYearTrend = "Unknown",
+            fiveYearDeltaPts = 0,
+            openTicketCount = 0,
+            county = county,
+            listedForPlace = listed,
+            homeCounty = home
+        )
+    }
+
+    private fun absorbGeo(index: MutableMap<String, GeoSlot>, geo: JSONArray, county: String, state: String, home: Boolean) {
         for (i in 0 until geo.length()) {
-            val pwsid = geo.optJSONObject(i)?.optString("pwsid", "")?.ifBlank {
-                geo.optJSONObject(i)?.optString("PWSID", "")
-            }.orEmpty()
-            if (pwsid.isNotBlank()) ids.add(pwsid)
-            if (ids.size >= 24) break
-        }
-        if (ids.isEmpty()) {
-            throw IllegalStateException("No community water system was listed for $county County, $state.")
-        }
-        val rows = coroutineScope {
-            ids.map { id ->
-                async { fetchJsonArray("$EPA_BASE/WATER_SYSTEM/PWSID/$id/JSON")?.optJSONObject(0) }
-            }.awaitAll().filterNotNull()
-        }
-        return rows.sortedByDescending {
-            it.optString("population_served_count", it.optString("POPULATION_SERVED_COUNT", "0")).toIntOrNull() ?: 0
+            val row = geo.optJSONObject(i) ?: continue
+            val id = row.optString("pwsid", "").ifBlank { row.optString("PWSID", "") }
+            if (id.isBlank()) continue
+            val slot = index.getOrPut(id) { GeoSlot(id, county = county, state = state, home = home) }
+            if (home) slot.home = true
+            val city = row.optString("city_served", row.optString("CITY_SERVED", ""))
+            val servedZip = row.optString("zip_code_served", row.optString("ZIP_CODE_SERVED", ""))
+            if (city.isNotBlank() && city !in slot.cities) slot.cities.add(city)
+            if (servedZip.isNotBlank() && servedZip !in slot.zips) slot.zips.add(servedZip)
         }
     }
+
+    private fun fetchGeoCounty(county: String, state: String): JSONArray {
+        val all = JSONArray()
+        var start = 0
+        val page = 100
+        while (start < 600) {
+            val enc = URLEncoder.encode(county, "UTF-8")
+            val st = URLEncoder.encode(state, "UTF-8")
+            val batch = fetchJsonArray(
+                "$EPA_BASE/GEOGRAPHIC_AREA/COUNTY_SERVED/$enc/PRIMACY_AGENCY_CODE/$st/PWS_TYPE_CODE/CWS/PWS_ACTIVITY_CODE/A/rows/$start:${start + page}/JSON"
+            )
+            if (batch == null) {
+                if (start == 0) {
+                    throw IllegalStateException("The EPA service-area list could not be reached. Try again in a moment.")
+                }
+                break
+            }
+            if (batch.length() == 0) break
+            for (i in 0 until batch.length()) all.put(batch.opt(i))
+            if (batch.length() < page) break
+            start += page
+        }
+        return all
+    }
+
+    private suspend fun hydrateSystems(ids: List<String>): List<JSONObject> = coroutineScope {
+        val gate = Semaphore(6)
+        ids.map { id ->
+            async {
+                gate.withPermit {
+                    var row: JSONObject? = null
+                    repeat(2) { attempt ->
+                        if (row == null) {
+                            row = fetchJsonArray("$EPA_BASE/WATER_SYSTEM/PWSID/$id/JSON")?.optJSONObject(0)
+                            if (row == null && attempt == 0) {
+                                // one quiet retry when a single system record misses
+                            }
+                        }
+                    }
+                    row
+                }
+            }
+        }.awaitAll().filterNotNull()
+    }
+
+    private fun loadAdjacency(): Map<String, List<Pair<String, String>>> {
+        adjacencyCache?.let { return it }
+        val context = appContext ?: return emptyMap()
+        return try {
+            val text = context.assets.open("counties.json").bufferedReader().use { it.readText() }
+            val root = JSONObject(text)
+            val map = mutableMapOf<String, List<Pair<String, String>>>()
+            val keys = root.keys()
+            while (keys.hasNext()) {
+                val fips = keys.next()
+                val arr = root.optJSONArray(fips) ?: continue
+                val neighbors = buildList {
+                    for (i in 0 until arr.length()) {
+                        val parts = arr.optString(i).split(",")
+                        if (parts.size >= 2 && parts[0].isNotBlank()) add(parts[0] to parts[1])
+                    }
+                }
+                map[fips] = neighbors
+            }
+            map.also { adjacencyCache = it }
+        } catch (_: Exception) {
+            emptyMap()
+        }
+    }
+
+    private fun fetchCountyInfo(lat: Double, lon: Double): CountyInfo? {
+        return try {
+            val url = "https://geo.fcc.gov/api/census/area?lat=$lat&lon=$lon&format=json"
+            val req = Request.Builder().url(url).header("Accept", "application/json").build()
+            httpClient.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return null
+                val row = JSONObject(resp.body?.string() ?: return null)
+                    .optJSONArray("results")?.optJSONObject(0) ?: return null
+                val name = row.optString("county_name", "").removeSuffix(" County").removeSuffix(" county").trim()
+                if (name.isBlank()) return null
+                CountyInfo(name, row.optString("county_fips", ""))
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private data class CountyInfo(val name: String, val fips: String)
 
     private fun fetchDrought(lat: Double, lon: Double, @Suppress("UNUSED_PARAMETER") state: String): Pair<String, String> {
         try {

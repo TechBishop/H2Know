@@ -68,6 +68,7 @@ import com.example.data.local.H2KnowDatabase
 import com.example.data.local.UserPreferenceEntity
 import com.example.data.repository.FirestoreWaterRepository
 import com.example.data.repository.MonetizationConfig
+import com.example.data.repository.ProviderMemory
 import com.example.data.repository.WaterRepository
 import com.example.ui.H2KnowViewModel
 import com.example.ui.auth.AuthScreen
@@ -91,6 +92,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         MonetizationConfig.load(this)
+        ProviderMemory.init(this)
         enableEdgeToEdge()
         setContent {
             AppNavigation()
@@ -159,7 +161,7 @@ fun H2KnowMainWorkspace(
                 val db = FirebaseFirestore.getInstance(databaseId)
                 val roomDb = H2KnowDatabase.getInstance(app)
                 H2KnowViewModel(
-                    waterRepository = WaterRepository(roomDb.dao()),
+                    waterRepository = WaterRepository(roomDb.dao(), app.applicationContext),
                     firestoreRepository = FirestoreWaterRepository(db),
                     currentUserId = currentUserId
                 )
@@ -277,11 +279,13 @@ fun H2KnowMainWorkspace(
                             cloudIssuesState = cloudIssuesState,
                             onZipChange = { viewModel.onZipInputChange(it) },
                             onSubmitSearch = { overrideZip ->
-                                viewModel.searchZip(overrideZip, autoSelectPrimary = true)
+                                viewModel.searchZip(overrideZip, autoSelectPrimary = false)
                             },
                             onSelectProvider = { pwsid, zipHint ->
                                 viewModel.selectProvider(pwsid, zipHint)
                             },
+                            utilityHits = uiState.utilityHits,
+                            onSearchUtility = { viewModel.searchUtility(it) },
                             onDeleteHistory = { viewModel.deleteLocationHistorySnapshot(it) },
                             onDeleteIssue = { viewModel.deleteCloudWaterIssue(it) },
                             onRequestSignIn = onRequestSignIn
@@ -540,7 +544,8 @@ fun H2KnowMainWorkspace(
                                     watched = watchedSystems.any { it.pwsid == report.pwsid },
                                     notice = uiState.cloudStatusBanner,
                                     onToggleWatch = { viewModel.toggleWatchCurrent() },
-                                    onDismissNotice = { viewModel.dismissCloudBanner() }
+                                    onDismissNotice = { viewModel.dismissCloudBanner() },
+                                    onChangeProvider = { viewModel.changeProvider() }
                                 )
                             }
                         }

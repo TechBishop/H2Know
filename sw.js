@@ -1,5 +1,5 @@
 /* App shell only. Water records stay on the network so a saved page is not mistaken for today's sample. */
-const CACHE = "h2know-shell-v3";
+const CACHE = "h2know-shell-v4";
 const SHELL = [
   "./",
   "./index.html",

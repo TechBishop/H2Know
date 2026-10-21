@@ -47,6 +47,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -326,11 +327,13 @@ fun H2KnowSearchAndCloudHome(
     searchError: String?,
     currentPlace: PlaceInfo?,
     providers: List<WaterSystemSummary>,
+    utilityHits: List<WaterSystemSummary> = emptyList(),
     cloudHistoryState: CloudDataState<List<LocationHistoryDocument>>,
     cloudIssuesState: CloudDataState<List<WaterIssueDocument>>,
     onZipChange: (String) -> Unit,
     onSubmitSearch: (String?) -> Unit,
     onSelectProvider: (pwsid: String, zipHint: String?) -> Unit,
+    onSearchUtility: (String) -> Unit = {},
     onDeleteHistory: (String) -> Unit,
     onDeleteIssue: (String) -> Unit,
     onRequestSignIn: () -> Unit = {}
@@ -541,224 +544,43 @@ fun H2KnowSearchAndCloudHome(
                             )
                         }
 
-                        val primaryProvider = providers.first()
-                        val additionalProviders = providers.drop(1)
-                        var showOtherProvidersDropdown by remember(currentPlace?.zip, providers.size) {
-                            mutableStateOf(false)
+                        var utilityQuery by remember(currentPlace?.zip, providers.size) { mutableStateOf("") }
+                        val shown = providers.filter { provider ->
+                            val q = utilityQuery.trim()
+                            q.isEmpty() || provider.name.contains(q, ignoreCase = true) || provider.pwsid.contains(q, ignoreCase = true)
                         }
-
-                        val primaryScoreColor = when {
-                            primaryProvider.currentScore >= 80 -> palette.safe
-                            primaryProvider.currentScore >= 60 -> palette.caution
-                            else -> palette.danger
+                        OutlinedTextField(
+                            value = utilityQuery,
+                            onValueChange = { utilityQuery = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            placeholder = { Text("Name or PWSID") },
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                            keyboardActions = KeyboardActions(onSearch = { onSearchUtility(utilityQuery) }),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = palette.ink,
+                                unfocusedTextColor = palette.ink,
+                                focusedBorderColor = palette.brand,
+                                unfocusedBorderColor = palette.borderStrong,
+                                cursorColor = palette.brand
+                            )
+                        )
+                        TextButton(onClick = { onSearchUtility(utilityQuery) }) {
+                            Text("Search this state", color = palette.brand)
                         }
-                        Surface(
-                            onClick = {
-                                keyboardController?.hide()
-                                focusManager.clearFocus()
-                                onSelectProvider(primaryProvider.pwsid, primaryProvider.zip)
-                            },
-                            shape = RoundedCornerShape(16.dp),
-                            color = palette.surface2,
-                            shadowElevation = 8.dp,
-                            border = BorderStroke(1.5.dp, primaryScoreColor.copy(alpha = 0.45f)),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("provider_card_${primaryProvider.pwsid}")
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                    ) {
-                                        Surface(
-                                            shape = RoundedCornerShape(6.dp),
-                                            color = palette.safeBg
-                                        ) {
-                                            Text(
-                                                text = "MAIN UTILITY",
-                                                fontFamily = JetBrainsMonoFamily,
-                                                fontSize = 9.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = palette.safe,
-                                                maxLines = 1,
-                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                            )
-                                        }
-                                        Text(
-                                            text = primaryProvider.sourceType,
-                                            fontFamily = JetBrainsMonoFamily,
-                                            fontSize = 10.5.sp,
-                                            color = palette.brand,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                            modifier = Modifier.weight(1f, fill = false)
-                                        )
-                                    }
-                                    Text(
-                                        text = primaryProvider.name,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = palette.ink,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Text(
-                                        text = "Serves ${String.format(Locale.US, "%,d", primaryProvider.population)} people · Tap to view report",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = palette.ink2,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Surface(
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = primaryScoreColor.copy(alpha = 0.16f),
-                                    border = BorderStroke(1.dp, primaryScoreColor.copy(alpha = 0.40f))
-                                ) {
-                                    Column(
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        Text(
-                                            text = "${primaryProvider.currentScore}",
-                                            fontFamily = JetBrainsMonoFamily,
-                                            fontWeight = FontWeight.ExtraBold,
-                                            fontSize = 19.sp,
-                                            color = primaryScoreColor,
-                                            maxLines = 1
-                                        )
-                                        Text(
-                                            text = "OPEN →",
-                                            fontFamily = JetBrainsMonoFamily,
-                                            fontSize = 9.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = primaryScoreColor,
-                                            maxLines = 1
-                                        )
-                                    }
-                                }
-                            }
+                        shown.forEach { provider ->
+                            ProviderChoice(provider, onSelectProvider)
                         }
-
-                        if (additionalProviders.isNotEmpty()) {
-                            Surface(
-                                onClick = { showOtherProvidersDropdown = !showOtherProvidersDropdown },
-                                shape = RoundedCornerShape(14.dp),
-                                color = palette.surface2,
-                                border = BorderStroke(1.dp, palette.borderStrong),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = "Other Local Providers in ZIP ${currentPlace?.zip ?: zipQuery} (${additionalProviders.size})",
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = palette.ink,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = if (showOtherProvidersDropdown) "Hide ▲" else "Select ▾",
-                                        fontFamily = JetBrainsMonoFamily,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = palette.brand,
-                                        maxLines = 1
-                                    )
-                                }
-                            }
-
-                            if (showOtherProvidersDropdown) {
-                                Surface(
-                                    shape = RoundedCornerShape(14.dp),
-                                    color = palette.surface0,
-                                    border = BorderStroke(1.dp, palette.border),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .heightIn(max = 210.dp)
-                                            .verticalScroll(rememberScrollState())
-                                            .padding(8.dp),
-                                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                                    ) {
-                                        additionalProviders.forEach { provider ->
-                                            val scoreColor = when {
-                                                provider.currentScore < 0 -> palette.ink3
-                                                provider.currentScore >= 80 -> palette.safe
-                                                provider.currentScore >= 60 -> palette.caution
-                                                else -> palette.danger
-                                            }
-                                            Surface(
-                                                onClick = {
-                                                    showOtherProvidersDropdown = false
-                                                    keyboardController?.hide()
-                                                    focusManager.clearFocus()
-                                                    onSelectProvider(provider.pwsid, provider.zip)
-                                                },
-                                                shape = RoundedCornerShape(10.dp),
-                                                color = palette.surface2,
-                                                border = BorderStroke(1.dp, palette.border),
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .testTag("provider_card_${provider.pwsid}")
-                                            ) {
-                                                Row(
-                                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
-                                                    verticalAlignment = Alignment.CenterVertically,
-                                                    horizontalArrangement = Arrangement.SpaceBetween
-                                                ) {
-                                                    Column(modifier = Modifier.weight(1f)) {
-                                                        Text(
-                                                            text = provider.name,
-                                                            style = MaterialTheme.typography.labelLarge,
-                                                            color = palette.ink,
-                                                            fontWeight = FontWeight.Bold,
-                                                            maxLines = 1,
-                                                            overflow = TextOverflow.Ellipsis
-                                                        )
-                                                        Text(
-                                                            text = "Serves ${String.format(Locale.US, "%,d", provider.population)} · ${provider.sourceType}",
-                                                            fontFamily = JetBrainsMonoFamily,
-                                                            fontSize = 10.sp,
-                                                            color = palette.ink2,
-                                                            maxLines = 1,
-                                                            overflow = TextOverflow.Ellipsis
-                                                        )
-                                                    }
-                                                    Spacer(modifier = Modifier.width(8.dp))
-                                                    Text(
-                                                        text = if (provider.currentScore < 0) "—" else "${provider.currentScore} →",
-                                                        fontFamily = JetBrainsMonoFamily,
-                                                        fontSize = 12.sp,
-                                                        fontWeight = FontWeight.ExtraBold,
-                                                        color = scoreColor,
-                                                        maxLines = 1
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
+                        if (utilityHits.isNotEmpty()) {
+                            Text(
+                                text = "STATEWIDE MATCHES",
+                                fontFamily = JetBrainsMonoFamily,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = palette.brand
+                            )
+                            utilityHits.forEach { provider ->
+                                ProviderChoice(provider, onSelectProvider)
                             }
                         }
                     }
@@ -1059,6 +881,43 @@ fun H2KnowSearchAndCloudHome(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ProviderChoice(
+    provider: WaterSystemSummary,
+    onSelectProvider: (pwsid: String, zipHint: String?) -> Unit
+) {
+    val palette = H2KnowThemeTokens.colors
+    val people = if (provider.population > 0) {
+        String.format(Locale.US, "%,d", provider.population)
+    } else {
+        "Not listed"
+    }
+    val where = listOf(provider.county, provider.state).filter { it.isNotBlank() }.joinToString(", ")
+    Surface(
+        onClick = { onSelectProvider(provider.pwsid, provider.zip) },
+        shape = RoundedCornerShape(14.dp),
+        color = palette.surface2,
+        border = BorderStroke(1.dp, palette.border),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("provider_card_${provider.pwsid}")
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
+            Text(
+                text = provider.name + if (provider.listedForPlace) "  ·  Listed for this city" else "",
+                style = MaterialTheme.typography.titleSmall,
+                color = palette.ink,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = "${provider.pwsid} · $people people${if (where.isBlank()) "" else " · $where"}",
+                style = MaterialTheme.typography.bodySmall,
+                color = palette.ink2
+            )
         }
     }
 }
