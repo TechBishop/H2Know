@@ -26,7 +26,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -47,6 +50,7 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -428,20 +432,24 @@ fun SelectedContaminantWhyBox(
                 color = palette.ink2
             )
 
+            val uriHandler = LocalUriHandler.current
+            val amzFilterUrl = ReferenceWaterData.contaminantAmazonFilterUrl(contaminant)
+            val amzTestKitUrl = ReferenceWaterData.contaminantAmazonTestKitUrl(contaminant)
+
             Surface(
                 shape = RoundedCornerShape(14.dp),
                 color = palette.surface1,
                 border = BorderStroke(1.dp, palette.safe.copy(alpha = 0.45f)),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Row(
+                Column(
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(3.dp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
                             text = "RECOMMENDED HOME FILTER",
@@ -450,33 +458,101 @@ fun SelectedContaminantWhyBox(
                             fontWeight = FontWeight.Bold,
                             color = palette.safe
                         )
-                        Text(
-                            text = nsfRemedy,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = palette.ink
-                        )
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = palette.cautionBg,
+                            border = BorderStroke(1.dp, palette.caution.copy(alpha = 0.4f))
+                        ) {
+                            Text(
+                                text = "SUGGESTED LINKS · AMAZON",
+                                fontFamily = JetBrainsMonoFamily,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = palette.caution,
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                            )
+                        }
                     }
-                    Spacer(modifier = Modifier.width(10.dp))
-                    OutlinedButton(
-                        onClick = { onFlagContaminantIssue(contaminant) },
-                        shape = RoundedCornerShape(12.dp),
-                        border = BorderStroke(1.dp, palette.brand),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                        modifier = Modifier.testTag("flag_contaminant_issue_${contaminant.code}")
+
+                    Text(
+                        text = nsfRemedy,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = palette.ink
+                    )
+
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = palette.brand
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "Report ${plainName.substringBefore(" ")}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = palette.brand,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Button(
+                            onClick = { runCatching { uriHandler.openUri(amzFilterUrl) } },
+                            shape = RoundedCornerShape(11.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = palette.safe,
+                                contentColor = Color.White
+                            ),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                            modifier = Modifier.testTag("amz_filter_btn_${contaminant.code}")
+                        ) {
+                            Text(
+                                text = "Shop NSF Filter on Amazon",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.width(5.dp))
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                                contentDescription = null,
+                                modifier = Modifier.size(13.dp),
+                                tint = Color.White
+                            )
+                        }
+
+                        OutlinedButton(
+                            onClick = { runCatching { uriHandler.openUri(amzTestKitUrl) } },
+                            shape = RoundedCornerShape(11.dp),
+                            border = BorderStroke(1.dp, palette.caution.copy(alpha = 0.65f)),
+                            contentPadding = PaddingValues(horizontal = 11.dp, vertical = 6.dp),
+                            modifier = Modifier.testTag("amz_testkit_btn_${contaminant.code}")
+                        ) {
+                            Text(
+                                text = "${plainName.substringBefore(" ")} Test Kit",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = palette.caution,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                                contentDescription = null,
+                                modifier = Modifier.size(12.dp),
+                                tint = palette.caution
+                            )
+                        }
+
+                        OutlinedButton(
+                            onClick = { onFlagContaminantIssue(contaminant) },
+                            shape = RoundedCornerShape(11.dp),
+                            border = BorderStroke(1.dp, palette.brand),
+                            contentPadding = PaddingValues(horizontal = 11.dp, vertical = 6.dp),
+                            modifier = Modifier.testTag("flag_contaminant_issue_${contaminant.code}")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = null,
+                                modifier = Modifier.size(13.dp),
+                                tint = palette.brand
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Report ${plainName.substringBefore(" ")}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = palette.brand,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
             }

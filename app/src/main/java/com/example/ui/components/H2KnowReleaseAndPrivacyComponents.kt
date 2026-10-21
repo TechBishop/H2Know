@@ -72,25 +72,25 @@ fun getFormattedReportShareText(report: WaterSystemReport): String {
     val topContaminant = report.contaminants.firstOrNull()
     val contaminantLine = if (topContaminant != null) {
         val limitText = topContaminant.mcl?.let { String.format(Locale.US, "%.2f", it) } ?: "N/A"
-        "• WHY (${topContaminant.name}): ${
+        "• Quality (${topContaminant.plainShortName()}): ${
             String.format(Locale.US, "%.2f", topContaminant.detected)
         } ${topContaminant.unit} (Legal Limit: $limitText ${topContaminant.unit})"
     } else {
-        "• WHY: Key parameters within federal drinking water limits"
+        "• Quality: Tested parameters within federal drinking water limits"
     }
 
     val delta5Y = if (report.fiveYearScoreDelta >= 0) "+${report.fiveYearScoreDelta}" else "${report.fiveYearScoreDelta}"
     val delta10Y = if (report.tenYearScoreDelta >= 0) "+${report.tenYearScoreDelta}" else "${report.tenYearScoreDelta}"
     return buildString {
-        appendLine("H2Know 4W Water Quality Report — ZIP ${report.zip}")
-        appendLine("Utility: ${report.name} (EPA ID: ${report.pwsid})")
-        appendLine("Overall Score: ${report.qualityScore}/100 (Risk Level: ${report.riskLevel.uppercase()})")
-        appendLine("• WHO: Serves ${String.format(Locale.US, "%,d", report.population)} residents in ${report.city}, ${report.state}")
-        appendLine("• WHERE: ${report.sourceType} · ${report.sourceDescription}")
+        appendLine("H2Know Tap Water Report — ZIP ${report.zip}")
+        appendLine("Utility: ${report.name}")
+        appendLine("Water Quality Score: ${report.qualityScore}/100 (${report.riskLevel.uppercase()} RISK)")
+        appendLine("• Overview: Serves ${String.format(Locale.US, "%,d", report.population)} residents in ${report.city}, ${report.state}")
+        appendLine("• Source: ${report.sourceType} · ${report.sourceDescription}")
         appendLine(contaminantLine)
-        appendLine("• WHEN: 5Y Trend $delta5Y pts · 10Y Trend $delta10Y pts · ${report.violations.size} EPA compliance records (10Y)")
+        appendLine("• History: 5Y Trend $delta5Y pts · 10Y Trend $delta10Y pts")
         appendLine()
-        append("Source: Public U.S. EPA SDWIS & U.S. Drought Monitor records via H2Know ($STUDIO_PUBLISHER_NAME).")
+        append("Source: Public U.S. EPA & U.S. Drought Monitor records via H2Know ($STUDIO_PUBLISHER_NAME).")
     }
 }
 
@@ -98,10 +98,10 @@ fun shareWaterSystemReport(context: Context, report: WaterSystemReport) {
     val shareText = getFormattedReportShareText(report)
     val sendIntent = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
-        putExtra(Intent.EXTRA_SUBJECT, "H2Know Water Quality Report — ${report.name} (ZIP ${report.zip})")
+        putExtra(Intent.EXTRA_SUBJECT, "H2Know Tap Water Report — ${report.name} (ZIP ${report.zip})")
         putExtra(Intent.EXTRA_TEXT, shareText)
     }
-    context.startActivity(Intent.createChooser(sendIntent, "Share 4W Water Report"))
+    context.startActivity(Intent.createChooser(sendIntent, "Share Tap Water Report"))
 }
 
 @Composable
@@ -149,14 +149,14 @@ fun H2KnowReportSnapshotDialog(
                 ) {
                     Column {
                         Text(
-                            text = "REPORT CARD SNAPSHOT",
+                            text = "TAP WATER REPORT CARD",
                             fontFamily = JetBrainsMonoFamily,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = palette.brand
                         )
                         Text(
-                            text = "Formatted for mobile screenshots & sharing",
+                            text = "Formatted for screenshots & sharing",
                             style = MaterialTheme.typography.bodySmall,
                             color = palette.ink3
                         )
@@ -201,7 +201,7 @@ fun H2KnowReportSnapshotDialog(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "H2KNOW WATER AUDIT",
+                                text = "H2KNOW WATER REPORT",
                                 fontFamily = JetBrainsMonoFamily,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
@@ -233,9 +233,9 @@ fun H2KnowReportSnapshotDialog(
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = "EPA PWSID ${report.pwsid}",
-                                    fontFamily = JetBrainsMonoFamily,
-                                    fontSize = 10.5.sp,
+                                    text = "${report.city}, ${report.state}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontSize = 11.sp,
                                     color = palette.ink3
                                 )
                             }
@@ -267,7 +267,7 @@ fun H2KnowReportSnapshotDialog(
                             }
                         }
 
-                        // 4W Compact Key Summary
+                        // Compact Key Summary
                         Column(
                             modifier = Modifier.fillMaxWidth(),
                             verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -277,12 +277,12 @@ fun H2KnowReportSnapshotDialog(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 SnapshotPill(
-                                    pillar = "WHO",
-                                    label = "Serves ${String.format(Locale.US, "%,d", report.population)}",
+                                    pillar = "SERVES",
+                                    label = "${String.format(Locale.US, "%,d", report.population)} residents",
                                     modifier = Modifier.weight(1f)
                                 )
                                 SnapshotPill(
-                                    pillar = "WHERE",
+                                    pillar = "SOURCE",
                                     label = report.sourceType,
                                     modifier = Modifier.weight(1f)
                                 )
@@ -293,26 +293,26 @@ fun H2KnowReportSnapshotDialog(
                             ) {
                                 val topContaminant = report.contaminants.firstOrNull()
                                 val whyLabel = if (topContaminant != null) {
-                                    "${topContaminant.name.substringBefore(" (")}: ${String.format(Locale.US, "%.1f", topContaminant.detected)} ${topContaminant.unit}"
+                                    "${topContaminant.plainShortName().substringBefore(" (")}: ${String.format(Locale.US, "%.1f", topContaminant.detected)} ${topContaminant.unit}"
                                 } else {
                                     "Within legal limits"
                                 }
                                 SnapshotPill(
-                                    pillar = "WHY",
+                                    pillar = "QUALITY",
                                     label = whyLabel,
                                     modifier = Modifier.weight(1f)
                                 )
                                 val delta5Y = if (report.fiveYearScoreDelta >= 0) "+${report.fiveYearScoreDelta}" else "${report.fiveYearScoreDelta}"
                                 SnapshotPill(
-                                    pillar = "WHEN",
-                                    label = "$delta5Y pts (5Y Trend)",
+                                    pillar = "TREND",
+                                    label = "$delta5Y pts (5Y)",
                                     modifier = Modifier.weight(1f)
                                 )
                             }
                         }
 
                         Text(
-                            text = "Data Source: Public U.S. EPA SDWIS Record · Independent Civic Audit",
+                            text = "Data Source: Public U.S. EPA & U.S. Drought Monitor Records",
                             fontFamily = JetBrainsMonoFamily,
                             fontSize = 8.5.sp,
                             color = palette.ink3,
@@ -421,8 +421,8 @@ private fun SnapshotPill(
 
 fun shareH2KnowApp(context: Context) {
     val shareText = buildString {
-        appendLine("H2Know — Civic Tap Water Intelligence")
-        appendLine("Inspect the WHO, WHERE, WHY, and WHEN of any U.S. ZIP code's tap water using public U.S. EPA SDWIS & U.S. Drought Monitor records.")
+        appendLine("H2Know — Tap Water Quality & Filter Guide")
+        appendLine("Check your U.S. ZIP code's tap water quality score, water source, detected contaminants, and matched home filters.")
         append("Published independently by $STUDIO_PUBLISHER_NAME.")
     }
     val sendIntent = Intent(Intent.ACTION_SEND).apply {

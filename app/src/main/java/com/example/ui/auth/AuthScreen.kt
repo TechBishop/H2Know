@@ -334,7 +334,7 @@ fun AuthScreen(
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "The Who, Where, Why & When of Your Tap Water",
+                    text = "U.S. Tap Water Quality & Filter Guide",
                     style = MaterialTheme.typography.titleMedium,
                     color = palette.ink2,
                     textAlign = TextAlign.Center
@@ -342,7 +342,7 @@ fun AuthScreen(
 
                 Spacer(modifier = Modifier.height(22.dp))
 
-                // Balanced 2x2 Bento Grid (eliminates 4-column cramping)
+                // Balanced 2x2 Bento Grid
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -352,16 +352,16 @@ fun AuthScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         AuthPillarTile(
-                            code = "01 · WHO",
+                            code = "OVERVIEW",
                             title = "Utility & Score",
-                            subtitle = "EPA ID, population & 0–100 rating",
+                            subtitle = "Water provider & 0–100 safety score",
                             accent = palette.brand,
                             modifier = Modifier.weight(1f)
                         )
                         AuthPillarTile(
-                            code = "02 · WHERE",
-                            title = "Source & Drought",
-                            subtitle = "Aquifer/river origin & treatment",
+                            code = "SOURCE",
+                            title = "Water & Drought",
+                            subtitle = "River/aquifer origin & treatment",
                             accent = palette.safe,
                             modifier = Modifier.weight(1f)
                         )
@@ -371,16 +371,16 @@ fun AuthScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         AuthPillarTile(
-                            code = "03 · WHY",
-                            title = "Lab vs. Health Goal",
-                            subtitle = "PHG/MCL bars & NSF filter match",
+                            code = "QUALITY",
+                            title = "Contaminants & Filters",
+                            subtitle = "Lab levels & matched home filters",
                             accent = palette.caution,
                             modifier = Modifier.weight(1f)
                         )
                         AuthPillarTile(
-                            code = "04 · WHEN",
-                            title = "1Y · 5Y · 10Y Curve",
-                            subtitle = "Unified score & violation timeline",
+                            code = "HISTORY",
+                            title = "1Y · 5Y · 10Y Trends",
+                            subtitle = "Quality history & past notices",
                             accent = palette.brand,
                             modifier = Modifier.weight(1f)
                         )
@@ -457,7 +457,7 @@ fun AuthScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Sign in with Google · Cloud Sync",
+                            text = "Sign in with Google",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold
                         )
@@ -493,7 +493,7 @@ fun AuthScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = "Instant local ZIP lookup & interactive graphics work without an account. Sign in anytime to sync history or report local water issues to Firestore.",
+                    text = "Instant ZIP code lookup works without an account. Sign in anytime to save checked ZIP codes or report local tap water issues.",
                     style = MaterialTheme.typography.bodySmall,
                     color = palette.ink3,
                     textAlign = TextAlign.Center

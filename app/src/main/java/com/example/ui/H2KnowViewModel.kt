@@ -26,13 +26,14 @@ import kotlinx.coroutines.launch
 
 enum class FourWTab(
     val key: String,
+    val label: String,
     val badge: String,
     val shortTitle: String
 ) {
-    WHO("WHO", "01 · WHO", "Utility & Issues"),
-    WHERE("WHERE", "02 · WHERE", "Origin & Treatment"),
-    WHY("WHY", "03 · WHY", "Lab & Filtration"),
-    WHEN("WHEN", "04 · WHEN", "1Y / 5Y / 10Y Timeline")
+    WHO("WHO", "Overview", "OVERVIEW", "Score & Local Reports"),
+    WHERE("WHERE", "Source", "WATER SOURCE", "Origin, Treatment & Drought"),
+    WHY("WHY", "Quality", "WATER QUALITY", "Contaminants & Filters"),
+    WHEN("WHEN", "History", "HISTORY", "1Y / 5Y / 10Y Trends")
 }
 
 sealed interface CloudDataState<out T> {
@@ -296,7 +297,7 @@ class H2KnowViewModel(
     fun saveCurrentLocationSnapshotToCloud() {
         if (currentUserId == null) {
             _uiState.update {
-                it.copy(cloudStatusBanner = "Sign in with Google from the top bar to save cloud location snapshots.")
+                it.copy(cloudStatusBanner = "Sign in to save water reports to your account.")
             }
             return
         }
@@ -308,7 +309,7 @@ class H2KnowViewModel(
                 _uiState.update {
                     it.copy(
                         isSavingHistory = false,
-                        cloudStatusBanner = "Saved ${report.name} (${report.zip}) historical snapshot to Firebase Firestore."
+                        cloudStatusBanner = "Saved ${report.name} (${report.zip}) to your saved locations."
                     )
                 }
             }.onFailure { err ->
@@ -409,7 +410,7 @@ class H2KnowViewModel(
                         activeFourWTab = FourWTab.WHO,
                         showReportIssueDialog = false,
                         reportIssuePrefillContaminant = null,
-                        cloudStatusBanner = "Water quality issue synced to Firebase Firestore in the WHO tab."
+                        cloudStatusBanner = "Your local water report has been posted."
                     )
                 }
             }.onFailure { err ->

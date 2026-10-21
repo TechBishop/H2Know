@@ -212,7 +212,7 @@ fun H2KnowMainWorkspace(
             else -> "H2Know"
         }
         val headerSubtitle = uiState.activeReport?.let {
-            "${uiState.activeFourWTab.badge} · ${uiState.activeFourWTab.shortTitle}"
+            "${it.city}, ${it.state} · ZIP ${it.zip}"
         }
 
         Scaffold(
@@ -339,7 +339,7 @@ fun H2KnowMainWorkspace(
                                             modifier = Modifier.size(36.dp)
                                         )
                                         Text(
-                                            text = "Opening 4W Water Report for ZIP ${uiState.zipQuery}…",
+                                            text = "Loading Water Report for ZIP ${uiState.zipQuery}…",
                                             style = MaterialTheme.typography.titleSmall,
                                             color = palette.ink,
                                             textAlign = TextAlign.Center
@@ -525,7 +525,7 @@ fun H2KnowMainWorkspace(
                                                                             }
                                                                         }
                                                                         Text(
-                                                                            text = "Serves ${java.text.NumberFormat.getIntegerInstance(java.util.Locale.US).format(sys.population)} · ${sys.sourceType} · ${sys.pwsid}",
+                                                                            text = "Serves ${java.text.NumberFormat.getIntegerInstance(java.util.Locale.US).format(sys.population)} · ${sys.sourceType}",
                                                                             fontFamily = JetBrainsMonoFamily,
                                                                             fontSize = 10.sp,
                                                                             color = palette.ink2,

@@ -10,6 +10,7 @@ import com.example.data.model.IssueTicket
 import com.example.data.model.PlaceInfo
 import com.example.data.model.PriorityAction
 import com.example.data.model.QualityChangeAlert
+import com.example.data.model.SuggestedProductLink
 import com.example.data.model.TreatmentStep
 import com.example.data.model.TrendDiagnostic
 import com.example.data.model.TrendTimeframe
@@ -385,6 +386,27 @@ object ReferenceWaterData {
             )
         )
         else -> null
+    }
+
+    fun stableHash(input: String): Int {
+        var h = 0
+        for (ch in input) {
+            h = (h shl 5) - h + ch.code
+        }
+        return h and 0x7fffffff
+    }
+
+    fun findPresetByPwsid(pwsid: String): WaterSystemSummary? =
+        zipPresets.mapNotNull { presetSystemsForZip(it.zip) }.flatten().find { it.pwsid == pwsid }
+
+    fun stableScoreForPwsid(pwsid: String): Int {
+        findPresetByPwsid(pwsid)?.let { return it.currentScore }
+        return 78 + (stableHash(pwsid) % 16)
+    }
+
+    fun stableFiveYearDeltaForPwsid(pwsid: String): Int {
+        findPresetByPwsid(pwsid)?.let { return it.fiveYearDeltaPts }
+        return (stableHash(pwsid) % 9) - 2
     }
 
     /**
@@ -946,6 +968,202 @@ object ReferenceWaterData {
         if (abs(v) >= 100) return String.format("%.0f", v)
         return String.format("%.2f", v).trimEnd('0').trimEnd('.')
     }
+
+    fun contaminantAmazonFilterUrl(contaminant: Contaminant): String = when (contaminant.code) {
+        "PB90" -> "https://www.amazon.com/s?k=NSF+53+lead+water+filter+pitcher+faucet+under+sink"
+        "CU90" -> "https://www.amazon.com/s?k=NSF+53+copper+and+lead+drinking+water+filter"
+        "2950", "2456" -> "https://www.amazon.com/s?k=NSF+53+42+activated+carbon+water+filter+TTHM+chlorine+byproducts"
+        "2806", "2805" -> "https://www.amazon.com/s?k=NSF+53+58+P473+PFAS+PFOA+PFOS+water+filter"
+        "1040" -> "https://www.amazon.com/s?k=NSF+58+reverse+osmosis+nitrate+water+filter+system"
+        "1005" -> "https://www.amazon.com/s?k=NSF+58+reverse+osmosis+arsenic+water+filter+system"
+        "1025" -> "https://www.amazon.com/s?k=NSF+58+reverse+osmosis+fluoride+water+filter"
+        else -> "https://www.amazon.com/s?k=NSF+53+58+certified+drinking+water+filter"
+    }
+
+    fun contaminantAmazonTestKitUrl(contaminant: Contaminant): String = when (contaminant.code) {
+        "PB90", "CU90" -> "https://www.amazon.com/s?k=EPA+lead+and+copper+in+drinking+water+home+test+kit"
+        "2806", "2805" -> "https://www.amazon.com/s?k=PFAS+forever+chemicals+mail+in+water+test+kit"
+        "1040" -> "https://www.amazon.com/s?k=nitrate+nitrite+drinking+water+test+kit+strips"
+        "1005" -> "https://www.amazon.com/s?k=arsenic+in+drinking+water+test+kit"
+        "2950", "2456" -> "https://www.amazon.com/s?k=complete+home+drinking+water+test+kit+chlorine+VOC"
+        else -> "https://www.amazon.com/s?k=16+in+1+drinking+water+test+kit+lead+copper+nitrate"
+    }
+
+    fun buildSuggestedProductsForReport(report: WaterSystemReport): List<SuggestedProductLink> {
+        val pb = report.contaminants.find { it.code == "PB90" }
+        val tthm = report.contaminants.find { it.code == "2950" }
+        val pfoa = report.contaminants.find { it.code == "2806" }
+        val no3 = report.contaminants.find { it.code == "1040" }
+        val arsenic = report.contaminants.find { it.code == "1005" }
+
+        val elevatedNames = report.contaminants
+            .filter { it.exceedsHealthGoal }
+            .map {
+                when (it.code) {
+                    "PB90" -> "Lead (${fmtVal(it.detected)} ppb)"
+                    "2950" -> "TTHMs (${fmtVal(it.detected)} ppb)"
+                    "2456" -> "HAA5 (${fmtVal(it.detected)} ppb)"
+                    "2806" -> "PFOA (${fmtVal(it.detected)} ppt)"
+                    "2805" -> "PFOS (${fmtVal(it.detected)} ppt)"
+                    "1040" -> "Nitrate (${fmtVal(it.detected)} ppm)"
+                    "1005" -> "Arsenic (${fmtVal(it.detected)} ppb)"
+                    "CU90" -> "Copper (${fmtVal(it.detected)} ppm)"
+                    else -> it.name.substringBefore(" (")
+                }
+            }
+
+        val roMatchText = if (elevatedNames.isNotEmpty()) {
+            "Matched to ${report.zip}: Targets ${elevatedNames.take(3).joinToString(", ")}"
+        } else {
+            "Complete barrier for Lead, PFAS, Arsenic, Nitrate & Chlorine Byproducts"
+        }
+
+        val pitcherMatchText = when {
+            pb != null && pb.detected > 0 && tthm != null && tthm.detected > 0 ->
+                "Matched for Lead (${fmtVal(pb.detected)} ppb) & TTHMs (${fmtVal(tthm.detected)} ppb) in ${report.city}"
+            pfoa != null && pfoa.detected > 0 ->
+                "Certified for PFOA/PFOS (${fmtVal(pfoa.detected)} ppt), Lead & Chlorine odor"
+            else -> "Renter-friendly pitcher for Lead, PFAS, Copper & Disinfection Byproducts"
+        }
+
+        val faucetMatchText = if (pb != null && pb.detected > 0) {
+            "1-Click kitchen tap barrier for ${fmtVal(pb.detected)} ppb 90th-percentile Lead & pipe scale"
+        } else {
+            "Installs in 2 minutes on standard kitchen faucets with filter life indicator"
+        }
+
+        val testKitMatchText = if (no3 != null && no3.detected > 1.0 || arsenic != null && arsenic.detected > 0.5) {
+            "Verify home tap Lead, Copper, Nitrate (${fmtVal(no3?.detected)} ppm) & Arsenic"
+        } else {
+            "Test your home's internal plumbing after overnight stagnation (ZIP ${report.zip})"
+        }
+
+        return listOf(
+            SuggestedProductLink(
+                id = "amz-ro-5stage",
+                title = "5-Stage Under-Sink Reverse Osmosis + Carbon System",
+                subtitle = "Removes up to 99% of Lead, PFOA/PFOS forever chemicals, Arsenic, Nitrate, Fluoride & TTHMs right at the kitchen sink.",
+                certificationBadge = "NSF/ANSI 58 + 53 + 372",
+                priceTier = "\$169–\$249 · Prime Eligible",
+                partnerLabel = "SUGGESTED LINK · AMAZON",
+                matchReason = roMatchText,
+                targetCodes = listOf("PB90", "2806", "2805", "1040", "1005", "2950"),
+                amazonUrl = "https://www.amazon.com/s?k=NSF+58+53+under+sink+reverse+osmosis+water+filter+system",
+                secondaryLabel = "RO Filter Packs ↗",
+                secondaryUrl = "https://www.amazon.com/s?k=reverse+osmosis+replacement+filter+set+NSF+58"
+            ),
+            SuggestedProductLink(
+                id = "amz-pitcher-nsf53",
+                title = "NSF-53 Lead, PFAS & TTHM Solid Carbon Pitcher",
+                subtitle = "Advanced ion-exchange + micro-carbon block pitcher rated for soluble & particulate Lead, PFOA/PFOS, and seasonal chlorine taste.",
+                certificationBadge = "NSF/ANSI 53 + 42 + 401",
+                priceTier = "\$34–\$58 · Prime Eligible",
+                partnerLabel = "SUGGESTED LINK · AMAZON",
+                matchReason = pitcherMatchText,
+                targetCodes = listOf("PB90", "CU90", "2950", "2456", "2806", "2805"),
+                amazonUrl = "https://www.amazon.com/s?k=NSF+53+lead+and+PFAS+water+filter+pitcher",
+                secondaryLabel = "NSF-53 Cartridges ↗",
+                secondaryUrl = "https://www.amazon.com/s?k=NSF+53+replacement+water+pitcher+filter+cartridges"
+            ),
+            SuggestedProductLink(
+                id = "amz-faucet-mount",
+                title = "On-Tap Faucet Mount Carbon Block Filter",
+                subtitle = "Attaches directly to kitchen faucets with instant switch between filtered drinking/cooking water and unfiltered spray.",
+                certificationBadge = "NSF/ANSI 53 + 42",
+                priceTier = "\$28–\$46 · Prime Eligible",
+                partnerLabel = "SUGGESTED LINK · AMAZON",
+                matchReason = faucetMatchText,
+                targetCodes = listOf("PB90", "CU90", "2950", "2456"),
+                amazonUrl = "https://www.amazon.com/s?k=NSF+53+faucet+mount+water+filter+lead+reduction",
+                secondaryLabel = "Faucet Refills ↗",
+                secondaryUrl = "https://www.amazon.com/s?k=NSF+53+faucet+water+filter+replacement+cartridges"
+            ),
+            SuggestedProductLink(
+                id = "amz-home-test-kit",
+                title = "16-in-1 Home Drinking Water & Lead/PFAS Test Kit",
+                subtitle = "Includes rapid first-draw Lead, Copper, Nitrate, Chlorine & Hardness strips plus EPA-method mail-in lab options.",
+                certificationBadge = "EPA-Method Screening",
+                priceTier = "\$22–\$79 · Prime Eligible",
+                partnerLabel = "SUGGESTED LINK · AMAZON",
+                matchReason = testKitMatchText,
+                targetCodes = listOf("PB90", "CU90", "1040", "1005", "2950"),
+                amazonUrl = "https://www.amazon.com/s?k=drinking+water+test+kit+lead+copper+pfas+nitrate",
+                secondaryLabel = "Mail-In Lab Kits ↗",
+                secondaryUrl = "https://www.amazon.com/s?k=certified+laboratory+mail+in+water+test+kit+lead+PFAS"
+            )
+        )
+    }
+
+    fun buildWhereTabConservationProducts(report: WaterSystemReport): List<SuggestedProductLink> = listOf(
+        SuggestedProductLink(
+            id = "amz-watersense-kit",
+            title = "EPA WaterSense High-Efficiency Showerhead & Aerator Kit",
+            subtitle = "Helps meet ${report.city}'s ${report.usage.recommendedGallonsPerDay} GPD target (${droughtLabel(report.droughtLevel)}) while cutting hot-water energy use by 20%.",
+            certificationBadge = "EPA WaterSense · 1.5–1.8 GPM",
+            priceTier = "\$19–\$39 · Amazon",
+            partnerLabel = "SUGGESTED LINK · AMAZON",
+            matchReason = "Matched for ZIP ${report.zip} conservation target (${report.usage.recommendedGallonsPerDay} GPD)",
+            targetCodes = emptyList(),
+            amazonUrl = "https://www.amazon.com/s?k=EPA+WaterSense+high+efficiency+showerhead+and+faucet+aerator+kit",
+            secondaryLabel = "Smart Leak Sensors ↗",
+            secondaryUrl = "https://www.amazon.com/s?k=smart+home+water+leak+detector+sensor+shutoff"
+        ),
+        SuggestedProductLink(
+            id = "amz-whole-house-sediment",
+            title = "Whole-House Spin-Down Sediment & Carbon Pre-Filter",
+            subtitle = "Captures rust, sand, and distribution main pipe scale after hydrant flushing before water enters household appliances.",
+            certificationBadge = "NSF/ANSI 42 · Whole-Home",
+            priceTier = "\$52–\$115 · Amazon",
+            partnerLabel = "SUGGESTED LINK · AMAZON",
+            matchReason = "Protects plumbing & water heaters on ${report.sourceType.lowercase()} mains",
+            targetCodes = listOf("PB90", "CU90", "2950"),
+            amazonUrl = "https://www.amazon.com/s?k=whole+house+spin+down+sediment+and+carbon+water+filter",
+            secondaryLabel = "Shower Filters ↗",
+            secondaryUrl = "https://www.amazon.com/s?k=vitamin+C+activated+carbon+chlorine+shower+head+filter"
+        )
+    )
+
+    fun homeFeaturedKitLinks(): List<SuggestedProductLink> = listOf(
+        SuggestedProductLink(
+            id = "home-amz-pitcher",
+            title = "NSF-53 Lead & PFAS Filter Pitcher",
+            subtitle = "Certified 99% Lead, PFOA/PFOS & Chlorine TTHM reduction for everyday kitchen use.",
+            certificationBadge = "NSF/ANSI 53 + 42",
+            priceTier = "\$34–\$58",
+            partnerLabel = "AMAZON · SUGGESTED",
+            matchReason = "Most Popular Renter & Kitchen Choice",
+            targetCodes = listOf("PB90", "2806", "2950"),
+            amazonUrl = "https://www.amazon.com/s?k=NSF+53+lead+and+PFAS+water+filter+pitcher",
+            secondaryLabel = "Refills ↗",
+            secondaryUrl = "https://www.amazon.com/s?k=NSF+53+replacement+water+pitcher+filter+cartridges"
+        ),
+        SuggestedProductLink(
+            id = "home-amz-testkit",
+            title = "16-in-1 Tap Water & Lead Test Kit",
+            subtitle = "Screen overnight pipe stagnation for Lead, Copper, Nitrate, Chlorine & pH at home.",
+            certificationBadge = "Home & Lab Screening",
+            priceTier = "\$22–\$49",
+            partnerLabel = "AMAZON · SUGGESTED",
+            matchReason = "Verify Pre-1986 Household Plumbing",
+            targetCodes = listOf("PB90", "CU90", "1040"),
+            amazonUrl = "https://www.amazon.com/s?k=16+in+1+drinking+water+test+kit+lead+copper+nitrate",
+            secondaryLabel = "Lab Mail-In ↗",
+            secondaryUrl = "https://www.amazon.com/s?k=certified+laboratory+mail+in+water+test+kit+lead+PFAS"
+        ),
+        SuggestedProductLink(
+            id = "home-amz-ro",
+            title = "5-Stage Under-Sink Reverse Osmosis",
+            subtitle = "Maximum point-of-use removal for Arsenic, Nitrate, Fluoride, Lead & Forever Chemicals.",
+            certificationBadge = "NSF/ANSI 58 + 53",
+            priceTier = "\$169–\$249",
+            partnerLabel = "AMAZON · SUGGESTED",
+            matchReason = "Strict Public Health Goal (PHG) Barrier",
+            targetCodes = listOf("1005", "1040", "2806", "PB90"),
+            amazonUrl = "https://www.amazon.com/s?k=NSF+58+53+under+sink+reverse+osmosis+water+filter+system",
+            secondaryLabel = "Faucet Mounts ↗",
+            secondaryUrl = "https://www.amazon.com/s?k=NSF+53+faucet+mount+water+filter+lead+reduction"
+        )
+    )
 
     fun fmtSigned(n: Int): String = if (n > 0) "+$n" else n.toString()
 }
