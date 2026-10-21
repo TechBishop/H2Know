@@ -10,7 +10,9 @@ import com.example.data.model.WaterSystemReport
 import com.example.data.model.WaterSystemSummary
 import com.example.data.remote.LocationHistoryDocument
 import com.example.data.remote.WaterIssueDocument
+import com.example.data.local.WatchedSystemEntity
 import com.example.data.repository.FirestoreWaterRepository
+import com.example.data.repository.MonetizationConfig
 import com.example.data.repository.ReferenceWaterData
 import com.example.data.repository.WaterRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -79,6 +81,9 @@ class H2KnowViewModel(
 
     val userPreferences = waterRepository.userPreferences
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), null)
+
+    val watchedSystems: StateFlow<List<WatchedSystemEntity>> = waterRepository.watchedSystems
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), emptyList())
 
     val cloudIssuesState: StateFlow<CloudDataState<List<WaterIssueDocument>>> =
         if (currentUserId == null) {
@@ -247,7 +252,8 @@ class H2KnowViewModel(
                         systemError = null
                     )
                 }
-                if (autoLogHistory && currentUserId != null) {
+                noteWatchChanges(report)
+                if (autoLogHistory && currentUserId != null && report.qualityScore >= 0) {
                     val existingForPwsid = (cloudLocationHistoryState.value as? CloudDataState.Success)
                         ?.data
                         ?.any { it.pwsid == report.pwsid } == true
@@ -262,6 +268,53 @@ class H2KnowViewModel(
                         systemError = err.message ?: "Could not load that water system right now."
                     )
                 }
+            }
+        }
+    }
+
+    fun toggleWatchCurrent() {
+        val report = _uiState.value.activeReport ?: return
+        viewModelScope.launch {
+            val current = watchedSystems.value.find { it.pwsid == report.pwsid }
+            if (current == null && watchedSystems.value.size >= MonetizationConfig.FREE_SAVED_ADDRESSES) {
+                _uiState.update {
+                    it.copy(
+                        cloudStatusBanner = "One saved address is included. Extra addresses need a payment link, and none is configured yet."
+                    )
+                }
+                return@launch
+            }
+            waterRepository.toggleWatchSystem(report, current)
+            _uiState.update {
+                it.copy(
+                    cloudStatusBanner = if (current == null) {
+                        "Saved on this device. Open it again later to see if the score or open violations changed."
+                    } else {
+                        "Removed from saved addresses."
+                    }
+                )
+            }
+        }
+    }
+
+    private fun noteWatchChanges(report: WaterSystemReport) {
+        val prev = watchedSystems.value.find { it.pwsid == report.pwsid } ?: return
+        val openNow = report.violations.count { it.status == "open" }
+        val notes = mutableListOf<String>()
+        if (prev.lastCheckedScore >= 0 && report.qualityScore >= 0 && prev.lastCheckedScore != report.qualityScore) {
+            notes.add("Score changed from ${prev.lastCheckedScore} to ${report.qualityScore} since you saved this address.")
+        }
+        if (prev.openViolationCount != openNow) {
+            notes.add("Open violations changed from ${prev.openViolationCount} to $openNow.")
+        }
+        if (notes.isNotEmpty()) {
+            _uiState.update { it.copy(cloudStatusBanner = notes.joinToString(" ")) }
+        }
+        if (prev.lastCheckedScore != report.qualityScore || prev.openViolationCount != openNow) {
+            viewModelScope.launch {
+                waterRepository.updateWatchPreferences(
+                    prev.copy(lastCheckedScore = report.qualityScore, openViolationCount = openNow)
+                )
             }
         }
     }

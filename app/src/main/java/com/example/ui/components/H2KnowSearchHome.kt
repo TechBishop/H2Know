@@ -380,14 +380,14 @@ fun H2KnowSearchAndCloudHome(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = "What's in Your Tap Water?",
+                    text = "Your tap water, scored.",
                     style = MaterialTheme.typography.headlineLarge,
                     color = palette.ink,
                     fontWeight = FontWeight.ExtraBold
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "Enter your 5-digit ZIP code to check your local water score, detected contaminants, and matching home filters.",
+                    text = "Enter a 5-digit ZIP code. The score uses public EPA records for that utility, not a preset number.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = palette.ink2
                 )
@@ -684,6 +684,7 @@ fun H2KnowSearchAndCloudHome(
                                     ) {
                                         additionalProviders.forEach { provider ->
                                             val scoreColor = when {
+                                                provider.currentScore < 0 -> palette.ink3
                                                 provider.currentScore >= 80 -> palette.safe
                                                 provider.currentScore >= 60 -> palette.caution
                                                 else -> palette.danger
@@ -727,7 +728,7 @@ fun H2KnowSearchAndCloudHome(
                                                     }
                                                     Spacer(modifier = Modifier.width(8.dp))
                                                     Text(
-                                                        text = "${provider.currentScore} →",
+                                                        text = if (provider.currentScore < 0) "—" else "${provider.currentScore} →",
                                                         fontFamily = JetBrainsMonoFamily,
                                                         fontSize = 12.sp,
                                                         fontWeight = FontWeight.ExtraBold,
@@ -788,16 +789,7 @@ fun H2KnowSearchAndCloudHome(
             }
         }
 
-        // 2. Suggested Home Water Filters & Test Kits (Amazon Partner Links)
-        SuggestedProductMarketplaceCard(
-            badgeText = "CERTIFIED FILTERS & HOME TESTING",
-            title = "Top-Rated Water Filters & Test Kits",
-            subtitle = "Certified pitchers, under-sink filters, and home test kits for Lead, PFAS, and chlorine taste.",
-            products = remember { ReferenceWaterData.homeFeaturedKitLinks() },
-            accentColor = palette.caution
-        )
-
-        // 3. Saved Water Reports / Recent Searches
+        // Saved Water Reports / Recent Searches
         Surface(
             shape = RoundedCornerShape(24.dp),
             color = palette.surface1.copy(alpha = 0.92f),
@@ -913,7 +905,7 @@ fun H2KnowSearchAndCloudHome(
                             }
                         } else {
                             items.take(6).forEach { hist ->
-                                val displayScore = ReferenceWaterData.stableScoreForPwsid(hist.pwsid)
+                                val displayScore = hist.qualityScore.toInt()
                                 val scoreColor = when {
                                     displayScore >= 80 -> palette.safe
                                     displayScore >= 60 -> palette.caution

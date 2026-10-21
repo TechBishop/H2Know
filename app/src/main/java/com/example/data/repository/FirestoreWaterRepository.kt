@@ -228,7 +228,7 @@ class FirestoreWaterRepository(
             "qualityScore" to qualityScore.coerceIn(0, 100).toLong(),
             "fiveYearDelta" to fiveYearDelta.coerceIn(-100, 100).toLong(),
             "tenYearDelta" to tenYearDelta.coerceIn(-100, 100).toLong(),
-            "primaryWhySummary" to primaryWhySummary.take(500).ifBlank { "Standard water supply profile." },
+            "primaryWhySummary" to primaryWhySummary.take(500).ifBlank { "Public water record." },
             "exceedsHealthGoalCount" to exceedsHealthGoalCount.coerceIn(0, 100).toLong(),
             "violationCount" to violationCount.coerceIn(0, 1000).toLong(),
             "createdAt" to FieldValue.serverTimestamp(),

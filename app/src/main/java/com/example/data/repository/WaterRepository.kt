@@ -14,6 +14,7 @@ import com.example.data.model.WaterSystemSummary
 import com.example.data.model.WaterUsageTarget
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
@@ -27,8 +28,6 @@ import java.util.Date
 import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.TimeUnit
-import kotlin.math.abs
-import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -123,66 +122,17 @@ class WaterRepository(private val dao: H2KnowDao) {
                 ?: ReferenceWaterData.placeFallback(cleanZip)
                 ?: throw IllegalArgumentException("ZIP code $cleanZip was not recognized. Try a nearby 5-digit U.S. ZIP.")
 
-            // Check if preset systems exist for instant enriched response + merge with live EPA if available
-            val presetList = ReferenceWaterData.presetSystemsForZip(cleanZip)
-            val liveRows = fetchEpaSystems(cleanZip, place.city, place.state)
-
-            if (liveRows.isEmpty() && presetList != null) {
-                return@withContext Pair(place, presetList)
-            }
-
-            if (liveRows.isEmpty()) {
-                // Synthesize a realistic local municipal water system if EPA Envirofacts is unreachable in offline/firewall conditions
-                val fallbackPwsid = "${place.state.uppercase()}${cleanZip}01"
-                val fallbackList = listOf(
-                    WaterSystemSummary(
-                        pwsid = fallbackPwsid,
-                        name = "${place.city.uppercase()} MUNICIPAL WATER SYSTEM",
-                        city = place.city,
-                        state = place.state,
-                        zip = cleanZip,
-                        population = 68400,
-                        sourceType = "Surface water",
-                        isPrimary = true,
-                        currentScore = 83,
-                        fiveYearTrend = "Stable",
-                        fiveYearDeltaPts = +3,
-                        openTicketCount = 1
-                    ),
-                    WaterSystemSummary(
-                        pwsid = "${place.state.uppercase()}${cleanZip}02",
-                        name = "${place.city.uppercase()} REGIONAL WATER AUTHORITY",
-                        city = place.city,
-                        state = place.state,
-                        zip = cleanZip,
-                        population = 21900,
-                        sourceType = "Groundwater",
-                        isPrimary = false,
-                        currentScore = 87,
-                        fiveYearTrend = "Improving",
-                        fiveYearDeltaPts = +5,
-                        openTicketCount = 1
-                    )
-                )
-                return@withContext Pair(place, fallbackList)
-            }
-
-            val rawSummaries = liveRows.map { obj ->
+            // A system's ZIP in SDWIS is often its mailing address, not the area it serves.
+            // Match active community systems whose service area is this ZIP's county.
+            val liveRows = fetchEpaSystems(place)
+            val summaries = liveRows.map { obj ->
                 val pwsid = obj.optString("pwsid", obj.optString("PWSID", ""))
                 val name = obj.optString("pws_name", obj.optString("PWS_NAME", pwsid)).ifBlank { pwsid }
                 val city = obj.optString("city_name", obj.optString("CITY_NAME", place.city)).ifBlank { place.city }
                 val st = obj.optString("state_code", obj.optString("STATE_CODE", place.state)).ifBlank { place.state }
                 val pop = obj.optString("population_served_count", obj.optString("POPULATION_SERVED_COUNT", "0"))
                     .toIntOrNull() ?: 0
-                val srcCode = obj.optString("primary_source_code", obj.optString("PRIMARY_SOURCE_CODE", "SW"))
-                val presetMatch = presetList?.find { it.pwsid == pwsid }
-                val consistentScore = ReferenceWaterData.stableScoreForPwsid(pwsid)
-                val delta = ReferenceWaterData.stableFiveYearDeltaForPwsid(pwsid)
-                val trend = presetMatch?.fiveYearTrend ?: when {
-                    delta >= 3 -> "Improving"
-                    delta <= -3 -> "Declining"
-                    else -> "Stable"
-                }
+                val srcCode = obj.optString("primary_source_code", obj.optString("PRIMARY_SOURCE_CODE", ""))
                 WaterSystemSummary(
                     pwsid = pwsid,
                     name = name,
@@ -191,36 +141,17 @@ class WaterRepository(private val dao: H2KnowDao) {
                     zip = cleanZip,
                     population = pop,
                     sourceType = sourceLabel(srcCode),
-                    isPrimary = presetMatch?.isPrimary == true,
-                    currentScore = consistentScore,
-                    fiveYearTrend = trend,
-                    fiveYearDeltaPts = delta,
-                    openTicketCount = presetMatch?.openTicketCount ?: (1 + (ReferenceWaterData.stableHash(pwsid) % 3))
+                    isPrimary = false,
+                    currentScore = -1,
+                    fiveYearTrend = "Unknown",
+                    fiveYearDeltaPts = 0,
+                    openTicketCount = 0
                 )
-            }
+            }.sortedByDescending { it.population }
+                .take(8)
+                .mapIndexed { index, summary -> summary.copy(isPrimary = index == 0) }
 
-            // Merge any preset primary utilities not present in the first slice of EPA rows and sort by primary + population descending
-            val combined = buildList {
-                if (presetList != null) {
-                    addAll(presetList)
-                }
-                rawSummaries.forEach { live ->
-                    if (none { it.pwsid == live.pwsid }) {
-                        add(live)
-                    }
-                }
-            }.sortedWith(
-                compareByDescending<WaterSystemSummary> { it.isPrimary }
-                    .thenByDescending { it.population }
-            ).take(8).mapIndexed { index, summary ->
-                summary.copy(
-                    isPrimary = index == 0,
-                    currentScore = ReferenceWaterData.stableScoreForPwsid(summary.pwsid),
-                    fiveYearDeltaPts = ReferenceWaterData.stableFiveYearDeltaForPwsid(summary.pwsid)
-                )
-            }
-
-            Pair(place, combined)
+            Pair(place, summaries)
         }
 
     suspend fun loadSystemReport(pwsid: String, place: PlaceInfo?): WaterSystemReport =
@@ -231,6 +162,7 @@ class WaterRepository(private val dao: H2KnowDao) {
                 val sysDeferred = async { fetchJsonArray("$EPA_BASE/WATER_SYSTEM/PWSID/$pwsid/JSON") }
                 val violDeferred = async { fetchJsonArray("$EPA_BASE/VIOLATION/PWSID/$pwsid/rows/0:120/JSON") }
                 val lcrDeferred = async { fetchJsonArray("$EPA_BASE/LCR_SAMPLE_RESULT/PWSID/$pwsid/rows/0:80/JSON") }
+                val lcrSampleDeferred = async { fetchJsonArray("$EPA_BASE/LCR_SAMPLE/PWSID/$pwsid/rows/0:80/JSON") }
                 val geoDeferred = async { fetchJsonArray("$EPA_BASE/GEOGRAPHIC_AREA/PWSID/$pwsid/JSON") }
                 val droughtDeferred = async {
                     if (place != null) {
@@ -243,9 +175,11 @@ class WaterRepository(private val dao: H2KnowDao) {
                 }
 
                 val sysArr = sysDeferred.await()
+                    ?: throw IllegalStateException("The EPA water-system record could not be loaded.")
                 val violArr = violDeferred.await()
                 val lcrArr = lcrDeferred.await()
-                val geoArr = geoDeferred.await()
+                val lcrSamples = lcrSampleDeferred.await()
+                val geoArr = geoDeferred.await() ?: JSONArray()
                 val drought = droughtDeferred.await()
 
                 val sysObj = sysArr.optJSONObject(0)
@@ -254,43 +188,18 @@ class WaterRepository(private val dao: H2KnowDao) {
                     .flatten()
                     .find { it.pwsid == pwsid }
 
-                val name = sysObj?.optString("pws_name", sysObj.optString("PWS_NAME", ""))
-                    ?.takeIf { it.isNotBlank() }
-                    ?: presetSummary?.name
-                    ?: "${place?.city?.uppercase() ?: "LOCAL"} WATER SYSTEM"
+                fun field(lower: String, upper: String): String {
+                    val row = sysObj ?: return ""
+                    return row.optString(lower, "").ifBlank { row.optString(upper, "") }
+                }
 
-                val city = sysObj?.optString("city_name", sysObj.optString("CITY_NAME", ""))
-                    ?.takeIf { it.isNotBlank() }
-                    ?: presetSummary?.city
-                    ?: place?.city
-                    ?: "Metro Area"
-
-                val state = sysObj?.optString("state_code", sysObj.optString("STATE_CODE", ""))
-                    ?.takeIf { it.isNotBlank() }
-                    ?: presetSummary?.state
-                    ?: place?.state
-                    ?: pwsid.take(2)
-
-                val zip = place?.zip
-                    ?: presetSummary?.zip
-                    ?: sysObj?.optString("zip_code", sysObj.optString("ZIP_CODE", ""))?.take(5)
-                    ?: "78701"
-
-                val population = sysObj?.optString("population_served_count", sysObj.optString("POPULATION_SERVED_COUNT", "0"))
-                    ?.toIntOrNull()?.takeIf { it > 0 }
-                    ?: presetSummary?.population
-                    ?: 75000
-
-                val sourceType = sysObj?.optString("primary_source_code", sysObj.optString("PRIMARY_SOURCE_CODE", ""))
-                    ?.takeIf { it.isNotBlank() }
-                    ?.let { sourceLabel(it) }
-                    ?: presetSummary?.sourceType
-                    ?: "Surface water"
-
-                val ownerType = sysObj?.optString("owner_type_code", sysObj.optString("OWNER_TYPE_CODE", ""))
-                    ?.takeIf { it.isNotBlank() }
-                    ?.let { ownerLabel(it) }
-                    ?: "Local government"
+                val name = field("pws_name", "PWS_NAME").ifBlank { presetSummary?.name ?: pwsid }
+                val city = field("city_name", "CITY_NAME").ifBlank { presetSummary?.city ?: place?.city ?: "Not listed" }
+                val state = field("state_code", "STATE_CODE").ifBlank { presetSummary?.state ?: place?.state ?: pwsid.take(2) }
+                val zip = place?.zip ?: presetSummary?.zip ?: field("zip_code", "ZIP_CODE").filter { it.isDigit() }.take(5)
+                val population = field("population_served_count", "POPULATION_SERVED_COUNT").toIntOrNull()?.takeIf { it > 0 } ?: 0
+                val sourceType = field("primary_source_code", "PRIMARY_SOURCE_CODE").takeIf { it.isNotBlank() }?.let { sourceLabel(it) } ?: "Not listed"
+                val ownerType = field("owner_type_code", "OWNER_TYPE_CODE").takeIf { it.isNotBlank() }?.let { ownerLabel(it) } ?: "Not listed"
 
                 var county = ""
                 for (i in 0 until geoArr.length()) {
@@ -302,11 +211,28 @@ class WaterRepository(private val dao: H2KnowDao) {
                     }
                 }
 
-                val violations = buildViolations10Y(pwsid, violArr)
-                val contaminants = buildContaminantsDualBenchmark(pwsid, sourceType, lcrArr, violations)
-                val (finalScore, riskLevel, complianceStatus) = scoreSystem(pwsid, violations, contaminants)
+                val violationsLoaded = violArr != null
+                val samplesLoaded = lcrArr != null
+                val violations = if (violArr == null) emptyList() else buildViolations10Y(pwsid, violArr)
+                val contaminants = if (lcrArr == null) emptyList() else buildContaminantsDualBenchmark(lcrArr, lcrSamples)
+                val (finalScore, riskLevel, complianceStatus) = scoreSystem(
+                    violations = violations,
+                    contaminants = contaminants,
+                    violationsLoaded = violationsLoaded,
+                    samplesLoaded = samplesLoaded
+                )
+                val recordNote = when {
+                    !violationsLoaded || !samplesLoaded ->
+                        "Part of the EPA record did not load, so this system is not scored."
+                    contaminants.isEmpty() && violations.isEmpty() ->
+                        "No lead or copper sample and no violation from the last 10 years were in the public record."
+                    contaminants.isEmpty() ->
+                        "No lead or copper sample was in the public record. The score uses violation history only. Other contaminants are not in the lead-and-copper table this app reads."
+                    else ->
+                        "Samples shown are lead and copper results from the EPA lead-and-copper table. Other contaminants are not filled in when that table does not include them."
+                }
 
-                val (seriesMap, alerts, deltas) = ReferenceWaterData.buildLongitudinalIntelligence(
+                val (seriesMap, alerts, _) = ReferenceWaterData.buildLongitudinalIntelligence(
                     pwsid = pwsid,
                     systemName = name,
                     zip = zip,
@@ -325,6 +251,28 @@ class WaterRepository(private val dao: H2KnowDao) {
                     contaminants = contaminants
                 )
 
+                val treatmentSteps = when {
+                    sourceType == "Not listed" -> listOf(
+                        TreatmentStep(1, "Treatment not listed", "The public record did not include a source type, so treatment steps are not shown.")
+                    )
+                    sourceType.contains("Purchased", ignoreCase = true) -> listOf(
+                        TreatmentStep(1, "Typical of purchased water", "These are common steps for water bought from a wholesale system, not a plant-specific record."),
+                        TreatmentStep(2, "Residual disinfectant", "A chlorine or chloramine residual is commonly kept in the pipes."),
+                        TreatmentStep(3, "Local storage", "Tanks and pumps usually hold pressure for delivery.")
+                    )
+                    sourceType.contains("Ground", ignoreCase = true) -> listOf(
+                        TreatmentStep(1, "Typical of groundwater", "These are common steps for well water, not a plant-specific record."),
+                        TreatmentStep(2, "Conditioning", "Some systems aerate or soften mineral-heavy groundwater."),
+                        TreatmentStep(3, "Disinfection residual", "A disinfectant residual is commonly kept in the pipes.")
+                    )
+                    else -> listOf(
+                        TreatmentStep(1, "Typical of surface water", "These are common steps for river or lake water, not a plant-specific record."),
+                        TreatmentStep(2, "Clarification", "Sediment is often settled before filtration."),
+                        TreatmentStep(3, "Filtration", "Sand or carbon beds are a common next step."),
+                        TreatmentStep(4, "Disinfection", "A disinfectant is commonly added before the water leaves the plant.")
+                    )
+                }
+
                 val cutMultiplier = when (drought.first) {
                     "D0" -> 0.90
                     "D1" -> 0.80
@@ -336,26 +284,12 @@ class WaterRepository(private val dao: H2KnowDao) {
                 val normalGpd = 90
                 val recommendedGpd = (normalGpd * cutMultiplier).roundToInt()
 
-                val treatmentSteps = when {
-                    sourceType.contains("Purchased", ignoreCase = true) -> listOf(
-                        TreatmentStep(1, "Wholesale Intake & Filtration", "Water is clarified and filtered at a regional wholesale treatment plant."),
-                        TreatmentStep(2, "Corrosion & Residual Control", "Orthophosphate and chloramine/chlorine residual are maintained in transmission mains."),
-                        TreatmentStep(3, "Storage & Pressurized Delivery", "Local tanks and pump stations maintain steady pressure to neighborhood taps.")
-                    )
-                    sourceType.contains("Ground", ignoreCase = true) -> listOf(
-                        TreatmentStep(1, "Deep Aquifer Wells", "Water is pumped from protected underground bedrock or alluvial aquifers."),
-                        TreatmentStep(2, "Mineral & Iron Conditioning", "Aeration, sequestration, or ion-exchange balances mineral hardness and trace metals."),
-                        TreatmentStep(3, "Disinfection Residual", "Protective chlorine residual safeguards water quality across distribution pipes.")
-                    )
-                    else -> listOf(
-                        TreatmentStep(1, "Surface Reservoir Intake", "Raw water drawn from rivers, lakes, or protected watershed reservoirs."),
-                        TreatmentStep(2, "Coagulation & Flocculation", "Suspended organic matter and sediment are bound and settled in clarification basins."),
-                        TreatmentStep(3, "Multi-Media Filtration", "Sand, anthracite, and granular carbon beds remove fine particulates and precursors."),
-                        TreatmentStep(4, "Primary Disinfection & pH Control", "Pathogens are inactivated and corrosion inhibitors protect household plumbing.")
-                    )
-                }
-
                 val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+                val people = if (population > 0) {
+                    "${String.format(Locale.US, "%,d", population)} people"
+                } else {
+                    "a population the record does not list"
+                }
                 val report = WaterSystemReport(
                     pwsid = pwsid,
                     name = name,
@@ -367,8 +301,8 @@ class WaterRepository(private val dao: H2KnowDao) {
                     sourceType = sourceType,
                     ownerType = ownerType,
                     qualityScore = finalScore,
-                    fiveYearScoreDelta = presetSummary?.fiveYearDeltaPts ?: deltas.first,
-                    tenYearScoreDelta = deltas.second,
+                    fiveYearScoreDelta = 0,
+                    tenYearScoreDelta = 0,
                     riskLevel = riskLevel,
                     complianceStatus = complianceStatus,
                     droughtLevel = drought.first,
@@ -382,7 +316,9 @@ class WaterRepository(private val dao: H2KnowDao) {
                     usage = WaterUsageTarget(normalGpd, recommendedGpd),
                     reportUrl = "https://echo.epa.gov/detailed-facility-report?fid=${URLEncoder.encode(pwsid, "UTF-8")}",
                     lastUpdated = todayStr,
-                    sourceDescription = "$name provides tap water to ${String.format(Locale.US, "%,d", population)} people in $city, $state${if (county.isNotBlank()) " ($county County)" else ""}. The water comes from ${sourceType.lowercase()} and is managed by a ${ownerType.lowercase()} operator. Data is compiled from official U.S. EPA drinking water records and the U.S. Drought Monitor."
+                    sourceDescription = "$name serves $people in $city, $state${if (county.isNotBlank()) " ($county County)" else ""}. Source: $sourceType. Operator: $ownerType. This is a community system EPA lists in that county. A ZIP on a water system is often a mailing address, not the pipes at that ZIP. Figures come from EPA SDWIS and the U.S. Drought Monitor. $recordNote",
+                    labSamplesReported = contaminants.count { it.reported },
+                    recordNote = recordNote
                 )
 
                 systemReportCache[pwsid] = report
@@ -405,7 +341,8 @@ class WaterRepository(private val dao: H2KnowDao) {
                     city = report.city,
                     state = report.state,
                     lastCheckedScore = report.qualityScore,
-                    fiveYearDeltaPts = report.fiveYearScoreDelta
+                    fiveYearDeltaPts = 0,
+                    openViolationCount = report.violations.count { it.status == "open" }
                 )
             )
         }
@@ -548,84 +485,91 @@ class WaterRepository(private val dao: H2KnowDao) {
         }
     }
 
-    private fun fetchEpaSystems(zip: String, city: String, state: String): List<JSONObject> = runCatching {
-        val byZip = fetchJsonArray("$EPA_BASE/WATER_SYSTEM/ZIP_CODE/BEGINNING/$zip/PWS_ACTIVITY_CODE/A/rows/0:30/JSON")
-        val encCity = URLEncoder.encode(city.uppercase(), "UTF-8")
-        val encState = URLEncoder.encode(state.uppercase(), "UTF-8")
-        val byCity = if (byZip.length() < 3) {
-            fetchJsonArray("$EPA_BASE/WATER_SYSTEM/CITY_NAME/$encCity/STATE_CODE/$encState/PWS_ACTIVITY_CODE/A/rows/0:30/JSON")
-        } else JSONArray()
-
-        val map = linkedMapOf<String, JSONObject>()
-        fun absorb(arr: JSONArray) {
-            for (i in 0 until arr.length()) {
-                val obj = arr.optJSONObject(i) ?: continue
-                val pwsid = obj.optString("pwsid", obj.optString("PWSID", ""))
-                if (pwsid.isBlank()) continue
-                val st = obj.optString("state_code", obj.optString("STATE_CODE", ""))
-                if (!st.equals(state, ignoreCase = true) && !pwsid.startsWith(state, ignoreCase = true)) continue
-                val pop = obj.optString("population_served_count", obj.optString("POPULATION_SERVED_COUNT", "0")).toIntOrNull() ?: 0
-                val prev = map[pwsid]
-                val prevPop = prev?.optString("population_served_count", prev.optString("POPULATION_SERVED_COUNT", "0"))?.toIntOrNull() ?: -1
-                if (prev == null || pop > prevPop) {
-                    map[pwsid] = obj
-                }
+    private fun fetchCountyName(lat: Double, lon: Double): String? {
+        return try {
+            val url = "https://geo.fcc.gov/api/census/area?lat=$lat&lon=$lon&format=json"
+            val req = Request.Builder().url(url).header("Accept", "application/json").build()
+            httpClient.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return null
+                val root = JSONObject(resp.body?.string() ?: return null)
+                val name = root.optJSONArray("results")?.optJSONObject(0)?.optString("county_name", "").orEmpty()
+                name.removeSuffix(" County").removeSuffix(" county").trim().ifBlank { null }
             }
+        } catch (_: Exception) {
+            null
         }
-        absorb(byZip)
-        absorb(byCity)
+    }
 
-        val all = map.values.toList()
-        val cws = all.filter {
-            val t = it.optString("pws_type_code", it.optString("PWS_TYPE_CODE", "")).uppercase()
-            t == "CWS" || t == "NTNCWS"
+    private suspend fun fetchEpaSystems(place: PlaceInfo): List<JSONObject> {
+        val county = fetchCountyName(place.lat, place.lon)
+            ?: throw IllegalStateException("This ZIP could not be matched to a county, so no water system was chosen.")
+        val encCounty = URLEncoder.encode(county, "UTF-8")
+        val state = place.state.uppercase(Locale.US)
+        val geo = fetchJsonArray(
+            "$EPA_BASE/GEOGRAPHIC_AREA/COUNTY_SERVED/$encCounty/PRIMACY_AGENCY_CODE/$state/PWS_TYPE_CODE/CWS/PWS_ACTIVITY_CODE/A/rows/0:40/JSON"
+        ) ?: throw IllegalStateException("The EPA service-area list could not be reached. Try again in a moment.")
+        val ids = linkedSetOf<String>()
+        for (i in 0 until geo.length()) {
+            val pwsid = geo.optJSONObject(i)?.optString("pwsid", "")?.ifBlank {
+                geo.optJSONObject(i)?.optString("PWSID", "")
+            }.orEmpty()
+            if (pwsid.isNotBlank()) ids.add(pwsid)
+            if (ids.size >= 24) break
         }
-        val filtered = if (cws.isNotEmpty()) cws else all
-        filtered.sortedByDescending {
+        if (ids.isEmpty()) {
+            throw IllegalStateException("No community water system was listed for $county County, $state.")
+        }
+        val rows = coroutineScope {
+            ids.map { id ->
+                async { fetchJsonArray("$EPA_BASE/WATER_SYSTEM/PWSID/$id/JSON")?.optJSONObject(0) }
+            }.awaitAll().filterNotNull()
+        }
+        return rows.sortedByDescending {
             it.optString("population_served_count", it.optString("POPULATION_SERVED_COUNT", "0")).toIntOrNull() ?: 0
-        }.take(6)
-    }.getOrDefault(emptyList())
+        }
+    }
 
-    private fun fetchDrought(lat: Double, lon: Double, state: String): Pair<String, String> {
+    private fun fetchDrought(lat: Double, lon: Double, @Suppress("UNUSED_PARAMETER") state: String): Pair<String, String> {
         try {
             val url = "$DROUGHT_URL?geometry=$lon,$lat&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=dm,period&returnGeometry=false&f=json"
             val req = Request.Builder().url(url).header("Accept", "application/json").build()
             httpClient.newCall(req).execute().use { resp ->
-                if (resp.isSuccessful) {
-                    val root = JSONObject(resp.body?.string() ?: "{}")
-                    val features = root.optJSONArray("features")
-                    val attr = features?.optJSONObject(0)?.optJSONObject("attributes")
-                    if (attr != null && !attr.isNull("dm")) {
-                        val dm = attr.optDouble("dm", -1.0).roundToInt().coerceIn(0, 4)
+                if (!resp.isSuccessful) {
+                    return Pair("unknown", "Drought status could not be loaded. This is not a report of drought conditions.")
+                }
+                val root = JSONObject(resp.body?.string() ?: "{}")
+                val features = root.optJSONArray("features")
+                if (features == null || features.length() == 0) {
+                    return Pair("none", "This location is not inside a mapped U.S. Drought Monitor area.")
+                }
+                val attr = features.optJSONObject(0)?.optJSONObject("attributes")
+                if (attr != null && !attr.isNull("dm")) {
+                    val dm = attr.optDouble("dm", -1.0).roundToInt()
+                    if (dm in 0..4) {
                         val level = listOf("D0", "D1", "D2", "D3", "D4")[dm]
-                        return Pair(
-                            level,
-                            "The U.S. Drought Monitor currently lists this area in ${ReferenceWaterData.droughtLabel(level)}. Reservoir mineral concentration and outdoor watering guidance apply."
-                        )
+                        return Pair(level, "The U.S. Drought Monitor lists this point as ${ReferenceWaterData.droughtLabel(level)}.")
                     }
                 }
+                return Pair("none", "This location is not inside a mapped U.S. Drought Monitor area.")
             }
         } catch (_: Exception) {
-        }
-        return when (state.uppercase()) {
-            "TX", "NM", "AZ" -> Pair("D1", "The U.S. Drought Monitor lists parts of this watershed in Moderate Drought (D1). Seasonal conservation targets apply.")
-            "CA", "NV", "UT" -> Pair("D0", "The U.S. Drought Monitor lists this area as Abnormally Dry (D0). Mindful outdoor irrigation is advised.")
-            else -> Pair("none", "No active drought reported by the U.S. Drought Monitor for this location.")
+            return Pair("unknown", "Drought status could not be loaded. This is not a report of drought conditions.")
         }
     }
 
-    private fun fetchJsonArray(url: String): JSONArray {
+    /** Null means the request failed. An empty array means the source returned no rows. */
+    private fun fetchJsonArray(url: String): JSONArray? {
         return try {
             val req = Request.Builder().url(url).header("Accept", "application/json").build()
             httpClient.newCall(req).execute().use { resp ->
-                if (!resp.isSuccessful) return JSONArray()
+                if (!resp.isSuccessful) return null
                 val raw = resp.body?.string()?.trim() ?: return JSONArray()
                 if (raw.startsWith("[")) JSONArray(raw)
                 else if (raw.startsWith("{")) JSONArray().put(JSONObject(raw))
                 else JSONArray()
             }
         } catch (_: Exception) {
-            JSONArray()
+            null
         }
     }
 
@@ -642,18 +586,9 @@ class WaterRepository(private val dao: H2KnowDao) {
             val dd = m.groupValues[1].padStart(2, '0')
             val monStr = m.groupValues[2].uppercase()
             val mm = when (monStr) {
-                "JAN" -> "01"
-                "FEB" -> "02"
-                "MAR" -> "03"
-                "APR" -> "04"
-                "MAY" -> "05"
-                "JUN" -> "06"
-                "JUL" -> "07"
-                "AUG" -> "08"
-                "SEP" -> "09"
-                "OCT" -> "10"
-                "NOV" -> "11"
-                "DEC" -> "12"
+                "JAN" -> "01"; "FEB" -> "02"; "MAR" -> "03"; "APR" -> "04"
+                "MAY" -> "05"; "JUN" -> "06"; "JUL" -> "07"; "AUG" -> "08"
+                "SEP" -> "09"; "OCT" -> "10"; "NOV" -> "11"; "DEC" -> "12"
                 else -> return null
             }
             val rawYr = m.groupValues[3].toIntOrNull() ?: return null
@@ -675,7 +610,7 @@ class WaterRepository(private val dao: H2KnowDao) {
     }
 
     private fun buildViolations10Y(pwsid: String, violArr: JSONArray): List<ViolationRecord> {
-        val currentYear = 2026
+        val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
         val minYear = currentYear - 10
         val parsed = mutableListOf<ViolationRecord>()
         for (i in 0 until violArr.length()) {
@@ -693,21 +628,18 @@ class WaterRepository(private val dao: H2KnowDao) {
             if (yr < minYear || yr > currentYear) continue
             val vid = r.optString("violation_id", r.optString("VIOLATION_ID", "${i + 1}"))
             val contCode = r.optString("contaminant_code", r.optString("CONTAMINANT_CODE", "")).takeIf { it.isNotBlank() }
-            val catCode = r.optString("violation_category_code", r.optString("VIOLATION_CATEGORY_CODE", "MR"))
-            val isHealth = r.optString("is_health_based_ind", r.optString("IS_HEALTH_BASED_IND", "N")) == "Y"
-            val rtcDate = r.optString(
-                "rtc_date",
-                r.optString("RTC_DATE", r.optString("compl_per_end_date", r.optString("COMPL_PER_END_DATE", "")))
-            ).trim()
-            val statusRaw = r.optString(
-                "compliance_status_code",
-                r.optString("COMPLIANCE_STATUS_CODE", r.optString("violation_status", r.optString("VIOLATION_STATUS", "R")))
-            ).trim().uppercase()
+            val catCode = r.optString("violation_category_code", r.optString("VIOLATION_CATEGORY_CODE", ""))
+            val isHealth = r.optString("is_health_based_ind", r.optString("IS_HEALTH_BASED_IND", "N")).equals("Y", ignoreCase = true)
+            val rtcDate = r.optString("rtc_date", "").ifBlank { r.optString("RTC_DATE", "") }.trim()
+            val statusRaw = r.optString("compliance_status_code", "")
+                .ifBlank { r.optString("COMPLIANCE_STATUS_CODE", "") }
+                .trim()
+                .uppercase()
+            val resolved = rtcDate.isNotEmpty() || statusRaw == "R" || statusRaw == "V" || statusRaw.startsWith("RESOL")
             val status = when {
-                rtcDate.isNotEmpty() || yr < 2024 -> "resolved"
-                statusRaw.startsWith("A") -> "addressed"
-                statusRaw == "O" || statusRaw == "UNADDRESSED" -> "open"
-                else -> "resolved"
+                resolved -> "resolved"
+                statusRaw.startsWith("A") || statusRaw == "ADDRESSED" -> "addressed"
+                else -> "open"
             }
             val vType = when {
                 isHealth || catCode.contains("MCL", ignoreCase = true) -> "health"
@@ -723,8 +655,9 @@ class WaterRepository(private val dao: H2KnowDao) {
             }
             val plainRuleDesc = when {
                 isHealth -> "Health-based drinking water standard"
-                vType == "treatment" -> "Water treatment & pipe corrosion check"
-                else -> "Routine water testing & reporting schedule"
+                vType == "treatment" -> "Treatment technique"
+                vType == "monitoring" -> "Monitoring or reporting"
+                else -> "Compliance record"
             }
             parsed.add(
                 ViolationRecord(
@@ -732,107 +665,80 @@ class WaterRepository(private val dao: H2KnowDao) {
                     date = isoDate,
                     year = yr,
                     contaminantCode = contCode,
-                    contaminant = contMeta?.name?.substringBefore(" (") ?: "Routine Water Testing",
+                    contaminant = contMeta?.name?.substringBefore(" (") ?: "Compliance item",
                     type = vType,
                     status = status,
                     severity = if (isHealth) "serious" else "minor",
-                    description = "$plainRuleDesc — $plainStatus"
+                    description = "$plainRuleDesc. $plainStatus. A compliance-period end date is not treated as returned to compliance."
                 )
             )
         }
+        return parsed.sortedByDescending { it.date }.take(45)
+    }
 
-        if (parsed.isNotEmpty()) {
-            return parsed.sortedByDescending { it.date }.take(45)
+    private fun normalizeLcr(code: String, raw: Double, unitRaw: String): Double? {
+        val unit = unitRaw.lowercase().replace("µ", "u").replace("μ", "u").replace(" ", "")
+        val isUg = unit.contains("ug") || unit == "ppb"
+        val isMg = unit.contains("mg") || unit == "ppm"
+        return when (code) {
+            "PB90" -> when {
+                isUg -> raw
+                isMg -> raw * 1000.0
+                unit.isBlank() && raw < 1.0 -> raw * 1000.0
+                unit.isBlank() -> raw
+                else -> null
+            }
+            "CU90" -> when {
+                isMg -> raw
+                isUg -> raw / 1000.0
+                unit.isBlank() && raw > 20.0 -> raw / 1000.0
+                unit.isBlank() -> raw
+                else -> null
+            }
+            else -> null
         }
-
-        // Deterministic 10-year compliance history if EPA endpoint returns empty
-        val isJackson = pwsid == "MS0250008"
-        val isFlint = pwsid == "MI0002310"
-        val isNewark = pwsid == "NJ0714001"
-        val synth = mutableListOf<ViolationRecord>()
-        if (isJackson) {
-            synth.add(ViolationRecord("$pwsid-V26", "2026-03-12", 2026, "0300", "Water Clarity & Treatment", "treatment", "open", "serious", "Surface water clarity & system pressure advisory — Open"))
-            synth.add(ViolationRecord("$pwsid-V25", "2025-07-19", 2025, "PB90", "Pipe Corrosion Control", "treatment", "addressed", "serious", "Lead & copper pipe corrosion control update — Addressed"))
-            synth.add(ViolationRecord("$pwsid-V23", "2023-11-04", 2023, "2950", "Chlorine Byproducts (TTHMs)", "monitoring", "resolved", "minor", "Routine quarterly water sample reporting — Resolved"))
-        } else if (isFlint) {
-            synth.add(ViolationRecord("$pwsid-V25", "2025-09-01", 2025, "2950", "Chlorine Byproducts (TTHMs)", "monitoring", "open", "minor", "Quarterly water sample reporting check — Open"))
-            synth.add(ViolationRecord("$pwsid-V22", "2022-05-14", 2022, "PB90", "Lead Pipe Replacement", "treatment", "resolved", "serious", "Lead service line replacement & corrosion control — Resolved"))
-            synth.add(ViolationRecord("$pwsid-V18", "2018-06-20", 2018, "PB90", "Lead & Copper Follow-up", "health", "resolved", "serious", "Historical pipe corrosion upgrade completed — Resolved"))
-        } else if (isNewark) {
-            synth.add(ViolationRecord("$pwsid-V24", "2024-08-10", 2024, "2950", "Chlorine Byproducts (TTHMs)", "monitoring", "resolved", "minor", "Quarterly disinfection byproduct testing — Resolved"))
-            synth.add(ViolationRecord("$pwsid-V19", "2019-07-01", 2019, "PB90", "Lead Service Line Upgrade", "health", "resolved", "serious", "Service line replacement & corrosion upgrade — Resolved"))
-        } else {
-            synth.add(ViolationRecord("$pwsid-V25", "2025-08-15", 2025, "2950", "Chlorine Byproducts (TTHMs)", "monitoring", "resolved", "minor", "Routine disinfection byproduct testing — Resolved"))
-            synth.add(ViolationRecord("$pwsid-V22", "2022-04-10", 2022, "1040", "Nitrate Testing", "monitoring", "resolved", "minor", "Annual watershed nutrient testing schedule — Resolved"))
-        }
-        return synth
     }
 
     private fun buildContaminantsDualBenchmark(
-        pwsid: String,
-        sourceType: String,
         lcrArr: JSONArray,
-        violations: List<ViolationRecord>
+        sampleArr: JSONArray?
     ): List<Contaminant> {
-        val lcrLatest = mutableMapOf<String, Double>()
+        val dates = mutableMapOf<String, String>()
+        if (sampleArr != null) {
+            for (i in 0 until sampleArr.length()) {
+                val s = sampleArr.optJSONObject(i) ?: continue
+                val id = s.optString("sample_id", s.optString("SAMPLE_ID", ""))
+                val end = s.optString("sampling_end_date", s.optString("SAMPLING_END_DATE", ""))
+                if (id.isNotBlank() && end.isNotBlank()) dates[id] = end.take(10)
+            }
+        }
+        data class Row(val value: Double, val date: String)
+        val rows = mutableMapOf<String, MutableList<Row>>()
         for (i in 0 until lcrArr.length()) {
             val s = lcrArr.optJSONObject(i) ?: continue
             val code = s.optString("contaminant_code", s.optString("CONTAMINANT_CODE", ""))
             if (code != "PB90" && code != "CU90") continue
-            val rawMeasure = s.optString("sample_measure", s.optString("SAMPLE_MEASURE", "")).toDoubleOrNull() ?: continue
-            val unit = s.optString("unit_of_measure", s.optString("UNIT_OF_MEASURE", "")).lowercase()
-            val normalized = when {
-                code == "PB90" && (unit == "mg/l" || unit == "ppm") -> rawMeasure * 1000.0
-                code == "CU90" && (unit == "ug/l" || unit == "ppb") -> rawMeasure / 1000.0
-                else -> rawMeasure
-            }
-            if (!lcrLatest.containsKey(code)) {
-                lcrLatest[code] = normalized
-            }
+            val raw = s.optString("sample_measure", s.optString("SAMPLE_MEASURE", "")).toDoubleOrNull() ?: continue
+            val unit = s.optString("unit_of_measure", s.optString("UNIT_OF_MEASURE", ""))
+            val sign = s.optString("result_sign_code", s.optString("RESULT_SIGN_CODE", "")).trim()
+            val normalized = normalizeLcr(code, raw, unit) ?: continue
+            val value = if (sign == "<" || sign.equals("ND", ignoreCase = true)) 0.0 else normalized
+            val sid = s.optString("sample_id", s.optString("SAMPLE_ID", ""))
+            rows.getOrPut(code) { mutableListOf() }.add(Row(value, dates[sid].orEmpty()))
         }
-
-        val isSurface = sourceType.contains("Surface", ignoreCase = true)
-        val isFlint = pwsid == "MI0002310"
-        val isNewark = pwsid == "NJ0714001"
-        val isJackson = pwsid == "MS0250008"
-        val hash = abs(pwsid.hashCode())
-
-        val defaults = mapOf(
-            "PB90" to when {
-                isFlint -> 5.8
-                isNewark -> 4.1
-                isJackson -> 6.4
-                else -> 1.8 + (hash % 25) * 0.1
-            },
-            "CU90" to when {
-                isFlint -> 0.28
-                isJackson -> 0.42
-                else -> 0.19 + (hash % 18) * 0.01
-            },
-            "2950" to if (isSurface) 44.0 + (hash % 24) else 14.0 + (hash % 12),
-            "2456" to if (isSurface) 29.0 + (hash % 18) else 9.0 + (hash % 9),
-            "1040" to 1.3 + (hash % 16) * 0.1,
-            "1005" to 0.9 + (hash % 14) * 0.1,
-            "2806" to if (isSurface) 1.9 + (hash % 15) * 0.1 else 1.2 + (hash % 12) * 0.1,
-            "2805" to if (isSurface) 1.6 + (hash % 12) * 0.1 else 0.9 + (hash % 10) * 0.1,
-            "1025" to 0.68
-        )
-
-        val codesOrder = listOf("PB90", "2950", "2456", "2806", "2805", "1040", "CU90", "1005", "1025")
-        return codesOrder.mapNotNull { code ->
+        return rows.mapNotNull { (code, list) ->
             val meta = ReferenceWaterData.contaminantCatalog[code] ?: return@mapNotNull null
-            val detected = lcrLatest[code] ?: defaults[code] ?: 0.0
-            val rounded = (detected * 100.0).roundToInt() / 100.0
-            val delta1Y = when (code) {
-                "PB90" -> if (isFlint || isNewark) -14 else -6
-                "2950", "2456" -> if (isSurface) +16 else +3
-                "2806", "2805" -> +8
-                else -> -2
-            }
+            val sorted = list.sortedWith(compareByDescending<Row> { it.date }.thenByDescending { it.value })
+            val latest = sorted.first()
+            val prev = sorted.drop(1).firstOrNull()
+            val rounded = (latest.value * 1000.0).roundToInt() / 1000.0
+            val delta = if (prev != null && prev.value > 0.0) {
+                (((rounded - prev.value) / prev.value) * 100.0).roundToInt()
+            } else 0
             val dir = when {
-                code == "2950" && isSurface -> "seasonal"
-                delta1Y <= -5 -> "improving"
-                delta1Y >= 10 -> "elevated"
+                prev == null -> "unknown"
+                rounded < prev.value -> "improving"
+                rounded > prev.value -> "elevated"
                 else -> "stable"
             }
             Contaminant(
@@ -847,37 +753,42 @@ class WaterRepository(private val dao: H2KnowDao) {
                 healthNote = meta.healthNote,
                 pfas = meta.pfas,
                 regulated = true,
-                trendDeltaPct1Y = delta1Y,
-                trendDirection = dir
+                trendDeltaPct1Y = delta,
+                trendDirection = dir,
+                reported = true,
+                sampleDate = latest.date.ifBlank { null }
             )
         }
     }
 
     private fun scoreSystem(
-        pwsid: String,
         violations: List<ViolationRecord>,
-        contaminants: List<Contaminant>
+        contaminants: List<Contaminant>,
+        violationsLoaded: Boolean,
+        samplesLoaded: Boolean
     ): Triple<Int, String, String> {
-        val baseScore = ReferenceWaterData.stableScoreForPwsid(pwsid)
-        val open = violations.filter { it.status == "open" }
-        val openHealth = open.filter { it.type == "health" || it.severity == "serious" }
-        val recentHealth = violations.filter { it.type == "health" && it.year >= 2023 }
-        val aboveLegal = contaminants.count { it.exceedsMcl }
-        val raw = if (ReferenceWaterData.findPresetByPwsid(pwsid) != null) {
-            baseScore
-        } else {
-            baseScore - aboveLegal * 12
+        if (!violationsLoaded || !samplesLoaded) {
+            return Triple(-1, "unknown", "unavailable")
         }
-        val score = min(96, max(25, raw))
+        val reported = contaminants.filter { it.reported }
+        if (reported.isEmpty() && violations.isEmpty()) {
+            return Triple(-1, "unknown", "insufficient_data")
+        }
+        val open = violations.filter { it.status == "open" }
+        val openHealth = open.count { it.type == "health" }
+        val openOther = (open.size - openHealth).coerceAtLeast(0)
+        val aboveLegal = reported.count { it.exceedsMcl }
+        val penalty = min(54, openHealth * 18) + min(24, openOther * 6) + min(45, aboveLegal * 15)
+        val score = (100 - penalty).coerceIn(0, 100)
         val compliance = when {
-            pwsid == "MS0250008" || openHealth.isNotEmpty() || aboveLegal > 0 -> "under_enforcement"
-            pwsid == "MI0002310" || open.isNotEmpty() || recentHealth.size > 1 -> "elevated_concern"
+            openHealth > 0 || aboveLegal > 0 -> "under_enforcement"
+            open.isNotEmpty() -> "elevated_concern"
             else -> "in_compliance"
         }
         val risk = when {
             score < 45 -> "critical"
             score < 65 -> "high"
-            score < 78 -> "moderate"
+            score < 80 -> "moderate"
             else -> "low"
         }
         return Triple(score, risk, compliance)
@@ -886,10 +797,10 @@ class WaterRepository(private val dao: H2KnowDao) {
     private fun sourceLabel(code: String): String = when (code.uppercase()) {
         "SW" -> "Surface water"
         "GW" -> "Groundwater"
-        "GU" -> "Groundwater (surface influence)"
+        "GU" -> "Groundwater under surface influence"
         "SWP" -> "Purchased surface water"
         "GWP", "GUP" -> "Purchased groundwater"
-        else -> "Surface water"
+        else -> "Not listed"
     }
 
     private fun ownerLabel(code: String): String = when (code.uppercase()) {
@@ -899,7 +810,7 @@ class WaterRepository(private val dao: H2KnowDao) {
         "F" -> "Federal government"
         "P" -> "Private utility"
         "N" -> "Tribal authority"
-        else -> "Public utility"
+        else -> "Not listed"
     }
 
     companion object {
