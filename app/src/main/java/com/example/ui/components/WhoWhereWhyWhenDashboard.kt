@@ -28,6 +28,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CloudDone
@@ -64,6 +65,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -71,6 +73,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import com.example.data.model.Contaminant
+import com.example.data.model.SuggestedProductLink
 import com.example.data.model.TrendTimeframe
 import com.example.data.model.WaterSystemReport
 import com.example.data.remote.LocationHistoryDocument
@@ -202,6 +205,7 @@ fun WhoWhereWhyWhenDashboard(
                     isGuest = isGuest,
                     issueStatusFilter = issueStatusFilter,
                     cloudIssuesState = cloudIssuesState,
+                    onSelectTab = onSelectTab,
                     onSelectIssueStatusFilter = onSelectIssueStatusFilter,
                     onOpenReportIssueModal = onOpenReportIssueModal,
                     onUpvoteIssue = onUpvoteIssue,
@@ -251,88 +255,78 @@ private fun ActiveFourWHeaderStrip(
     onOpenSnapshotModal: () -> Unit
 ) {
     val palette = H2KnowThemeTokens.colors
-    val tabAccent = when (activeTab) {
-        FourWTab.WHO -> palette.brand
-        FourWTab.WHERE -> palette.safe
-        FourWTab.WHY -> palette.caution
-        FourWTab.WHEN -> palette.brand
-    }
-    val tabDescription = when (activeTab) {
-        FourWTab.WHO -> "Utility Operator, Water Score & Resident Issues"
-        FourWTab.WHERE -> "Water Source, Treatment Steps & Drought Level"
-        FourWTab.WHY -> "Contaminant Levels vs. Health & Legal Limits"
-        FourWTab.WHEN -> "1Y / 5Y / 10Y Score History & EPA Violations"
-    }
+    val haptic = LocalHapticFeedback.current
 
     Surface(
         shape = RoundedCornerShape(20.dp),
-        color = palette.surface1.copy(alpha = 0.92f),
+        color = palette.surface1.copy(alpha = 0.94f),
         shadowElevation = 10.dp,
-        border = BorderStroke(1.dp, tabAccent.copy(alpha = 0.35f)),
+        border = BorderStroke(1.dp, palette.borderStrong),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Text(
-                        text = activeTab.badge,
-                        fontFamily = JetBrainsMonoFamily,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = tabAccent
-                    )
+            Row(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                FourWTab.entries.forEach { tab ->
+                    val isSelected = tab == activeTab
                     Surface(
-                        shape = RoundedCornerShape(999.dp),
-                        color = palette.surface2
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onSelectTab(tab)
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (isSelected) palette.brand else Color.Transparent,
+                        modifier = Modifier.weight(1f)
                     ) {
-                        Text(
-                            text = "SWIPE ⇄",
-                            fontFamily = JetBrainsMonoFamily,
-                            fontSize = 8.5.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = palette.ink3,
-                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.5.dp)
-                        )
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp)
+                        ) {
+                            Text(
+                                text = tab.label,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontSize = 11.5.sp,
+                                fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.SemiBold,
+                                color = if (isSelected) Color.White else palette.ink2,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
-                Text(
-                    text = tabDescription,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = palette.ink2
-                )
             }
-            Spacer(modifier = Modifier.width(8.dp))
+
             Surface(
                 onClick = onOpenSnapshotModal,
-                shape = RoundedCornerShape(999.dp),
+                shape = RoundedCornerShape(12.dp),
                 color = palette.surface2,
                 border = BorderStroke(1.dp, palette.borderStrong),
                 modifier = Modifier.testTag("header_share_report_button")
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
                         imageVector = Icons.Default.Share,
-                        contentDescription = "Share 4W Water Report Snapshot",
+                        contentDescription = "Share Water Report Snapshot",
                         tint = palette.brand,
                         modifier = Modifier.size(13.dp)
                     )
-                    Spacer(modifier = Modifier.width(5.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = "Share",
-                        fontFamily = JetBrainsMonoFamily,
-                        fontSize = 10.sp,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         color = palette.ink
                     )
@@ -343,7 +337,7 @@ private fun ActiveFourWHeaderStrip(
 }
 
 // ============================================================================
-// TAB 1: WHO — Utility Governance, Score Gauge & Firestore Water Issues
+// TAB 1: OVERVIEW — Water Quality Summary, Key Facts & Local Reports
 // ============================================================================
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -352,6 +346,7 @@ private fun WhoGovernanceAndIssuesTab(
     isGuest: Boolean,
     issueStatusFilter: String,
     cloudIssuesState: CloudDataState<List<WaterIssueDocument>>,
+    onSelectTab: (FourWTab) -> Unit,
     onSelectIssueStatusFilter: (String) -> Unit,
     onOpenReportIssueModal: (Contaminant?) -> Unit,
     onUpvoteIssue: (WaterIssueDocument) -> Unit,
@@ -361,21 +356,31 @@ private fun WhoGovernanceAndIssuesTab(
 ) {
     val palette = H2KnowThemeTokens.colors
     val complianceLabel = when (report.complianceStatus) {
-        "under_enforcement" -> "Under Enforcement Action"
-        "elevated_concern" -> "Elevated Monitoring Concern"
-        else -> "In EPA SDWIS Compliance"
+        "under_enforcement" -> "Compliance Alert"
+        "elevated_concern" -> "Needs Attention"
+        else -> "Meets Federal Standards"
     }
     val complianceColor = when (report.complianceStatus) {
         "under_enforcement" -> palette.danger
         "elevated_concern" -> palette.caution
         else -> palette.safe
     }
+    val exceedsPhgCount = report.contaminants.count { it.exceedsHealthGoal }
+    val exceedsMclCount = report.contaminants.count { it.exceedsMcl }
+    val summaryTakeaway = when {
+        exceedsMclCount > 0 ->
+            "$exceedsMclCount tested item exceeds federal legal drinking water limits. Check the Quality tab for recommended home filters."
+        exceedsPhgCount > 0 ->
+            "Your tap water meets all federal legal safety limits. $exceedsPhgCount tested items are above stricter long-term health goals and can be reduced with a home filter."
+        else ->
+            "Your tap water meets all federal legal limits and health guidelines across tested parameters."
+    }
 
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
-        // Card 1: Utility Identity, Score Gauge & Governance
+        // Card 1: Water Quality Overview & Key Facts
         Surface(
             shape = RoundedCornerShape(26.dp),
             color = palette.surface1.copy(alpha = 0.95f),
@@ -395,7 +400,7 @@ private fun WhoGovernanceAndIssuesTab(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    PillarBadge("01 · WHO OPERATES THIS SYSTEM", palette.brand, palette.brandSoft)
+                    PillarBadge("WATER QUALITY OVERVIEW", palette.brand, palette.brandSoft)
                     Surface(
                         shape = RoundedCornerShape(999.dp),
                         color = complianceColor.copy(alpha = 0.15f),
@@ -426,7 +431,7 @@ private fun WhoGovernanceAndIssuesTab(
                         verticalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
                         Text(
-                            text = "PUBLIC WATER UTILITY",
+                            text = "LOCAL WATER UTILITY",
                             style = MaterialTheme.typography.labelSmall,
                             color = palette.ink3
                         )
@@ -439,32 +444,79 @@ private fun WhoGovernanceAndIssuesTab(
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = "Last SDWIS Sync: ${report.lastUpdated}",
-                            fontFamily = JetBrainsMonoFamily,
-                            fontSize = 11.sp,
+                            text = "${report.city}, ${report.state} · Updated ${report.lastUpdated}",
+                            style = MaterialTheme.typography.bodySmall,
                             color = palette.ink3
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(18.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-                // 2x2 Governance Metadata Grid (Unique to WHO tab)
+                // Plain-English Bottom Line Callout + Quick Jump to Quality Tab
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = palette.surface2,
+                    border = BorderStroke(1.dp, palette.border),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            text = summaryTakeaway,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = palette.ink,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "${report.contaminants.size} items tested · $exceedsPhgCount above health goal",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = palette.ink2
+                            )
+                            Surface(
+                                onClick = { onSelectTab(FourWTab.WHY) },
+                                shape = RoundedCornerShape(999.dp),
+                                color = palette.brandSoft,
+                                border = BorderStroke(1.dp, palette.brand.copy(alpha = 0.45f))
+                            ) {
+                                Text(
+                                    text = "View Contaminants →",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = palette.brand,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // 2x2 Plain-English Key Facts Grid
+                val delta5YText = if (report.fiveYearScoreDelta >= 0) "+${report.fiveYearScoreDelta} pts" else "${report.fiveYearScoreDelta} pts"
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         GovernanceStatTile(
-                            label = "EPA PWSID",
-                            value = report.pwsid,
-                            subtext = "Federal System Registry ID",
+                            label = "WATER SOURCE",
+                            value = report.sourceType,
+                            subtext = "${report.city}, ${report.state}",
                             modifier = Modifier.weight(1f)
                         )
                         GovernanceStatTile(
-                            label = "GOVERNANCE",
-                            value = report.ownerType,
-                            subtext = "Operating Authority",
+                            label = "PEOPLE SERVED",
+                            value = String.format(Locale.US, "%,d", report.population),
+                            subtext = "Local Residents",
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -473,15 +525,15 @@ private fun WhoGovernanceAndIssuesTab(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         GovernanceStatTile(
-                            label = "POPULATION SERVED",
-                            value = String.format(Locale.US, "%,d", report.population),
-                            subtext = "Permanent Residents",
+                            label = "OPERATED BY",
+                            value = report.ownerType,
+                            subtext = "Water Provider",
                             modifier = Modifier.weight(1f)
                         )
                         GovernanceStatTile(
-                            label = "RISK POSTURE",
-                            value = report.riskLevel.replaceFirstChar { it.uppercase() },
-                            subtext = "Composite Health Index",
+                            label = "5-YEAR TREND",
+                            value = delta5YText,
+                            subtext = "Score Change",
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -489,7 +541,7 @@ private fun WhoGovernanceAndIssuesTab(
             }
         }
 
-        // Card 2: User-Reported Water Quality Issues (Exclusively in WHO Tab)
+        // Card 2: Local Water Reports
         Surface(
             shape = RoundedCornerShape(26.dp),
             color = palette.surface1.copy(alpha = 0.95f),
@@ -506,13 +558,13 @@ private fun WhoGovernanceAndIssuesTab(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Reported Water Quality Issues",
+                            text = "Local Water Reports",
                             style = MaterialTheme.typography.headlineMedium,
                             color = palette.ink,
                             fontWeight = FontWeight.ExtraBold
                         )
                         Text(
-                            text = "Resident reports synced via Firebase Firestore for ${report.name}.",
+                            text = "Neighborhood reports for taste, odor, pressure, or discoloration.",
                             style = MaterialTheme.typography.bodySmall,
                             color = palette.ink2
                         )
@@ -560,7 +612,7 @@ private fun WhoGovernanceAndIssuesTab(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
-                                text = "Browsing in Guest Mode. Use the compact Sign In button above if you want to submit or vote on community water quality issues in Firebase Firestore.",
+                                text = "Sign in above if you'd like to report a tap water issue or vote on reports in your area.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = palette.ink2,
                                 modifier = Modifier.padding(16.dp)
@@ -570,7 +622,7 @@ private fun WhoGovernanceAndIssuesTab(
 
                     is CloudDataState.Loading -> {
                         Text(
-                            text = "Loading reported water issues from Firestore…",
+                            text = "Loading local water reports…",
                             style = MaterialTheme.typography.bodySmall,
                             color = palette.ink3
                         )
@@ -623,7 +675,7 @@ private fun WhoGovernanceAndIssuesTab(
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(
-                                    text = "No matching water quality issues logged for ${report.name} yet. Tap 'Report Issue' above or flag a contaminant in the WHY tab to log an issue to Firestore.",
+                                    text = "No local water issues reported for ${report.name} yet. Tap 'Report Issue' above if you notice unusual taste, odor, or discoloration.",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = palette.ink2,
                                     modifier = Modifier.padding(16.dp)
@@ -722,10 +774,10 @@ private fun WhereWatershedAndTreatmentTab(
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(modifier = Modifier.padding(22.dp)) {
-                PillarBadge("02 · WHERE YOUR WATER ORIGINATES", palette.safe, palette.safeBg)
+                PillarBadge("WATER SOURCE & SUPPLY", palette.safe, palette.safeBg)
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = "${report.sourceType} Supply Basin",
+                    text = "${report.sourceType} Supply",
                     style = MaterialTheme.typography.headlineMedium,
                     color = palette.ink,
                     fontWeight = FontWeight.ExtraBold
@@ -740,7 +792,7 @@ private fun WhereWatershedAndTreatmentTab(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Service Area: ZIP ${report.zip} · ${report.city}, ${report.state}${if (report.county.isNotBlank()) " · ${report.county} County" else ""}",
+                        text = "${report.city}, ${report.state} · ZIP ${report.zip}${if (report.county.isNotBlank()) " · ${report.county} County" else ""}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = palette.ink,
                         fontWeight = FontWeight.SemiBold
@@ -760,7 +812,7 @@ private fun WhereWatershedAndTreatmentTab(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            text = "HYDROLOGICAL INTAKE PROFILE",
+                            text = "WHERE YOUR WATER COMES FROM",
                             fontFamily = JetBrainsMonoFamily,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
@@ -776,7 +828,7 @@ private fun WhereWatershedAndTreatmentTab(
             }
         }
 
-        // Card 2: Step-by-Step Source-to-Tap Treatment Pipeline
+        // Card 2: Step-by-Step Water Treatment Pipeline
         Surface(
             shape = RoundedCornerShape(26.dp),
             color = palette.surface1.copy(alpha = 0.95f),
@@ -787,7 +839,7 @@ private fun WhereWatershedAndTreatmentTab(
         ) {
             Column(modifier = Modifier.padding(22.dp)) {
                 Text(
-                    text = "SOURCE-TO-TAP TREATMENT TRAIN",
+                    text = "WATER TREATMENT STEPS",
                     fontFamily = JetBrainsMonoFamily,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
@@ -795,7 +847,7 @@ private fun WhereWatershedAndTreatmentTab(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "How Raw Water Is Conditioned Before Your Tap",
+                    text = "How Your Water Is Cleaned Before Your Tap",
                     style = MaterialTheme.typography.titleLarge,
                     color = palette.ink,
                     fontWeight = FontWeight.ExtraBold
@@ -870,7 +922,7 @@ private fun WhereWatershedAndTreatmentTab(
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(
-                        text = "U.S. DROUGHT MONITOR & WATERSHED STRESS",
+                        text = "LOCAL DROUGHT & WATER SUPPLY",
                         fontFamily = JetBrainsMonoFamily,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
@@ -946,12 +998,12 @@ private fun WhereWatershedAndTreatmentTab(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Regional Daily Target per Person",
+                            text = "Recommended Daily Water Use",
                             style = MaterialTheme.typography.bodySmall,
                             color = palette.ink2
                         )
                         Text(
-                            text = "${report.usage.recommendedGallonsPerDay} GPD (Baseline ${report.usage.normalGallonsPerDay} GPD)",
+                            text = "${report.usage.recommendedGallonsPerDay} gal/day (Normal: ${report.usage.normalGallonsPerDay} gal)",
                             fontFamily = JetBrainsMonoFamily,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
@@ -961,6 +1013,17 @@ private fun WhereWatershedAndTreatmentTab(
                 }
             }
         }
+
+        // Card 4: Suggested WaterSense Conservation & Whole-Home Pre-Filtration Links (Amazon)
+        SuggestedProductMarketplaceCard(
+            badgeText = "HOME WATER SAVING & FILTERS",
+            title = "WaterSense Fixtures & Whole-Home Filters",
+            subtitle = "Recommended Amazon products matched to ${report.city}'s ${report.sourceType.lowercase()} water supply.",
+            products = remember(report.pwsid, report.droughtLevel) {
+                ReferenceWaterData.buildWhereTabConservationProducts(report)
+            },
+            accentColor = palette.safe
+        )
     }
 }
 
@@ -998,12 +1061,146 @@ private fun WhyLabAndFiltrationTab(
     val selectedContaminant = filteredContaminants.find { it.code == selectedWhyContaminantCode }
         ?: filteredContaminants.firstOrNull()
 
+    val suggestedProducts = remember(report.pwsid, report.contaminants) {
+        ReferenceWaterData.buildSuggestedProductsForReport(report)
+    }
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(18.dp)
+    ) {
+        Surface(
+            shape = RoundedCornerShape(26.dp),
+            color = palette.surface1.copy(alpha = 0.95f),
+            shadowElevation = 18.dp,
+            tonalElevation = 6.dp,
+            border = BorderStroke(1.dp, palette.border),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(22.dp)) {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    PillarBadge("DETECTED CONTAMINANTS", palette.caution, palette.cautionBg)
+                    Text(
+                        text = "$exceedsPhgCount Above Health Goal · $exceedsMclCount Over Legal Limit",
+                        fontFamily = JetBrainsMonoFamily,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (exceedsMclCount > 0) palette.danger else palette.caution
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = "What Was Found in Your Tap Water",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = palette.ink,
+                    fontWeight = FontWeight.ExtraBold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Tap any item below to see where it comes from and which home water filter removes it.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = palette.ink2
+                )
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Category Filter Chips
+                val filters = listOf(
+                    "ALL" to "All (${report.contaminants.size})",
+                    "EXCEEDS_PHG" to "Above Health Goal ($exceedsPhgCount)",
+                    "PFAS" to "Forever Chemicals (PFAS)",
+                    "METALS" to "Metals (Lead/Copper)",
+                    "DBP" to "Chlorine Byproducts"
+                )
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    filters.forEach { (key, label) ->
+                        val active = selectedWhyCategoryFilter == key
+                        Surface(
+                            onClick = { onSelectWhyCategoryFilter(key) },
+                            shape = RoundedCornerShape(999.dp),
+                            color = if (active) palette.cautionBg else palette.surface2,
+                            border = BorderStroke(
+                                width = 1.dp,
+                                color = if (active) palette.caution else palette.border
+                            ),
+                            modifier = Modifier.testTag("why_filter_$key")
+                        ) {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
+                                color = if (active) palette.caution else palette.ink2,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                WhyContaminantBenchmarkGraphic(
+                    contaminants = filteredContaminants,
+                    selectedCode = selectedContaminant?.code ?: "",
+                    onSelectContaminant = onSelectWhyContaminant
+                )
+
+                if (selectedContaminant != null) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    SelectedContaminantWhyBox(
+                        contaminant = selectedContaminant,
+                        onFlagContaminantIssue = {
+                            if (isGuest) onRequestSignIn() else onOpenReportIssueModal(it)
+                        }
+                    )
+                }
+            }
+        }
+
+        // Card 2: Suggested Filtration Systems & Home Test Kits (Amazon Partner Links)
+        SuggestedProductMarketplaceCard(
+            badgeText = "RECOMMENDED FILTERS & TEST KITS",
+            title = "Matched Water Filters for ${report.city}",
+            subtitle = "Certified home water filters and tap test kits matched to what was detected in ZIP ${report.zip}.",
+            products = suggestedProducts,
+            accentColor = palette.caution,
+            highlightContaminantCode = selectedContaminant?.code
+        )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun SuggestedProductMarketplaceCard(
+    badgeText: String,
+    title: String,
+    subtitle: String,
+    products: List<SuggestedProductLink>,
+    accentColor: Color,
+    highlightContaminantCode: String? = null
+) {
+    val palette = H2KnowThemeTokens.colors
+    val uriHandler = LocalUriHandler.current
+
     Surface(
         shape = RoundedCornerShape(26.dp),
         color = palette.surface1.copy(alpha = 0.95f),
         shadowElevation = 18.dp,
         tonalElevation = 6.dp,
-        border = BorderStroke(1.dp, palette.border),
+        border = BorderStroke(
+            width = 1.dp,
+            brush = Brush.linearGradient(
+                listOf(accentColor.copy(alpha = 0.45f), palette.border)
+            )
+        ),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(22.dp)) {
@@ -1012,84 +1209,185 @@ private fun WhyLabAndFiltrationTab(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                PillarBadge("03 · WHY (CONTAMINANTS & FILTERS)", palette.caution, palette.cautionBg)
-                Text(
-                    text = "$exceedsPhgCount Above Health Goal · $exceedsMclCount Over Legal Limit",
-                    fontFamily = JetBrainsMonoFamily,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (exceedsMclCount > 0) palette.danger else palette.caution
-                )
+                PillarBadge(badgeText, accentColor, accentColor.copy(alpha = 0.14f))
+                Surface(
+                    shape = RoundedCornerShape(999.dp),
+                    color = palette.surface2,
+                    border = BorderStroke(1.dp, palette.borderStrong)
+                ) {
+                    Text(
+                        text = "PARTNER LINKS · AMAZON",
+                        fontFamily = JetBrainsMonoFamily,
+                        fontSize = 9.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = palette.ink2,
+                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.dp)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(10.dp))
             Text(
-                text = "What Was Detected in Your Tap Water",
-                style = MaterialTheme.typography.headlineMedium,
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
                 color = palette.ink,
                 fontWeight = FontWeight.ExtraBold
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Tap any contaminant below to see where it comes from and which home water filter removes it.",
+                text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
                 color = palette.ink2
             )
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Category Filter Chips (Unique to WHY Tab)
-            val filters = listOf(
-                "ALL" to "All (${report.contaminants.size})",
-                "EXCEEDS_PHG" to "Above Health Goal ($exceedsPhgCount)",
-                "PFAS" to "Forever Chemicals (PFAS)",
-                "METALS" to "Metals (Lead/Copper)",
-                "DBP" to "Chlorine Byproducts"
-            )
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                filters.forEach { (key, label) ->
-                    val active = selectedWhyCategoryFilter == key
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                products.forEach { product ->
+                    val isMatchedToSelected = highlightContaminantCode != null &&
+                        product.targetCodes.contains(highlightContaminantCode)
+
                     Surface(
-                        onClick = { onSelectWhyCategoryFilter(key) },
-                        shape = RoundedCornerShape(999.dp),
-                        color = if (active) palette.cautionBg else palette.surface2,
+                        shape = RoundedCornerShape(18.dp),
+                        color = palette.surface2,
+                        shadowElevation = if (isMatchedToSelected) 8.dp else 2.dp,
                         border = BorderStroke(
-                            width = 1.dp,
-                            color = if (active) palette.caution else palette.border
+                            width = if (isMatchedToSelected) 1.5.dp else 1.dp,
+                            color = if (isMatchedToSelected) accentColor else palette.border
                         ),
-                        modifier = Modifier.testTag("why_filter_$key")
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("suggested_product_${product.id}")
                     ) {
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
-                            color = if (active) palette.caution else palette.ink2,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                        )
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = palette.safeBg,
+                                        border = BorderStroke(1.dp, palette.safe.copy(alpha = 0.4f))
+                                    ) {
+                                        Text(
+                                            text = product.certificationBadge,
+                                            fontFamily = JetBrainsMonoFamily,
+                                            fontSize = 9.5.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = palette.safe,
+                                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                                        )
+                                    }
+                                    if (isMatchedToSelected) {
+                                        Surface(
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = accentColor.copy(alpha = 0.18f)
+                                        ) {
+                                            Text(
+                                                text = "TOP MATCH",
+                                                fontFamily = JetBrainsMonoFamily,
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = accentColor,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                                Text(
+                                    text = product.priceTier,
+                                    fontFamily = JetBrainsMonoFamily,
+                                    fontSize = 10.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = palette.caution
+                                )
+                            }
+
+                            Text(
+                                text = product.title,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = palette.ink,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+
+                            Text(
+                                text = product.subtitle,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = palette.ink2
+                            )
+
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = palette.surface1,
+                                border = BorderStroke(1.dp, palette.border),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = "✓ ${product.matchReason}",
+                                    fontFamily = JetBrainsMonoFamily,
+                                    fontSize = 10.5.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = palette.brand,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp)
+                                )
+                            }
+
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Button(
+                                    onClick = { runCatching { uriHandler.openUri(product.amazonUrl) } },
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = palette.brand,
+                                        contentColor = Color.White
+                                    ),
+                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+                                    modifier = Modifier.testTag("shop_amazon_${product.id}")
+                                ) {
+                                    Text(
+                                        text = "Shop on Amazon",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Spacer(modifier = Modifier.width(5.dp))
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                                        contentDescription = "Open on Amazon",
+                                        modifier = Modifier.size(14.dp),
+                                        tint = Color.White
+                                    )
+                                }
+
+                                OutlinedButton(
+                                    onClick = { runCatching { uriHandler.openUri(product.secondaryUrl) } },
+                                    shape = RoundedCornerShape(12.dp),
+                                    border = BorderStroke(1.dp, palette.borderStrong),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                                    modifier = Modifier.testTag("shop_secondary_${product.id}")
+                                ) {
+                                    Text(
+                                        text = product.secondaryLabel,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = palette.ink,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            WhyContaminantBenchmarkGraphic(
-                contaminants = filteredContaminants,
-                selectedCode = selectedContaminant?.code ?: "",
-                onSelectContaminant = onSelectWhyContaminant
-            )
-
-            if (selectedContaminant != null) {
-                Spacer(modifier = Modifier.height(16.dp))
-                SelectedContaminantWhyBox(
-                    contaminant = selectedContaminant,
-                    onFlagContaminantIssue = {
-                        if (isGuest) onRequestSignIn() else onOpenReportIssueModal(it)
-                    }
-                )
             }
         }
     }
@@ -1138,7 +1436,7 @@ private fun WhenTimelineAndHistoryTab(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    PillarBadge("04 · WHEN (1Y / 5Y / 10Y TIMELINE)", palette.brand, palette.brandSoft)
+                    PillarBadge("QUALITY SCORE HISTORY", palette.brand, palette.brandSoft)
 
                     Row(
                         modifier = Modifier
@@ -1170,14 +1468,14 @@ private fun WhenTimelineAndHistoryTab(
 
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
-                    text = "${selectedWhenTimeframe.label} Trajectory (${if (deltaPts >= 0) "+$deltaPts" else "$deltaPts"} pts)",
+                    text = "${selectedWhenTimeframe.label} Score Trend (${if (deltaPts >= 0) "+$deltaPts" else "$deltaPts"} pts)",
                     style = MaterialTheme.typography.headlineMedium,
                     color = palette.ink,
                     fontWeight = FontWeight.ExtraBold
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Longitudinal curve for ${selectedContaminant?.name?.substringBefore(" (") ?: "Lead"} & EPA compliance events. Tap any node on the timeline to inspect that period.",
+                    text = "Water quality score and ${selectedContaminant?.plainShortName() ?: "Lead"} levels over time. Tap any point on the chart to inspect that period.",
                     style = MaterialTheme.typography.bodySmall,
                     color = palette.ink2
                 )
@@ -1196,7 +1494,7 @@ private fun WhenTimelineAndHistoryTab(
             }
         }
 
-        // Card 2: 10-Year EPA SDWIS Compliance & Violation Log (Unique to WHEN Tab)
+        // Card 2: Past 10 Years of Utility Records
         Surface(
             shape = RoundedCornerShape(26.dp),
             color = palette.surface1.copy(alpha = 0.95f),
@@ -1207,7 +1505,7 @@ private fun WhenTimelineAndHistoryTab(
         ) {
             Column(modifier = Modifier.padding(22.dp)) {
                 Text(
-                    text = "10-YEAR EPA SDWIS COMPLIANCE LOG (${report.violations.size})",
+                    text = "PAST 10 YEARS OF UTILITY RECORDS (${report.violations.size})",
                     fontFamily = JetBrainsMonoFamily,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
@@ -1215,7 +1513,7 @@ private fun WhenTimelineAndHistoryTab(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Historical Monitoring & Enforcement Events",
+                    text = "Water Testing & Safety Notices",
                     style = MaterialTheme.typography.titleLarge,
                     color = palette.ink,
                     fontWeight = FontWeight.ExtraBold
@@ -1277,7 +1575,7 @@ private fun WhenTimelineAndHistoryTab(
             }
         }
 
-        // Card 3: Firebase Firestore Location History Snapshots (Unique to WHEN Tab)
+        // Card 3: Saved Score Checkpoints
         Surface(
             shape = RoundedCornerShape(26.dp),
             color = palette.surface1.copy(alpha = 0.95f),
@@ -1294,13 +1592,13 @@ private fun WhenTimelineAndHistoryTab(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Cloud Location History Snapshots",
+                            text = "Saved Score Checkpoints",
                             style = MaterialTheme.typography.titleLarge,
                             color = palette.ink,
                             fontWeight = FontWeight.ExtraBold
                         )
                         Text(
-                            text = "Track longitudinal score drift for ${report.name} in Firebase Firestore.",
+                            text = "Save a dated copy of ${report.name}'s water score to compare over time.",
                             style = MaterialTheme.typography.bodySmall,
                             color = palette.ink2
                         )
@@ -1332,7 +1630,7 @@ private fun WhenTimelineAndHistoryTab(
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = if (isSavingHistory) "Saving…" else "Save Snapshot",
+                                text = if (isSavingHistory) "Saving…" else "Save Checkpoint",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = palette.brand
                             )
@@ -1354,7 +1652,7 @@ private fun WhenTimelineAndHistoryTab(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = "Sign in with Google to record timestamped location history snapshots to Firebase Firestore.",
+                            text = "Sign in with Google to save dated water quality checkpoints for this location.",
                             style = MaterialTheme.typography.bodySmall,
                             color = palette.ink2,
                             modifier = Modifier.padding(14.dp)
@@ -1367,7 +1665,7 @@ private fun WhenTimelineAndHistoryTab(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = "No saved snapshots for this system yet. Tap 'Save Snapshot' above to store a timestamped baseline.",
+                            text = "No saved checkpoints for this utility yet. Tap 'Save Checkpoint' above to record today's score.",
                             style = MaterialTheme.typography.bodySmall,
                             color = palette.ink2,
                             modifier = Modifier.padding(14.dp)
@@ -1397,7 +1695,7 @@ private fun WhenTimelineAndHistoryTab(
                                         color = palette.ink2
                                     )
                                     Text(
-                                        text = "${snap.exceedsHealthGoalCount} > PHG · ${snap.violationCount} Events",
+                                        text = "${snap.exceedsHealthGoalCount} Above Goal · ${snap.violationCount} Notices",
                                         fontFamily = JetBrainsMonoFamily,
                                         fontSize = 11.sp,
                                         color = palette.ink
@@ -1461,12 +1759,12 @@ fun FloatingFourWDock(
                         modifier = Modifier.testTag("dock_tab_${tab.key}")
                     ) {
                         Text(
-                            text = tab.key,
-                            fontFamily = JetBrainsMonoFamily,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
+                            text = tab.label,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontSize = 11.5.sp,
+                            fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.SemiBold,
                             color = if (isSelected) palette.brand else palette.ink,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                            modifier = Modifier.padding(horizontal = 11.dp, vertical = 8.dp)
                         )
                     }
                 }
@@ -1480,7 +1778,7 @@ fun FloatingFourWDock(
                     modifier = Modifier.testTag("dock_quick_action_button")
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
@@ -1491,7 +1789,7 @@ fun FloatingFourWDock(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = if (isGuestMode) "Sign In" else "Issue",
+                            text = if (isGuestMode) "Sign In" else "Report",
                             style = MaterialTheme.typography.labelSmall,
                             color = Color.White,
                             fontWeight = FontWeight.Bold
@@ -1681,7 +1979,7 @@ fun ReportCloudIssueDialog(
     var description by remember(prefillContaminant) {
         mutableStateOf(
             prefillContaminant?.let {
-                "Flagged from WHY Lab Benchmark chart: ${it.name} detected at ${ReferenceWaterData.fmtVal(it.detected)} ${it.unit} in $systemName."
+                "Flagged from Water Quality chart: ${it.plainShortName()} detected at ${ReferenceWaterData.fmtVal(it.detected)} ${it.unit} in $systemName."
             } ?: ""
         )
     }
@@ -1701,12 +1999,12 @@ fun ReportCloudIssueDialog(
         titleContentColor = palette.ink,
         textContentColor = palette.ink2,
         title = {
-            Text("Report Water Quality Issue", style = MaterialTheme.typography.titleLarge)
+            Text("Report Local Water Issue", style = MaterialTheme.typography.titleLarge)
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    text = "Saved directly to Firebase Firestore in the WHO tab for $systemName (ZIP $zip).",
+                    text = "Share a local water report for $systemName (ZIP $zip).",
                     style = MaterialTheme.typography.bodySmall,
                     color = palette.ink3
                 )
@@ -1784,7 +2082,7 @@ fun ReportCloudIssueDialog(
                 colors = ButtonDefaults.buttonColors(containerColor = palette.brand),
                 modifier = Modifier.testTag("submit_cloud_issue_button")
             ) {
-                Text("Save to Firestore", color = Color.White)
+                Text("Submit Report", color = Color.White)
             }
         },
         dismissButton = {

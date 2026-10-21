@@ -244,6 +244,20 @@ data class PriorityAction(
     val badgeTag: String
 )
 
+data class SuggestedProductLink(
+    val id: String,
+    val title: String,
+    val subtitle: String,
+    val certificationBadge: String,
+    val priceTier: String,
+    val partnerLabel: String,
+    val matchReason: String,
+    val targetCodes: List<String>,
+    val amazonUrl: String,
+    val secondaryLabel: String,
+    val secondaryUrl: String
+)
+
 data class WaterSystemReport(
     val pwsid: String,
     val name: String,

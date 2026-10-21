@@ -362,44 +362,32 @@ fun H2KnowSearchAndCloudHome(
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(modifier = Modifier.padding(22.dp)) {
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                Surface(
+                    shape = RoundedCornerShape(999.dp),
+                    color = palette.brandSoft,
+                    border = BorderStroke(1.dp, palette.brand.copy(alpha = 0.35f))
                 ) {
-                    listOf(
-                        "01 · WHO" to palette.brand,
-                        "02 · WHERE" to palette.safe,
-                        "03 · WHY" to palette.caution,
-                        "04 · WHEN" to palette.brand
-                    ).forEach { (tag, accent) ->
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = accent.copy(alpha = 0.14f),
-                            border = BorderStroke(1.dp, accent.copy(alpha = 0.3f))
-                        ) {
-                            Text(
-                                text = tag,
-                                fontFamily = JetBrainsMonoFamily,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = accent,
-                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp)
-                            )
-                        }
-                    }
+                    Text(
+                        text = "U.S. TAP WATER QUALITY & FILTER GUIDE",
+                        fontFamily = JetBrainsMonoFamily,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = palette.brand,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                    )
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = "Know Your Tap Water in One View",
+                    text = "What's in Your Tap Water?",
                     style = MaterialTheme.typography.headlineLarge,
                     color = palette.ink,
                     fontWeight = FontWeight.ExtraBold
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "Enter any 5-digit U.S. ZIP code and press Inspect to immediately open your utility's WHO, WHERE, WHY, and WHEN report.",
+                    text = "Enter your 5-digit ZIP code to check your local water score, detected contaminants, and matching home filters.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = palette.ink2
                 )
@@ -516,7 +504,7 @@ fun H2KnowSearchAndCloudHome(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "MATCHING WATER UTILITIES (${providers.size}) · ZIP ${currentPlace?.zip ?: zipQuery}",
+                                text = "WATER PROVIDERS IN ${currentPlace?.zip ?: zipQuery} (${providers.size})",
                                 fontFamily = JetBrainsMonoFamily,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
@@ -579,7 +567,7 @@ fun H2KnowSearchAndCloudHome(
                                             color = palette.safeBg
                                         ) {
                                             Text(
-                                                text = "PRIMARY",
+                                                text = "MAIN UTILITY",
                                                 fontFamily = JetBrainsMonoFamily,
                                                 fontSize = 9.sp,
                                                 fontWeight = FontWeight.Bold,
@@ -589,7 +577,7 @@ fun H2KnowSearchAndCloudHome(
                                             )
                                         }
                                         Text(
-                                            text = "PWSID ${primaryProvider.pwsid} · ${primaryProvider.sourceType}",
+                                            text = primaryProvider.sourceType,
                                             fontFamily = JetBrainsMonoFamily,
                                             fontSize = 10.5.sp,
                                             color = palette.brand,
@@ -607,7 +595,7 @@ fun H2KnowSearchAndCloudHome(
                                         overflow = TextOverflow.Ellipsis
                                     )
                                     Text(
-                                        text = "Serves ${String.format(Locale.US, "%,d", primaryProvider.population)} residents · Tap for 4W Report",
+                                        text = "Serves ${String.format(Locale.US, "%,d", primaryProvider.population)} people · Tap to view report",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = palette.ink2,
                                         maxLines = 1,
@@ -729,7 +717,7 @@ fun H2KnowSearchAndCloudHome(
                                                             overflow = TextOverflow.Ellipsis
                                                         )
                                                         Text(
-                                                            text = "Serves ${String.format(Locale.US, "%,d", provider.population)} · ${provider.sourceType} · ${provider.pwsid}",
+                                                            text = "Serves ${String.format(Locale.US, "%,d", provider.population)} · ${provider.sourceType}",
                                                             fontFamily = JetBrainsMonoFamily,
                                                             fontSize = 10.sp,
                                                             color = palette.ink2,
@@ -758,7 +746,7 @@ fun H2KnowSearchAndCloudHome(
 
                 Spacer(modifier = Modifier.height(18.dp))
                 Text(
-                    text = "INSTANT SHOWCASE BENCHMARKS (1-TAP REPORT)",
+                    text = "POPULAR CITIES",
                     style = MaterialTheme.typography.labelSmall,
                     color = palette.ink3
                 )
@@ -800,7 +788,16 @@ fun H2KnowSearchAndCloudHome(
             }
         }
 
-        // 2. Cloud Location History (Stored in Firebase Firestore)
+        // 2. Suggested Home Water Filters & Test Kits (Amazon Partner Links)
+        SuggestedProductMarketplaceCard(
+            badgeText = "CERTIFIED FILTERS & HOME TESTING",
+            title = "Top-Rated Water Filters & Test Kits",
+            subtitle = "Certified pitchers, under-sink filters, and home test kits for Lead, PFAS, and chlorine taste.",
+            products = remember { ReferenceWaterData.homeFeaturedKitLinks() },
+            accentColor = palette.caution
+        )
+
+        // 3. Saved Water Reports / Recent Searches
         Surface(
             shape = RoundedCornerShape(24.dp),
             color = palette.surface1.copy(alpha = 0.92f),
@@ -835,13 +832,13 @@ fun H2KnowSearchAndCloudHome(
                         Spacer(modifier = Modifier.width(10.dp))
                         Column {
                             Text(
-                                text = "Cloud Location History",
+                                text = "Saved Locations",
                                 style = MaterialTheme.typography.titleMedium,
                                 color = palette.ink,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "Backed by Firebase Firestore",
+                                text = "Quick access to your checked ZIP codes",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = palette.ink3
                             )
@@ -865,7 +862,7 @@ fun H2KnowSearchAndCloudHome(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "Guest Mode active. Sign in with Google anytime to sync searched ZIP history & report local issues.",
+                                    text = "Sign in with Google to save your searched ZIP codes and report local water issues.",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = palette.ink2,
                                     modifier = Modifier.weight(1f)
@@ -885,7 +882,7 @@ fun H2KnowSearchAndCloudHome(
 
                     is CloudDataState.Loading -> {
                         Text(
-                            text = "Syncing location history from Firebase Firestore…",
+                            text = "Loading saved locations…",
                             style = MaterialTheme.typography.bodySmall,
                             color = palette.ink3
                         )
@@ -908,7 +905,7 @@ fun H2KnowSearchAndCloudHome(
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(
-                                    text = "Inspect any ZIP code above to automatically archive location-based historical water snapshots to your Firestore account.",
+                                    text = "Search any ZIP code above to save a water report here for quick comparison.",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = palette.ink2,
                                     modifier = Modifier.padding(14.dp)
@@ -916,9 +913,10 @@ fun H2KnowSearchAndCloudHome(
                             }
                         } else {
                             items.take(6).forEach { hist ->
+                                val displayScore = ReferenceWaterData.stableScoreForPwsid(hist.pwsid)
                                 val scoreColor = when {
-                                    hist.qualityScore >= 80 -> palette.safe
-                                    hist.qualityScore >= 60 -> palette.caution
+                                    displayScore >= 80 -> palette.safe
+                                    displayScore >= 60 -> palette.caution
                                     else -> palette.danger
                                 }
                                 Surface(
@@ -948,17 +946,10 @@ fun H2KnowSearchAndCloudHome(
                                                 fontWeight = FontWeight.Bold
                                             )
                                             Text(
-                                                text = "${hist.city}, ${hist.state} · 5Y ${if (hist.fiveYearDelta >= 0) "+${hist.fiveYearDelta}" else "${hist.fiveYearDelta}"} pts · 10Y ${if (hist.tenYearDelta >= 0) "+${hist.tenYearDelta}" else "${hist.tenYearDelta}"} pts",
+                                                text = "${hist.city}, ${hist.state} · 5Y Trend ${if (hist.fiveYearDelta >= 0) "+${hist.fiveYearDelta}" else "${hist.fiveYearDelta}"} pts",
                                                 fontFamily = JetBrainsMonoFamily,
                                                 fontSize = 11.sp,
                                                 color = palette.brand
-                                            )
-                                            Text(
-                                                text = hist.primaryWhySummary,
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = palette.ink2,
-                                                maxLines = 2,
-                                                overflow = TextOverflow.Ellipsis
                                             )
                                         }
                                         Spacer(modifier = Modifier.width(10.dp))
@@ -967,7 +958,7 @@ fun H2KnowSearchAndCloudHome(
                                             color = scoreColor.copy(alpha = 0.15f)
                                         ) {
                                             Text(
-                                                text = "${hist.qualityScore}",
+                                                text = "$displayScore",
                                                 fontFamily = JetBrainsMonoFamily,
                                                 fontWeight = FontWeight.Bold,
                                                 fontSize = 16.sp,

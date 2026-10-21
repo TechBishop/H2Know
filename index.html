@@ -749,16 +749,13 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
         <!-- 1. Floating Hero Search Card -->
         <section class="surface-card hero-gradient-border">
           <div class="flow-row">
-            <span class="pillar-badge" style="color:var(--brand);background:var(--brand-soft);border:1px solid color-mix(in srgb, var(--brand) 30%, transparent)">01 · WHO</span>
-            <span class="pillar-badge" style="color:var(--safe);background:var(--safe-bg);border:1px solid color-mix(in srgb, var(--safe) 30%, transparent)">02 · WHERE</span>
-            <span class="pillar-badge" style="color:var(--caution);background:var(--caution-bg);border:1px solid color-mix(in srgb, var(--caution) 30%, transparent)">03 · WHY</span>
-            <span class="pillar-badge" style="color:var(--brand);background:var(--brand-soft);border:1px solid color-mix(in srgb, var(--brand) 30%, transparent)">04 · WHEN</span>
+            <span class="pillar-badge" style="color:var(--brand);background:var(--brand-soft);border:1px solid color-mix(in srgb, var(--brand) 30%, transparent)">U.S. TAP WATER QUALITY &amp; FILTER GUIDE</span>
           </div>
 
-          <div style="height:14px"></div>
-          <h2 class="headline-large">Know Your Tap Water in One View</h2>
+          <div style="height:12px"></div>
+          <h2 class="headline-large">What's in Your Tap Water?</h2>
           <div style="height:6px"></div>
-          <p class="body-medium">Enter any 5-digit U.S. ZIP code and press Inspect to immediately open your utility's WHO, WHERE, WHY, and WHEN report.</p>
+          <p class="body-medium">Enter your 5-digit ZIP code to check your local water score, contaminant levels, and matched home filters.</p>
 
           <form id="zipSearchForm" class="search-input-row">
             <div class="outlined-field-wrap">
@@ -779,12 +776,15 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
           <div id="inlineProvidersZone" class="hidden" style="margin-top:16px"></div>
 
           <div style="height:18px"></div>
-          <div class="label-small">INSTANT SHOWCASE BENCHMARKS (1-TAP REPORT)</div>
+          <div class="label-small">POPULAR CITIES (TAP TO VIEW REPORT)</div>
           <div style="height:8px"></div>
           <div id="presetZipChipsRow" class="flow-row"></div>
         </section>
 
-        <!-- 2. Cloud Location History (Stored in Firebase Firestore) -->
+        <!-- 2. Suggested Home Water Filters & Test Kits (Amazon Partner Links) -->
+        <div id="homeSuggestedMarketplaceCard"></div>
+
+        <!-- 3. Saved Locations -->
         <section class="surface-card-24 stack-12">
           <div class="row-between">
             <div style="display:flex;align-items:center;gap:10px">
@@ -792,8 +792,8 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
                 <svg class="svg-ico" width="17" height="17" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM10 17l-3.5-3.5 1.41-1.41L10 14.17 15.18 9l1.41 1.41L10 17z"/></svg>
               </div>
               <div>
-                <h3 class="title-medium">Cloud Location History</h3>
-                <p class="body-small" style="color:var(--ink-3)">Backed by Firebase Firestore</p>
+                <h3 class="title-medium">Saved Locations</h3>
+                <p class="body-small" style="color:var(--ink-3)">Quick access to your checked ZIP codes</p>
               </div>
             </div>
           </div>
@@ -805,7 +805,7 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
 
       </div>
 
-      <!-- SCREEN 2: 4W RESULTS DASHBOARD (WhoWhereWhyWhenDashboard.kt) -->
+      <!-- SCREEN 2: RESULTS DASHBOARD (WhoWhereWhyWhenDashboard.kt) -->
       <div id="resultsDashboardScreen" class="stack-14 hidden">
         <!-- Cloud Status Toast Banner -->
         <div id="cloudStatusBanner" class="hidden" style="padding:12px 16px;border-radius:16px;background:var(--safe-bg);border:1px solid color-mix(in srgb, var(--safe) 45%, transparent);display:flex;align-items:center;gap:10px;cursor:pointer"></div>
@@ -813,22 +813,21 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
         <!-- Multi-Provider Switcher Bar (when >1 utility serves this ZIP) -->
         <div id="multiProviderSwitcherBox" class="hidden"></div>
 
-        <!-- ActiveFourWHeaderStrip -->
-        <div id="activeFourWHeaderStrip" class="fourw-header-strip">
-          <div style="flex:1;min-width:0">
-            <div style="display:flex;align-items:center;gap:6px">
-              <span id="stripBadgeText" class="mono" style="font-size:11px;font-weight:700;color:var(--brand)">01 · WHO</span>
-              <span class="mono" style="font-size:8.5px;font-weight:700;color:var(--ink-3);background:var(--surface-2);padding:2px 6px;border-radius:999px">SWIPE ⇄</span>
-            </div>
-            <p id="stripDescriptionText" class="body-small" style="margin-top:2px">Utility Operator, Water Score &amp; Resident Issues</p>
+        <!-- Integrated Top Navigation Tab Bar + Share Button -->
+        <div id="activeFourWHeaderStrip" class="fourw-header-strip" style="padding:6px 8px;gap:6px">
+          <div style="flex:1;display:grid;grid-template-columns:repeat(4, 1fr);gap:4px">
+            <button type="button" class="top-strip-tab-btn" data-tab="WHO" style="border-radius:12px;padding:7px 4px;font-family:var(--font-display);font-size:11.5px;font-weight:700;text-align:center">Overview</button>
+            <button type="button" class="top-strip-tab-btn" data-tab="WHERE" style="border-radius:12px;padding:7px 4px;font-family:var(--font-display);font-size:11.5px;font-weight:700;text-align:center">Source</button>
+            <button type="button" class="top-strip-tab-btn" data-tab="WHY" style="border-radius:12px;padding:7px 4px;font-family:var(--font-display);font-size:11.5px;font-weight:700;text-align:center">Quality</button>
+            <button type="button" class="top-strip-tab-btn" data-tab="WHEN" style="border-radius:12px;padding:7px 4px;font-family:var(--font-display);font-size:11.5px;font-weight:700;text-align:center">History</button>
           </div>
-          <button type="button" id="headerShareReportButton" style="border-radius:999px;background:var(--surface-2);border:1px solid var(--border-strong);padding:6px 10px;display:inline-flex;align-items:center;gap:5px">
+          <button type="button" id="headerShareReportButton" style="border-radius:12px;background:var(--surface-2);border:1px solid var(--border-strong);padding:7px 10px;display:inline-flex;align-items:center;gap:4px;flex-shrink:0">
             <svg class="svg-ico" width="13" height="13" viewBox="0 0 24 24" style="color:var(--brand)"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>
             <span class="mono" style="font-size:10px;font-weight:700;color:var(--ink)">Share</span>
           </button>
         </div>
 
-        <!-- Active 4W Tab Body -->
+        <!-- Active Tab Body -->
         <div id="activeTabContentHolder"></div>
       </div>
 
@@ -873,14 +872,14 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
     </main>
 
     <!-- ====================================================================
-         FLOATING BOTTOM 4W DOCK: FloatingFourWDock (WhoWhereWhyWhenDashboard.kt)
+         FLOATING BOTTOM DOCK: FloatingFourWDock (WhoWhereWhyWhenDashboard.kt)
          ==================================================================== -->
-    <nav id="floatingFourWDock" class="floating-dock-outer hidden" aria-label="4W Tabs">
+    <nav id="floatingFourWDock" class="floating-dock-outer hidden" aria-label="Report Sections">
       <div class="floating-dock-surface">
-        <button type="button" class="dock-tab-pill active" data-tab="WHO">WHO</button>
-        <button type="button" class="dock-tab-pill" data-tab="WHERE">WHERE</button>
-        <button type="button" class="dock-tab-pill" data-tab="WHY">WHY</button>
-        <button type="button" class="dock-tab-pill" data-tab="WHEN">WHEN</button>
+        <button type="button" class="dock-tab-pill active" data-tab="WHO">Overview</button>
+        <button type="button" class="dock-tab-pill" data-tab="WHERE">Source</button>
+        <button type="button" class="dock-tab-pill" data-tab="WHY">Quality</button>
+        <button type="button" class="dock-tab-pill" data-tab="WHEN">History</button>
         <button type="button" id="dockQuickActionButton" class="dock-quick-btn"></button>
       </div>
     </nav>
@@ -902,31 +901,31 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
         <div style="height:12px"></div>
         <h2 style="margin:0;font-family:var(--font-display);font-size:28px;line-height:34px;font-weight:800;letter-spacing:-0.5px;color:var(--ink)">H2Know</h2>
         <div style="height:6px"></div>
-        <p class="title-medium" style="color:var(--ink-2)">The Who, Where, Why &amp; When of Your Tap Water</p>
+        <p class="title-medium" style="color:var(--ink-2)">U.S. Tap Water Quality &amp; Filter Guide</p>
 
         <div style="height:22px"></div>
 
         <!-- 2x2 Bento Grid (AuthPillarTile) -->
         <div class="gov-grid-2x2" style="width:100%;text-align:left">
           <div class="gov-stat-tile" style="padding:12px 14px">
-            <div class="mono" style="font-size:10px;font-weight:700;color:var(--brand)">01 · WHO</div>
+            <div class="mono" style="font-size:10px;font-weight:700;color:var(--brand)">OVERVIEW</div>
             <div class="title-small">Utility &amp; Score</div>
-            <div class="body-small" style="font-size:11px;line-height:15px;color:var(--ink-3)">EPA ID, population &amp; 0–100 rating</div>
+            <div class="body-small" style="font-size:11px;line-height:15px;color:var(--ink-3)">Water provider &amp; 0–100 safety score</div>
           </div>
           <div class="gov-stat-tile" style="padding:12px 14px">
-            <div class="mono" style="font-size:10px;font-weight:700;color:var(--safe)">02 · WHERE</div>
-            <div class="title-small">Source &amp; Drought</div>
-            <div class="body-small" style="font-size:11px;line-height:15px;color:var(--ink-3)">Aquifer/river origin &amp; treatment</div>
+            <div class="mono" style="font-size:10px;font-weight:700;color:var(--safe)">SOURCE</div>
+            <div class="title-small">Water &amp; Drought</div>
+            <div class="body-small" style="font-size:11px;line-height:15px;color:var(--ink-3)">River/aquifer origin &amp; treatment</div>
           </div>
           <div class="gov-stat-tile" style="padding:12px 14px">
-            <div class="mono" style="font-size:10px;font-weight:700;color:var(--caution)">03 · WHY</div>
-            <div class="title-small">Lab vs. Health Goal</div>
-            <div class="body-small" style="font-size:11px;line-height:15px;color:var(--ink-3)">PHG/MCL bars &amp; NSF filter match</div>
+            <div class="mono" style="font-size:10px;font-weight:700;color:var(--caution)">QUALITY</div>
+            <div class="title-small">Contaminants &amp; Filters</div>
+            <div class="body-small" style="font-size:11px;line-height:15px;color:var(--ink-3)">Lab levels &amp; matched home filters</div>
           </div>
           <div class="gov-stat-tile" style="padding:12px 14px">
-            <div class="mono" style="font-size:10px;font-weight:700;color:var(--brand)">04 · WHEN</div>
-            <div class="title-small">1Y · 5Y · 10Y Curve</div>
-            <div class="body-small" style="font-size:11px;line-height:15px;color:var(--ink-3)">Unified score &amp; violation timeline</div>
+            <div class="mono" style="font-size:10px;font-weight:700;color:var(--brand)">HISTORY</div>
+            <div class="title-small">1Y · 5Y · 10Y Trends</div>
+            <div class="body-small" style="font-size:11px;line-height:15px;color:var(--ink-3)">Quality history &amp; past notices</div>
           </div>
         </div>
 
@@ -934,7 +933,7 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
 
         <button type="button" id="googleSignInButton" style="width:100%;height:54px;border-radius:16px;background:var(--brand);color:#FFFFFF;font-family:var(--font-display);font-size:13.5px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 8px 20px var(--brand-soft)">
           <svg class="svg-ico" width="18" height="18" viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM10 17l-3.5-3.5 1.41-1.41L10 14.17 15.18 9l1.41 1.41L10 17z"/></svg>
-          <span>Sign in with Google · Cloud Sync</span>
+          <span>Sign in with Google</span>
         </button>
 
         <div style="height:12px"></div>
@@ -946,7 +945,7 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
 
         <div style="height:12px"></div>
         <p class="body-small" style="color:var(--ink-3);text-align:center">
-          Instant local ZIP lookup &amp; interactive graphics work without an account. Sign in anytime to sync history or report local water issues to Firestore.
+          Instant ZIP code lookup works without an account. Sign in anytime to save checked ZIP codes or report local tap water issues.
         </p>
       </div>
     </div>
@@ -1088,7 +1087,8 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
     check: `<svg class="svg-ico" width="13" height="13" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`,
     share: `<svg class="svg-ico" width="16" height="16" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>`,
     copy: `<svg class="svg-ico" width="16" height="16" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>`,
-    close: `<svg class="svg-ico" width="18" height="18" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>`
+    close: `<svg class="svg-ico" width="18" height="18" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>`,
+    openInNew: `<svg class="svg-ico" width="13" height="13" viewBox="0 0 24 24"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>`
   };
 
   /* ==========================================================================
@@ -1187,6 +1187,7 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
      REPORT SYNTHESIS & LIVE EPA/USDM PIPELINE (1:1 port of WaterRepository.kt)
      ========================================================================== */
   const systemReportCache = {};
+  const droughtCache = {};
 
   function sourceLabel(code) {
     const c = String(code || "SW").trim().toUpperCase();
@@ -1325,16 +1326,22 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
       else if (catCode.toUpperCase() === "TT") vType = "treatment";
 
       const contMeta = contCode ? CONTAMINANT_CATALOG[contCode] : null;
+      const plainCategory = isHealth
+        ? "Exceeded a federal drinking water health standard"
+        : (catCode.toUpperCase() === "TT"
+          ? "Water treatment process step needed adjustment"
+          : "Routine water testing report submitted late");
+      const statusText = status === "open" ? "Currently under review" : (status === "addressed" ? "Corrective action in progress" : "Resolved");
       parsed.push({
         id: `${pwsid}-${vid}`,
         date: isoDate,
         year: yr,
         contaminantCode: contCode,
-        contaminant: contMeta ? contMeta.name : (contCode ? `Regulated Parameter ${contCode}` : "Disinfectant / Monitoring Rule"),
+        contaminant: contMeta ? contMeta.plainName : (contCode ? `Water Quality Check (${contCode})` : "Routine Testing & Reporting"),
         type: vType,
         status,
         severity: isHealth ? "serious" : "minor",
-        description: [catCode || "Compliance item", isHealth ? "health-based standard" : "monitoring/reporting schedule", status].join(" · ")
+        description: `${plainCategory} · ${statusText}`
       });
     }
 
@@ -1347,27 +1354,27 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
     const isNewark = pwsid === "NJ0714001";
     if (isJackson) {
       return [
-        { id: `${pwsid}-V26`, date: "2026-03-12", year: 2026, contaminant: "Turbidity / Treatment Technique", type: "treatment", status: "open", severity: "serious", description: "TT · Surface water turbidity & pressure advisory · open" },
-        { id: `${pwsid}-V25`, date: "2025-07-19", year: 2025, contaminant: "Lead & Copper Rule Corrosion Control", type: "treatment", status: "addressed", severity: "serious", description: "TT · Optimal corrosion control treatment milestone · addressed" },
-        { id: `${pwsid}-V23`, date: "2023-11-04", year: 2023, contaminant: "Total Trihalomethanes (TTHMs)", type: "monitoring", status: "resolved", severity: "minor", description: "MR · Stage 2 DBP routine sample reporting · resolved" }
+        { id: `${pwsid}-V26`, date: "2026-03-12", year: 2026, contaminant: "Water Clarity & Pressure", type: "treatment", status: "open", severity: "serious", description: "Surface water filtration & system pressure advisory · Currently under review" },
+        { id: `${pwsid}-V25`, date: "2025-07-19", year: 2025, contaminant: "Pipe Corrosion Control", type: "treatment", status: "addressed", severity: "serious", description: "Corrosion control treatment upgrade in progress · Addressed" },
+        { id: `${pwsid}-V23`, date: "2023-11-04", year: 2023, contaminant: "Chlorine Byproducts (TTHMs)", type: "monitoring", status: "resolved", severity: "minor", description: "Routine quarterly water sample report completed · Resolved" }
       ];
     }
     if (isFlint) {
       return [
-        { id: `${pwsid}-V25`, date: "2025-09-01", year: 2025, contaminant: "Total Trihalomethanes (TTHMs)", type: "monitoring", status: "open", severity: "minor", description: "MR · Routine DBP quarterly reporting verification · open" },
-        { id: `${pwsid}-V22`, date: "2022-05-14", year: 2022, contaminant: "Lead (90th percentile)", type: "treatment", status: "resolved", severity: "serious", description: "TT · Service line replacement & orthophosphate verification · resolved" },
-        { id: `${pwsid}-V18`, date: "2018-06-20", year: 2018, contaminant: "Lead & Copper Rule Follow-up", type: "health", status: "resolved", severity: "serious", description: "LCR · Historical corrosion control remediation · resolved" }
+        { id: `${pwsid}-V25`, date: "2025-09-01", year: 2025, contaminant: "Chlorine Byproducts (TTHMs)", type: "monitoring", status: "open", severity: "minor", description: "Quarterly water testing paperwork verification · Currently under review" },
+        { id: `${pwsid}-V22`, date: "2022-05-14", year: 2022, contaminant: "Lead Pipe Protection", type: "treatment", status: "resolved", severity: "serious", description: "Lead pipe replacement & anti-corrosion treatment verified · Resolved" },
+        { id: `${pwsid}-V18`, date: "2018-06-20", year: 2018, contaminant: "Lead & Copper Follow-up", type: "health", status: "resolved", severity: "serious", description: "Historical pipe corrosion upgrades completed · Resolved" }
       ];
     }
     if (isNewark) {
       return [
-        { id: `${pwsid}-V24`, date: "2024-08-10", year: 2024, contaminant: "Total Trihalomethanes (TTHMs)", type: "monitoring", status: "resolved", severity: "minor", description: "MR · Quarterly disinfection byproduct sample schedule · resolved" },
-        { id: `${pwsid}-V19`, date: "2019-07-01", year: 2019, contaminant: "Lead (90th percentile)", type: "health", status: "resolved", severity: "serious", description: "LCR · Pequannock service area corrosion upgrade completed · resolved" }
+        { id: `${pwsid}-V24`, date: "2024-08-10", year: 2024, contaminant: "Chlorine Byproducts (TTHMs)", type: "monitoring", status: "resolved", severity: "minor", description: "Quarterly disinfection byproduct testing completed · Resolved" },
+        { id: `${pwsid}-V19`, date: "2019-07-01", year: 2019, contaminant: "Lead Pipe Replacement", type: "health", status: "resolved", severity: "serious", description: "Pequannock service area lead pipe & anti-corrosion upgrade completed · Resolved" }
       ];
     }
     return [
-      { id: `${pwsid}-V25`, date: "2025-08-15", year: 2025, contaminant: "Total Trihalomethanes (TTHMs)", type: "monitoring", status: "resolved", severity: "minor", description: "MR · Routine Stage 2 Disinfection Byproducts monitoring · resolved" },
-      { id: `${pwsid}-V22`, date: "2022-04-10", year: 2022, contaminant: "Nitrate (as N)", type: "monitoring", status: "resolved", severity: "minor", description: "MR · Annual inorganic watershed sample schedule · resolved" }
+      { id: `${pwsid}-V25`, date: "2025-08-15", year: 2025, contaminant: "Chlorine Byproducts (TTHMs)", type: "monitoring", status: "resolved", severity: "minor", description: "Routine quarterly disinfection byproduct testing · Resolved" },
+      { id: `${pwsid}-V22`, date: "2022-04-10", year: 2022, contaminant: "Nitrate (Fertilizer Runoff)", type: "monitoring", status: "resolved", severity: "minor", description: "Annual source water nutrient check · Resolved" }
     ];
   }
 
@@ -1429,16 +1436,25 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
     return null;
   }
 
+  function stableScoreForPwsid(pwsid) {
+    const preset = findPresetByPwsid(pwsid);
+    if (preset) return preset.currentScore;
+    return 78 + (hashStr(pwsid) % 16);
+  }
+
+  function stableFiveYearDeltaForPwsid(pwsid) {
+    const preset = findPresetByPwsid(pwsid);
+    if (preset && preset.fiveYearDeltaPts !== undefined) return preset.fiveYearDeltaPts;
+    return (hashStr(pwsid) % 9) - 2;
+  }
+
   function scoreSystem(pwsid, violations, contaminants) {
-    const presetSummary = findPresetByPwsid(pwsid);
-    const baseScore = presetSummary ? presetSummary.currentScore : (78 + (hashStr(pwsid) % 16));
+    const baseScore = stableScoreForPwsid(pwsid);
     const open = violations.filter((v) => v.status === "open");
     const openHealth = open.filter((v) => v.type === "health" || v.severity === "serious");
     const recentHealth = violations.filter((v) => v.type === "health" && v.year >= 2023);
     const aboveLegal = contaminants.filter((c) => c.exceedsMcl).length;
-    const raw = presetSummary
-      ? presetSummary.currentScore
-      : (baseScore - openHealth.length * 14 - (open.length - openHealth.length) * 5 - recentHealth.length * 4 - aboveLegal * 12);
+    const raw = aboveLegal > 0 ? Math.max(35, baseScore - aboveLegal * 8) : baseScore;
     const score = Math.min(96, Math.max(25, raw));
     let compliance = "in_compliance";
     if (pwsid === "MS0250008" || openHealth.length > 0 || aboveLegal > 0) {
@@ -1455,12 +1471,20 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
     if (systemReportCache[pwsid]) return systemReportCache[pwsid];
 
     const EPA_BASE = "https://data.epa.gov/efservice";
+    const droughtKey = (place && place.zip) || summary.zip || ((place && place.state) || summary.state);
+    const droughtPromise = droughtCache[droughtKey]
+      ? Promise.resolve(droughtCache[droughtKey])
+      : fetchDroughtSafe(place && place.lat, place && place.lon, (place && place.state) || summary.state).then((d) => {
+          droughtCache[droughtKey] = d;
+          return d;
+        });
+
     const [sysArr, violArr, lcrArr, geoArr, drought] = await Promise.all([
       fetchJsonArraySafe(`${EPA_BASE}/WATER_SYSTEM/PWSID/${pwsid}/JSON`),
       fetchJsonArraySafe(`${EPA_BASE}/VIOLATION/PWSID/${pwsid}/rows/0:120/JSON`),
       fetchJsonArraySafe(`${EPA_BASE}/LCR_SAMPLE_RESULT/PWSID/${pwsid}/rows/0:80/JSON`),
       fetchJsonArraySafe(`${EPA_BASE}/GEOGRAPHIC_AREA/PWSID/${pwsid}/JSON`),
-      fetchDroughtSafe(place && place.lat, place && place.lon, (place && place.state) || summary.state)
+      droughtPromise
     ]);
 
     const sysObj = sysArr[0] || null;
@@ -1650,7 +1674,7 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
       treatment: treatmentSteps,
       usage: { normalGallonsPerDay: 90, recommendedGallonsPerDay: recommendedGpd },
       lastUpdated: todayStr,
-      sourceDescription: `${name} supplies drinking water as a community public water system (ID ${pwsid}). Primary source: ${sourceType}. Operated by: ${ownerType}.${county ? ` Service area includes ${county} County.` : ""} 10-year compliance and sampling histories are synthesized from U.S. EPA Envirofacts (SDWIS) and paired with U.S. Drought Monitor telemetry.`,
+      sourceDescription: `${name} provides tap water to ${population.toLocaleString()} residents in ${city}, ${st}${county ? ` (${county} County)` : ""}. Primary water source: ${sourceType.toLowerCase()}. Operated by: ${ownerType.toLowerCase()}.`,
       historicalSeries: {
         ONE_YEAR: {
           label: "1-Year Quarterly",
@@ -1755,7 +1779,7 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
         const pa = parseInt(a.population_served_count || a.POPULATION_SERVED_COUNT || "0", 10) || 0;
         const pb = parseInt(b.population_served_count || b.POPULATION_SERVED_COUNT || "0", 10) || 0;
         return pb - pa;
-      }).slice(0, 25);
+      }).slice(0, 6);
     } catch (_) {
       return [];
     }
@@ -1776,28 +1800,30 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
 
     if (liveRows.length === 0) {
       const st = place.state.toUpperCase();
+      const pws1 = `${st}${zip}01`;
+      const pws2 = `${st}${zip}02`;
       return {
         place,
         providers: [
           {
-            pwsid: `${st}${zip}01`,
+            pwsid: pws1,
             name: `${place.city.toUpperCase()} MUNICIPAL WATER SYSTEM`,
             city: place.city, state: place.state, zip, county: "",
             population: 68400,
             sourceType: "Surface water",
             isPrimary: true,
-            currentScore: 83,
-            fiveYearDeltaPts: 3
+            currentScore: stableScoreForPwsid(pws1),
+            fiveYearDeltaPts: stableFiveYearDeltaForPwsid(pws1)
           },
           {
-            pwsid: `${st}${zip}02`,
+            pwsid: pws2,
             name: `${place.city.toUpperCase()} REGIONAL WATER AUTHORITY`,
             city: place.city, state: place.state, zip, county: "",
             population: 21900,
             sourceType: "Groundwater",
             isPrimary: false,
-            currentScore: 87,
-            fiveYearDeltaPts: 5
+            currentScore: stableScoreForPwsid(pws2),
+            fiveYearDeltaPts: stableFiveYearDeltaForPwsid(pws2)
           }
         ]
       };
@@ -1811,8 +1837,6 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
       const pop = parseInt(obj.population_served_count || obj.POPULATION_SERVED_COUNT || "0", 10) || 0;
       const srcCode = String(obj.primary_source_code || obj.PRIMARY_SOURCE_CODE || "SW");
       const presetMatch = presetList ? presetList.find((it) => it.pwsid === pwsid) : null;
-      const seedScore = presetMatch ? presetMatch.currentScore : (78 + (hashStr(pwsid) % 16));
-      const delta = presetMatch ? presetMatch.fiveYearDeltaPts : ((hashStr(pwsid) % 9) - 2);
       return {
         pwsid,
         name,
@@ -1823,8 +1847,8 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
         population: pop,
         sourceType: sourceLabel(srcCode),
         isPrimary: Boolean(presetMatch && presetMatch.isPrimary),
-        currentScore: seedScore,
-        fiveYearDeltaPts: delta
+        currentScore: stableScoreForPwsid(pwsid),
+        fiveYearDeltaPts: stableFiveYearDeltaForPwsid(pwsid)
       };
     });
 
@@ -1841,8 +1865,8 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
       if (a.isPrimary !== b.isPrimary) return a.isPrimary ? -1 : 1;
       return b.population - a.population;
     });
-    const providers = combined.map((s, idx) => ({ ...s, isPrimary: idx === 0 }));
-    return { place, providers };
+    const topProviders = combined.slice(0, 6).map((s, idx) => ({ ...s, isPrimary: idx === 0 }));
+    return { place, providers: topProviders };
   }
 
   /* ==========================================================================
@@ -1882,7 +1906,7 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
       <div class="stack-10">
         <div class="row-between">
           <span class="mono" style="font-size:11px;font-weight:700;color:var(--safe);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-            MATCHING WATER UTILITIES (${state.providers.length}) · ZIP ${state.currentPlace?.zip || primary.zip}
+            WATER PROVIDERS IN ZIP ${state.currentPlace?.zip || primary.zip}
           </span>
           <span class="label-small" style="color:var(--ink-2);letter-spacing:0">${state.currentPlace?.city || primary.city}, ${state.currentPlace?.state || primary.state}</span>
         </div>
@@ -1890,15 +1914,15 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
         <button type="button" id="inlinePrimaryCardBtn" style="width:100%;text-align:left;background:var(--surface-2);border-radius:16px;border:1.5px solid color-mix(in srgb, ${pColor} 45%, transparent);padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 6px 16px rgba(0,0,0,0.2)">
           <div style="flex:1;min-width:0" class="stack-8">
             <div style="display:flex;align-items:center;gap:6px">
-              <span class="mono" style="font-size:9px;font-weight:700;color:var(--safe);background:var(--safe-bg);border-radius:6px;padding:2px 6px">PRIMARY</span>
-              <span class="mono" style="font-size:10.5px;color:var(--brand);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">PWSID ${primary.pwsid} · ${primary.sourceType}</span>
+              <span class="mono" style="font-size:9px;font-weight:700;color:var(--safe);background:var(--safe-bg);border-radius:6px;padding:2px 6px">MAIN PROVIDER</span>
+              <span class="mono" style="font-size:10.5px;color:var(--brand);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${primary.sourceType}</span>
             </div>
             <div class="title-medium" style="font-weight:800">${primary.name}</div>
-            <div class="body-small">Serves ${primary.population.toLocaleString()} residents · Tap for 4W Report</div>
+            <div class="body-small">Serves ${primary.population.toLocaleString()} residents · Tap to view water report</div>
           </div>
           <div style="border-radius:12px;background:color-mix(in srgb, ${pColor} 16%, transparent);border:1px solid color-mix(in srgb, ${pColor} 40%, transparent);padding:7px 12px;text-align:center;flex-shrink:0">
             <div class="mono" style="font-size:19px;font-weight:800;color:${pColor};line-height:1.1">${primary.currentScore}</div>
-            <div class="mono" style="font-size:9px;font-weight:700;color:${pColor};margin-top:2px">OPEN →</div>
+            <div class="mono" style="font-size:9px;font-weight:700;color:${pColor};margin-top:2px">SCORE →</div>
           </div>
         </button>
 
@@ -1915,7 +1939,7 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
                   <button type="button" class="inline-secondary-prov-btn" data-idx="${idx + 1}" style="width:100%;text-align:left;border-radius:10px;background:var(--surface-2);border:1px solid var(--border);padding:9px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px">
                     <div style="flex:1;min-width:0">
                       <div class="title-small" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${prov.name}</div>
-                      <div class="mono" style="font-size:10px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Serves ${prov.population.toLocaleString()} · ${prov.sourceType} · ${prov.pwsid}</div>
+                      <div class="mono" style="font-size:10px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Serves ${prov.population.toLocaleString()} · ${prov.sourceType}</div>
                     </div>
                     <span class="mono" style="font-size:12px;font-weight:800;color:${sc}">${prov.currentScore} →</span>
                   </button>
@@ -1944,14 +1968,261 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
   }
 
   /* ==========================================================================
+     SUGGESTED AMAZON & NSF FILTRATION / TESTING HELPERS (1:1 ReferenceWaterData.kt)
+     ========================================================================== */
+  function contaminantAmazonFilterUrl(c) {
+    const code = c?.code || "";
+    if (code === "PB90") return "https://www.amazon.com/s?k=NSF+53+lead+water+filter+pitcher+faucet+under+sink";
+    if (code === "CU90") return "https://www.amazon.com/s?k=NSF+53+copper+and+lead+drinking+water+filter";
+    if (code === "2950" || code === "2456") return "https://www.amazon.com/s?k=NSF+53+42+activated+carbon+water+filter+TTHM+chlorine+byproducts";
+    if (code === "2806" || code === "2805") return "https://www.amazon.com/s?k=NSF+53+58+P473+PFAS+PFOA+PFOS+water+filter";
+    if (code === "1040") return "https://www.amazon.com/s?k=NSF+58+reverse+osmosis+nitrate+water+filter+system";
+    if (code === "1005") return "https://www.amazon.com/s?k=NSF+58+reverse+osmosis+arsenic+water+filter+system";
+    if (code === "1025") return "https://www.amazon.com/s?k=NSF+58+reverse+osmosis+fluoride+water+filter";
+    return "https://www.amazon.com/s?k=NSF+53+58+certified+drinking+water+filter";
+  }
+
+  function contaminantAmazonTestKitUrl(c) {
+    const code = c?.code || "";
+    if (code === "PB90" || code === "CU90") return "https://www.amazon.com/s?k=EPA+lead+and+copper+in+drinking+water+home+test+kit";
+    if (code === "2806" || code === "2805") return "https://www.amazon.com/s?k=PFAS+forever+chemicals+mail+in+water+test+kit";
+    if (code === "1040") return "https://www.amazon.com/s?k=nitrate+nitrite+drinking+water+test+kit+strips";
+    if (code === "1005") return "https://www.amazon.com/s?k=arsenic+in+drinking+water+test+kit";
+    if (code === "2950" || code === "2456") return "https://www.amazon.com/s?k=complete+home+drinking+water+test+kit+chlorine+VOC";
+    return "https://www.amazon.com/s?k=16+in+1+drinking+water+test+kit+lead+copper+nitrate";
+  }
+
+  function buildSuggestedProductsForReport(r) {
+    const pb = r.contaminants.find((c) => c.code === "PB90");
+    const tthm = r.contaminants.find((c) => c.code === "2950");
+    const pfoa = r.contaminants.find((c) => c.code === "2806");
+    const no3 = r.contaminants.find((c) => c.code === "1040");
+    const arsenic = r.contaminants.find((c) => c.code === "1005");
+
+    const elevatedNames = r.contaminants
+      .filter((c) => c.exceedsHealthGoal)
+      .map((c) => {
+        if (c.code === "PB90") return `Lead (${fmtVal(c.detected)} ppb)`;
+        if (c.code === "2950") return `TTHMs (${fmtVal(c.detected)} ppb)`;
+        if (c.code === "2456") return `HAA5 (${fmtVal(c.detected)} ppb)`;
+        if (c.code === "2806") return `PFOA (${fmtVal(c.detected)} ppt)`;
+        if (c.code === "2805") return `PFOS (${fmtVal(c.detected)} ppt)`;
+        if (c.code === "1040") return `Nitrate (${fmtVal(c.detected)} ppm)`;
+        if (c.code === "1005") return `Arsenic (${fmtVal(c.detected)} ppb)`;
+        if (c.code === "CU90") return `Copper (${fmtVal(c.detected)} ppm)`;
+        return c.name.split(" (")[0];
+      });
+
+    const roMatchText = elevatedNames.length > 0
+      ? `Matched to ${r.zip}: Targets ${elevatedNames.slice(0, 3).join(", ")}`
+      : "Complete barrier for Lead, PFAS, Arsenic, Nitrate & Chlorine Byproducts";
+
+    const pitcherMatchText = (pb && pb.detected > 0 && tthm && tthm.detected > 0)
+      ? `Matched for Lead (${fmtVal(pb.detected)} ppb) & TTHMs (${fmtVal(tthm.detected)} ppb) in ${r.city}`
+      : ((pfoa && pfoa.detected > 0)
+        ? `Certified for PFOA/PFOS (${fmtVal(pfoa.detected)} ppt), Lead & Chlorine odor`
+        : "Renter-friendly pitcher for Lead, PFAS, Copper & Disinfection Byproducts");
+
+    const faucetMatchText = (pb && pb.detected > 0)
+      ? `1-Click kitchen tap barrier for ${fmtVal(pb.detected)} ppb 90th-percentile Lead & pipe scale`
+      : "Installs in 2 minutes on standard kitchen faucets with filter life indicator";
+
+    const testKitMatchText = ((no3 && no3.detected > 1.0) || (arsenic && arsenic.detected > 0.5))
+      ? `Verify home tap Lead, Copper, Nitrate (${fmtVal(no3?.detected)} ppm) & Arsenic`
+      : `Test your home's internal plumbing after overnight stagnation (ZIP ${r.zip})`;
+
+    return [
+      {
+        id: "amz-ro-5stage",
+        title: "5-Stage Under-Sink Reverse Osmosis + Carbon System",
+        subtitle: "Removes up to 99% of Lead, PFOA/PFOS forever chemicals, Arsenic, Nitrate, Fluoride & TTHMs right at the kitchen sink.",
+        certificationBadge: "NSF/ANSI 58 + 53 + 372",
+        priceTier: "$169–$249 · Prime Eligible",
+        matchReason: roMatchText,
+        targetCodes: ["PB90", "2806", "2805", "1040", "1005", "2950"],
+        amazonUrl: "https://www.amazon.com/s?k=NSF+58+53+under+sink+reverse+osmosis+water+filter+system",
+        secondaryLabel: "RO Filter Packs ↗",
+        secondaryUrl: "https://www.amazon.com/s?k=reverse+osmosis+replacement+filter+set+NSF+58"
+      },
+      {
+        id: "amz-pitcher-nsf53",
+        title: "NSF-53 Lead, PFAS & TTHM Solid Carbon Pitcher",
+        subtitle: "Advanced ion-exchange + micro-carbon block pitcher rated for soluble & particulate Lead, PFOA/PFOS, and seasonal chlorine taste.",
+        certificationBadge: "NSF/ANSI 53 + 42 + 401",
+        priceTier: "$34–$58 · Prime Eligible",
+        matchReason: pitcherMatchText,
+        targetCodes: ["PB90", "CU90", "2950", "2456", "2806", "2805"],
+        amazonUrl: "https://www.amazon.com/s?k=NSF+53+lead+and+PFAS+water+filter+pitcher",
+        secondaryLabel: "NSF-53 Cartridges ↗",
+        secondaryUrl: "https://www.amazon.com/s?k=NSF+53+replacement+water+pitcher+filter+cartridges"
+      },
+      {
+        id: "amz-faucet-mount",
+        title: "On-Tap Faucet Mount Carbon Block Filter",
+        subtitle: "Attaches directly to kitchen faucets with instant switch between filtered drinking/cooking water and unfiltered spray.",
+        certificationBadge: "NSF/ANSI 53 + 42",
+        priceTier: "$28–$46 · Prime Eligible",
+        matchReason: faucetMatchText,
+        targetCodes: ["PB90", "CU90", "2950", "2456"],
+        amazonUrl: "https://www.amazon.com/s?k=NSF+53+faucet+mount+water+filter+lead+reduction",
+        secondaryLabel: "Faucet Refills ↗",
+        secondaryUrl: "https://www.amazon.com/s?k=NSF+53+faucet+water+filter+replacement+cartridges"
+      },
+      {
+        id: "amz-home-test-kit",
+        title: "16-in-1 Home Drinking Water & Lead/PFAS Test Kit",
+        subtitle: "Includes rapid first-draw Lead, Copper, Nitrate, Chlorine & Hardness strips plus EPA-method mail-in lab options.",
+        certificationBadge: "EPA-Method Screening",
+        priceTier: "$22–$79 · Prime Eligible",
+        matchReason: testKitMatchText,
+        targetCodes: ["PB90", "CU90", "1040", "1005", "2950"],
+        amazonUrl: "https://www.amazon.com/s?k=drinking+water+test+kit+lead+copper+pfas+nitrate",
+        secondaryLabel: "Mail-In Lab Kits ↗",
+        secondaryUrl: "https://www.amazon.com/s?k=certified+laboratory+mail+in+water+test+kit+lead+PFAS"
+      }
+    ];
+  }
+
+  function buildWhereTabConservationProducts(r, droughtLabel) {
+    return [
+      {
+        id: "amz-watersense-kit",
+        title: "EPA WaterSense High-Efficiency Showerhead & Aerator Kit",
+        subtitle: `Helps meet ${r.city}'s ${r.usage.recommendedGallonsPerDay} GPD target (${droughtLabel}) while cutting hot-water energy use by 20%.`,
+        certificationBadge: "EPA WaterSense · 1.5–1.8 GPM",
+        priceTier: "$19–$39 · Amazon",
+        matchReason: `Matched for ZIP ${r.zip} conservation target (${r.usage.recommendedGallonsPerDay} GPD)`,
+        targetCodes: [],
+        amazonUrl: "https://www.amazon.com/s?k=EPA+WaterSense+high+efficiency+showerhead+and+faucet+aerator+kit",
+        secondaryLabel: "Smart Leak Sensors ↗",
+        secondaryUrl: "https://www.amazon.com/s?k=smart+home+water+leak+detector+sensor+shutoff"
+      },
+      {
+        id: "amz-whole-house-sediment",
+        title: "Whole-House Spin-Down Sediment & Carbon Pre-Filter",
+        subtitle: "Captures rust, sand, and distribution main pipe scale after hydrant flushing before water enters household appliances.",
+        certificationBadge: "NSF/ANSI 42 · Whole-Home",
+        priceTier: "$52–$115 · Amazon",
+        matchReason: `Protects plumbing & water heaters on ${r.sourceType.toLowerCase()} mains`,
+        targetCodes: ["PB90", "CU90", "2950"],
+        amazonUrl: "https://www.amazon.com/s?k=whole+house+spin+down+sediment+and+carbon+water+filter",
+        secondaryLabel: "Shower Filters ↗",
+        secondaryUrl: "https://www.amazon.com/s?k=vitamin+C+activated+carbon+chlorine+shower+head+filter"
+      }
+    ];
+  }
+
+  const HOME_FEATURED_KIT_LINKS = [
+    {
+      id: "home-amz-pitcher",
+      title: "NSF-53 Lead & PFAS Filter Pitcher",
+      subtitle: "Certified 99% Lead, PFOA/PFOS & Chlorine TTHM reduction for everyday kitchen use.",
+      certificationBadge: "NSF/ANSI 53 + 42",
+      priceTier: "$34–$58",
+      matchReason: "Most Popular Renter & Kitchen Choice",
+      targetCodes: ["PB90", "2806", "2950"],
+      amazonUrl: "https://www.amazon.com/s?k=NSF+53+lead+and+PFAS+water+filter+pitcher",
+      secondaryLabel: "Refills ↗",
+      secondaryUrl: "https://www.amazon.com/s?k=NSF+53+replacement+water+pitcher+filter+cartridges"
+    },
+    {
+      id: "home-amz-testkit",
+      title: "16-in-1 Tap Water & Lead Test Kit",
+      subtitle: "Screen overnight pipe stagnation for Lead, Copper, Nitrate, Chlorine & pH at home.",
+      certificationBadge: "Home & Lab Screening",
+      priceTier: "$22–$49",
+      matchReason: "Verify Pre-1986 Household Plumbing",
+      targetCodes: ["PB90", "CU90", "1040"],
+      amazonUrl: "https://www.amazon.com/s?k=16+in+1+drinking+water+test+kit+lead+copper+nitrate",
+      secondaryLabel: "Lab Mail-In ↗",
+      secondaryUrl: "https://www.amazon.com/s?k=certified+laboratory+mail+in+water+test+kit+lead+PFAS"
+    },
+    {
+      id: "home-amz-ro",
+      title: "5-Stage Under-Sink Reverse Osmosis",
+      subtitle: "Maximum point-of-use removal for Arsenic, Nitrate, Fluoride, Lead & Forever Chemicals.",
+      certificationBadge: "NSF/ANSI 58 + 53",
+      priceTier: "$169–$249",
+      matchReason: "Strict Public Health Goal (PHG) Barrier",
+      targetCodes: ["1005", "1040", "2806", "PB90"],
+      amazonUrl: "https://www.amazon.com/s?k=NSF+58+53+under+sink+reverse+osmosis+water+filter+system",
+      secondaryLabel: "Faucet Mounts ↗",
+      secondaryUrl: "https://www.amazon.com/s?k=NSF+53+faucet+mount+water+filter+lead+reduction"
+    }
+  ];
+
+  function renderSuggestedMarketplaceHtml(badgeText, title, subtitle, products, accentCssVar, highlightCode) {
+    return `
+      <section class="surface-card" style="border:1px solid color-mix(in srgb, ${accentCssVar} 45%, var(--border))">
+        <div class="flow-between">
+          <span class="pillar-badge" style="color:${accentCssVar};background:color-mix(in srgb, ${accentCssVar} 14%, transparent);border:1px solid color-mix(in srgb, ${accentCssVar} 30%, transparent)">${badgeText}</span>
+          <span class="mono" style="border-radius:999px;background:var(--surface-2);border:1px solid var(--border-strong);padding:3px 9px;font-size:9.5px;font-weight:700;color:var(--ink-2)">PARTNER LINKS · AMAZON</span>
+        </div>
+
+        <div style="height:10px"></div>
+        <h3 class="title-large">${title}</h3>
+        <div style="height:4px"></div>
+        <p class="body-small">${subtitle}</p>
+        <div style="height:14px"></div>
+
+        <div class="stack-12">
+          ${products.map((p) => {
+            const isMatched = Boolean(highlightCode && p.targetCodes && p.targetCodes.includes(highlightCode));
+            return `
+              <div style="border-radius:18px;background:var(--surface-2);border:${isMatched ? `1.5px solid ${accentCssVar}` : "1px solid var(--border)"};padding:16px" class="stack-8">
+                <div class="flow-between">
+                  <div class="flow-row" style="gap:6px">
+                    <span class="mono" style="border-radius:6px;background:var(--safe-bg);border:1px solid color-mix(in srgb, var(--safe) 40%, transparent);padding:3px 7px;font-size:9.5px;font-weight:700;color:var(--safe)">${p.certificationBadge}</span>
+                    ${isMatched ? `<span class="mono" style="border-radius:6px;background:color-mix(in srgb, ${accentCssVar} 18%, transparent);padding:3px 6px;font-size:9px;font-weight:700;color:${accentCssVar}">TOP MATCH</span>` : ""}
+                  </div>
+                  <span class="mono" style="font-size:10.5px;font-weight:700;color:var(--caution)">${p.priceTier}</span>
+                </div>
+
+                <div class="title-medium" style="font-weight:800">${p.title}</div>
+                <p class="body-small">${p.subtitle}</p>
+
+                <div class="mono" style="border-radius:10px;background:var(--surface-1);border:1px solid var(--border);padding:7px 10px;font-size:10.5px;font-weight:600;color:var(--brand)">
+                  ✓ ${p.matchReason}
+                </div>
+
+                <div class="flow-row" style="gap:8px;padding-top:2px">
+                  <a href="${p.amazonUrl}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;border-radius:12px;background:var(--brand);color:#FFFFFF;padding:8px 14px;display:inline-flex;align-items:center;gap:5px;font-family:var(--font-display);font-size:11.5px;font-weight:700">
+                    <span>Shop on Amazon</span>
+                    ${SVG.openInNew}
+                  </a>
+                  <a href="${p.secondaryUrl}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;border-radius:12px;background:transparent;border:1px solid var(--border-strong);color:var(--ink);padding:8px 12px;display:inline-flex;align-items:center;gap:4px;font-family:var(--font-display);font-size:11px;font-weight:600">
+                    <span>${p.secondaryLabel}</span>
+                  </a>
+                </div>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  /* ==========================================================================
      RENDER HOME CLOUD CARDS (H2KnowSearchHome.kt lines 803-1062)
      ========================================================================== */
   function renderHomeCloudCards() {
+    const homeMkt = $("homeSuggestedMarketplaceCard");
+    if (homeMkt) {
+      homeMkt.innerHTML = renderSuggestedMarketplaceHtml(
+        "SUGGESTED LINKS · AMAZON & NSF CERTIFIED",
+        "Home Water Test Kits & Certified Filters",
+        "Verify your tap plumbing or filter Lead, PFAS forever chemicals, and chlorine byproducts with NSF/ANSI-certified gear on Amazon.",
+        HOME_FEATURED_KIT_LINKS,
+        "var(--caution)",
+        null
+      );
+    }
+
     const histBox = $("cloudHistoryHomeBox");
     if (state.isGuest) {
       histBox.innerHTML = `
         <div style="border-radius:16px;background:var(--surface-2);border:1px solid var(--border);padding:14px;display:flex;justify-content:space-between;align-items:center;gap:12px">
-          <p class="body-small" style="flex:1">Guest Mode active. Sign in with Google anytime to sync searched ZIP history &amp; report local issues.</p>
+          <p class="body-small" style="flex:1">Sign in with Google to save your checked ZIP codes and report local water issues.</p>
           <button type="button" id="homeGuestSignInBtn" class="outlined-brand-btn">
             ${SVG.person}
             <span>Sign In</span>
@@ -1962,22 +2233,22 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
     } else if (state.cloudHistory.length === 0) {
       histBox.innerHTML = `
         <div style="border-radius:14px;background:var(--surface-2);padding:14px">
-          <p class="body-small">Inspect any ZIP code above to automatically archive location-based historical water snapshots to your Firestore account.</p>
+          <p class="body-small">Search any ZIP code above to save your local water report here for quick comparison.</p>
         </div>
       `;
     } else {
       histBox.innerHTML = `<div class="stack-8">` + state.cloudHistory.slice(0, 6).map((hist) => {
-        const sc = hist.qualityScore >= 80 ? "var(--safe)" : (hist.qualityScore >= 60 ? "var(--caution)" : "var(--danger)");
+        const syncedScore = hist.pwsid ? stableScoreForPwsid(hist.pwsid) : hist.qualityScore;
+        const sc = syncedScore >= 80 ? "var(--safe)" : (syncedScore >= 60 ? "var(--caution)" : "var(--danger)");
         const d5 = hist.fiveYearDelta >= 0 ? `+${hist.fiveYearDelta}` : `${hist.fiveYearDelta}`;
-        const d10 = hist.tenYearDelta >= 0 ? `+${hist.tenYearDelta}` : `${hist.tenYearDelta}`;
         return `
           <div style="border-radius:16px;background:var(--surface-2);border:1px solid var(--border);padding:14px;display:flex;align-items:center;gap:10px">
             <button type="button" class="hist-item-open" data-zip="${hist.zip}" style="flex:1;text-align:left;min-width:0">
               <div class="title-small">${hist.systemName} · ZIP ${hist.zip}</div>
-              <div class="mono" style="font-size:11px;color:var(--brand);margin:3px 0">${hist.city}, ${hist.state} · 5Y ${d5} pts · 10Y ${d10} pts</div>
+              <div class="mono" style="font-size:11px;color:var(--brand);margin:3px 0">${hist.city}, ${hist.state} · 5Y Trend ${d5} pts</div>
               <div class="body-small" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${hist.primaryWhySummary}</div>
             </button>
-            <div class="mono" style="border-radius:10px;background:color-mix(in srgb, ${sc} 15%, transparent);padding:6px 10px;font-size:16px;font-weight:700;color:${sc}">${hist.qualityScore}</div>
+            <div class="mono" style="border-radius:10px;background:color-mix(in srgb, ${sc} 15%, transparent);padding:6px 10px;font-size:16px;font-weight:700;color:${sc}">${syncedScore}</div>
             <button type="button" class="hist-item-del icon-circle-btn" data-id="${hist.id}" style="width:32px;height:32px;background:transparent;color:var(--ink-3)">${SVG.deleteOutline}</button>
           </div>
         `;
@@ -1999,7 +2270,7 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
     if (!state.isGuest && state.cloudIssues.length > 0) {
       issuesCard.classList.remove("hidden");
       issuesCard.innerHTML = `
-        <h3 class="title-medium">Your Cloud-Reported Water Issues (${state.cloudIssues.length})</h3>
+        <h3 class="title-medium">Your Reported Water Issues (${state.cloudIssues.length})</h3>
         <div class="stack-8">
           ${state.cloudIssues.slice(0, 4).map((iss) => `
             <div style="border-radius:16px;background:var(--surface-2);border:1px solid var(--border);padding:14px;display:flex;align-items:center;justify-content:space-between;gap:10px">
@@ -2154,9 +2425,9 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
                     <div style="flex:1;min-width:0">
                       <div style="display:flex;align-items:center;gap:6px">
                         <span class="title-small" style="color:${isCur ? "var(--brand)" : "var(--ink)"};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${idx + 1}. ${sys.name}</span>
-                        ${idx === 0 ? `<span class="mono" style="font-size:9px;font-weight:700;color:var(--safe);background:var(--safe-bg);border-radius:6px;padding:2px 5px">PRIMARY</span>` : ""}
+                        ${idx === 0 ? `<span class="mono" style="font-size:9px;font-weight:700;color:var(--safe);background:var(--safe-bg);border-radius:6px;padding:2px 5px">MAIN</span>` : ""}
                       </div>
-                      <div class="mono" style="font-size:10px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Serves ${sys.population.toLocaleString()} · ${sys.sourceType} · ${sys.pwsid}</div>
+                      <div class="mono" style="font-size:10px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Serves ${sys.population.toLocaleString()} · ${sys.sourceType}</div>
                     </div>
                     <span class="mono" style="border-radius:8px;background:color-mix(in srgb, ${sc} 16%, transparent);border:1px solid color-mix(in srgb, ${sc} 40%, transparent);padding:4px 8px;font-size:11px;font-weight:800;color:${sc}">${sys.currentScore}</span>
                   </button>
@@ -2180,20 +2451,15 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
       swBox.classList.add("hidden");
     }
 
-    // 2. ActiveFourWHeaderStrip & Top Bar Subtitle (Matches FourWTab enum in H2KnowViewModel.kt)
-    const TAB_META = {
-      WHO:   { badge: "01 · WHO",   shortTitle: "Utility & Issues",       desc: "Utility Operator, Water Score & Resident Issues", accent: "var(--brand)" },
-      WHERE: { badge: "02 · WHERE", shortTitle: "Origin & Treatment",     desc: "Water Source, Treatment Steps & Drought Level",   accent: "var(--safe)" },
-      WHY:   { badge: "03 · WHY",   shortTitle: "Lab & Filtration",       desc: "Contaminant Levels vs. Health & Legal Limits",    accent: "var(--caution)" },
-      WHEN:  { badge: "04 · WHEN",  shortTitle: "1Y / 5Y / 10Y Timeline", desc: "1Y / 5Y / 10Y Score History & EPA Violations",    accent: "var(--brand)" }
-    };
-    const tm = TAB_META[state.activeTab];
+    // 2. Top Header & Integrated Top Navigation Strip
     $("topHeaderTitle").textContent = r.name;
-    $("topHeaderSubtitle").textContent = `${tm.badge} · ${tm.shortTitle}`;
-    $("stripBadgeText").textContent = tm.badge;
-    $("stripBadgeText").style.color = tm.accent;
-    $("stripDescriptionText").textContent = tm.desc;
-    $("activeFourWHeaderStrip").style.borderColor = `color-mix(in srgb, ${tm.accent} 35%, transparent)`;
+    $("topHeaderSubtitle").textContent = `${r.city}, ${r.state} · ZIP ${r.zip}`;
+
+    document.querySelectorAll("#activeFourWHeaderStrip .top-strip-tab-btn").forEach((btn) => {
+      const isAct = btn.getAttribute("data-tab") === state.activeTab;
+      btn.style.background = isAct ? "var(--brand)" : "transparent";
+      btn.style.color = isAct ? "#FFFFFF" : "var(--ink-2)";
+    });
 
     // 3. FloatingFourWDock
     document.querySelectorAll("#floatingFourWDock .dock-tab-pill").forEach((btn) => {
@@ -2201,7 +2467,7 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
     });
     $("dockQuickActionButton").innerHTML = state.isGuest
       ? `${SVG.person}<span>Sign In</span>`
-      : `${SVG.add}<span>Issue</span>`;
+      : `${SVG.add}<span>Report</span>`;
 
     // 4. Active Tab Content
     const holder = $("activeTabContentHolder");
@@ -2212,12 +2478,12 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
   }
 
   /* ==========================================================================
-     TAB 1: WHO (WhoGovernanceAndIssuesTab in WhoWhereWhyWhenDashboard.kt)
+     TAB 1: OVERVIEW (WhoGovernanceAndIssuesTab in WhoWhereWhyWhenDashboard.kt)
      ========================================================================== */
   function renderWhoTab(holder, r) {
     const complianceLabel = r.complianceStatus === "under_enforcement"
-      ? "UNDER ENFORCEMENT ACTION"
-      : (r.complianceStatus === "elevated_concern" ? "ELEVATED MONITORING CONCERN" : "IN EPA SDWIS COMPLIANCE");
+      ? "ACTION REQUIRED"
+      : (r.complianceStatus === "elevated_concern" ? "ADVISORY WATCH" : "MEETS EPA STANDARDS");
     const complianceColor = r.complianceStatus === "under_enforcement"
       ? "var(--danger)"
       : (r.complianceStatus === "elevated_concern" ? "var(--caution)" : "var(--safe)");
@@ -2230,6 +2496,9 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
     const arcLen = circum * 0.75;
     const sweepLen = arcLen * (Math.min(100, Math.max(0, r.qualityScore)) / 100);
 
+    const exceedsPhgCount = r.contaminants.filter((c) => c.exceedsHealthGoal).length;
+    const exceedsMclCount = r.contaminants.filter((c) => c.exceedsMcl).length;
+
     const issuesForSystem = state.cloudIssues.filter((issue) => {
       const mSys = issue.pwsid === r.pwsid || issue.zip === r.zip;
       const mFilt = state.issueStatusFilter === "open"
@@ -2240,10 +2509,10 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
 
     holder.innerHTML = `
       <div class="stack-18">
-        <!-- Card 1: Utility Identity, Score Gauge & Governance -->
+        <!-- Card 1: Water Utility Summary & Score Gauge -->
         <section class="surface-card hero-gradient-border">
           <div class="flow-between">
-            <span class="pillar-badge" style="color:var(--brand);background:var(--brand-soft);border:1px solid color-mix(in srgb, var(--brand) 30%, transparent)">01 · WHO OPERATES THIS SYSTEM</span>
+            <span class="pillar-badge" style="color:var(--brand);background:var(--brand-soft);border:1px solid color-mix(in srgb, var(--brand) 30%, transparent)">WATER REPORT OVERVIEW</span>
             <span class="mono" style="font-size:10px;font-weight:700;padding:4px 10px;border-radius:999px;color:${complianceColor};background:color-mix(in srgb, ${complianceColor} 15%, transparent);border:1px solid color-mix(in srgb, ${complianceColor} 40%, transparent)">
               ${complianceLabel}
             </span>
@@ -2266,45 +2535,59 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
             </div>
 
             <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
-              <div class="label-small">PUBLIC WATER UTILITY</div>
+              <div class="label-small">LOCAL WATER PROVIDER</div>
               <h3 class="title-large" style="font-size:17.5px">${r.name}</h3>
-              <div class="mono" style="font-size:11px;color:var(--ink-3)">Last SDWIS Sync: ${r.lastUpdated}</div>
+              <div class="body-small" style="color:var(--ink-2)">${r.city}, ${r.state} · ZIP ${r.zip}</div>
+              <div class="mono" style="font-size:10.5px;color:var(--ink-3)">Updated ${r.lastUpdated} · System ID ${r.pwsid}</div>
             </div>
           </div>
 
           <div style="height:18px"></div>
 
-          <!-- 2x2 Governance Metadata Grid -->
+          <!-- 2x2 At-a-Glance Summary Grid -->
           <div class="gov-grid-2x2">
             <div class="gov-stat-tile">
-              <div class="mono" style="font-size:10px;font-weight:700;color:var(--brand)">EPA PWSID</div>
-              <div class="title-small" style="font-weight:800">${r.pwsid}</div>
-              <div class="body-small" style="font-size:11px;color:var(--ink-3)">Federal System Registry ID</div>
-            </div>
-            <div class="gov-stat-tile">
-              <div class="mono" style="font-size:10px;font-weight:700;color:var(--brand)">GOVERNANCE</div>
-              <div class="title-small" style="font-weight:800">${r.ownerType}</div>
-              <div class="body-small" style="font-size:11px;color:var(--ink-3)">Operating Authority</div>
-            </div>
-            <div class="gov-stat-tile">
-              <div class="mono" style="font-size:10px;font-weight:700;color:var(--brand)">POPULATION SERVED</div>
+              <div class="mono" style="font-size:10px;font-weight:700;color:var(--brand)">PEOPLE SERVED</div>
               <div class="title-small" style="font-weight:800">${r.population.toLocaleString()}</div>
-              <div class="body-small" style="font-size:11px;color:var(--ink-3)">Permanent Residents</div>
+              <div class="body-small" style="font-size:11px;color:var(--ink-3)">Local residents</div>
             </div>
             <div class="gov-stat-tile">
-              <div class="mono" style="font-size:10px;font-weight:700;color:var(--brand)">RISK POSTURE</div>
-              <div class="title-small" style="font-weight:800;text-transform:capitalize">${r.riskLevel}</div>
-              <div class="body-small" style="font-size:11px;color:var(--ink-3)">Composite Health Index</div>
+              <div class="mono" style="font-size:10px;font-weight:700;color:var(--safe)">WATER SOURCE</div>
+              <div class="title-small" style="font-weight:800">${r.sourceType}</div>
+              <div class="body-small" style="font-size:11px;color:var(--ink-3)">${r.ownerType}</div>
             </div>
+            <div class="gov-stat-tile">
+              <div class="mono" style="font-size:10px;font-weight:700;color:${exceedsMclCount > 0 ? "var(--danger)" : "var(--caution)"}">CONTAMINANTS</div>
+              <div class="title-small" style="font-weight:800">${exceedsMclCount > 0 ? `${exceedsMclCount} Over Limit` : `${exceedsPhgCount} Above Goal`}</div>
+              <div class="body-small" style="font-size:11px;color:var(--ink-3)">Of ${r.contaminants.length} tested items</div>
+            </div>
+            <div class="gov-stat-tile">
+              <div class="mono" style="font-size:10px;font-weight:700;color:var(--brand)">OVERALL RISK</div>
+              <div class="title-small" style="font-weight:800;text-transform:capitalize">${r.riskLevel}</div>
+              <div class="body-small" style="font-size:11px;color:var(--ink-3)">Tap water rating</div>
+            </div>
+          </div>
+
+          <div style="height:14px"></div>
+
+          <!-- Quick Action Banner to Jump to Contaminant Details & Filters -->
+          <div style="border-radius:16px;background:var(--surface-2);border:1px solid var(--border-strong);padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px">
+            <div style="flex:1;min-width:0">
+              <div class="title-small" style="font-weight:700">See What's in Your Water &amp; Best Filters</div>
+              <div class="body-small">Compare ${r.contaminants.length} tested contaminants against health goals</div>
+            </div>
+            <button type="button" id="overviewJumpToQualityBtn" class="solid-brand-btn" style="padding:7px 12px;border-radius:10px;flex-shrink:0">
+              <span>View Quality →</span>
+            </button>
           </div>
         </section>
 
-        <!-- Card 2: Reported Water Quality Issues -->
+        <!-- Card 2: Community Water Reports -->
         <section class="surface-card">
           <div class="row-between">
             <div style="flex:1;min-width:0">
-              <h3 class="headline-medium">Reported Water Quality Issues</h3>
-              <p class="body-small">Resident reports synced via Firebase Firestore for ${r.name}.</p>
+              <h3 class="headline-medium">Neighborhood Water Reports</h3>
+              <p class="body-small">Local taste, odor, or pressure reports for ${r.name}.</p>
             </div>
             ${state.isGuest ? `
               <button type="button" id="whoGuestSignInBtn" class="outlined-brand-btn" style="border-radius:14px;padding:10px 14px">
@@ -2323,7 +2606,7 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
 
           ${state.isGuest ? `
             <div style="border-radius:16px;background:var(--surface-2);border:1px solid var(--border);padding:16px">
-              <p class="body-small">Browsing in Guest Mode. Use the compact Sign In button above if you want to submit or vote on community water quality issues in Firebase Firestore.</p>
+              <p class="body-small">Sign in with Google if you want to report a local tap water issue (such as chlorine smell, discoloration, or low pressure) or vote on neighborhood reports.</p>
             </div>
           ` : `
             <div class="flow-row">
@@ -2341,7 +2624,7 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
 
             ${issuesForSystem.length === 0 ? `
               <div style="border-radius:16px;background:var(--surface-2);padding:16px">
-                <p class="body-small">No matching water quality issues logged for ${r.name} yet. Tap 'Report Issue' above or flag a contaminant in the WHY tab to log an issue to Firestore.</p>
+                <p class="body-small">No neighborhood issues reported for ${r.name} yet. Tap 'Report Issue' above if you notice a taste, odor, or pressure problem.</p>
               </div>
             ` : `
               <div class="stack-12">
@@ -2385,6 +2668,14 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
       </div>
     `;
 
+    const jumpBtn = $("overviewJumpToQualityBtn");
+    if (jumpBtn) {
+      jumpBtn.addEventListener("click", () => {
+        state.activeTab = "WHY";
+        renderApp();
+        $("workspaceScroll").scrollTo({ top: 0, behavior: "smooth" });
+      });
+    }
     const signInBtn = $("whoGuestSignInBtn");
     if (signInBtn) signInBtn.addEventListener("click", openAuthScreen);
     const repBtn = $("whoOpenReportIssueBtn");
@@ -2434,11 +2725,11 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
 
     holder.innerHTML = `
       <div class="stack-18">
-        <!-- Card 1: Watershed & Hydrological Origin -->
+        <!-- Card 1: Water Source & Service Area -->
         <section class="surface-card safe-gradient-border">
-          <span class="pillar-badge" style="color:var(--safe);background:var(--safe-bg);border:1px solid color-mix(in srgb, var(--safe) 30%, transparent)">02 · WHERE YOUR WATER ORIGINATES</span>
+          <span class="pillar-badge" style="color:var(--safe);background:var(--safe-bg);border:1px solid color-mix(in srgb, var(--safe) 30%, transparent)">WATER SOURCE</span>
           <div style="height:12px"></div>
-          <h3 class="headline-medium">${r.sourceType} Supply Basin</h3>
+          <h3 class="headline-medium">${r.sourceType} Supply</h3>
           <div style="height:6px"></div>
           <div style="display:flex;align-items:center;gap:6px">
             <span style="color:var(--safe)">${SVG.locationOn}</span>
@@ -2446,16 +2737,16 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
           </div>
           <div style="height:14px"></div>
           <div style="border-radius:16px;background:var(--surface-2);border:1px solid var(--border);padding:16px" class="stack-8">
-            <div class="mono" style="font-size:10px;font-weight:700;color:var(--safe)">HYDROLOGICAL INTAKE PROFILE</div>
+            <div class="mono" style="font-size:10px;font-weight:700;color:var(--safe)">ABOUT THIS WATER SUPPLY</div>
             <p class="body-small">${r.sourceDescription}</p>
           </div>
         </section>
 
-        <!-- Card 2: Step-by-Step Source-to-Tap Treatment Pipeline -->
+        <!-- Card 2: Step-by-Step Water Treatment Process -->
         <section class="surface-card">
-          <div class="mono" style="font-size:11px;font-weight:700;color:var(--brand)">SOURCE-TO-TAP TREATMENT TRAIN</div>
+          <div class="mono" style="font-size:11px;font-weight:700;color:var(--brand)">TREATMENT PROCESS</div>
           <div style="height:4px"></div>
-          <h3 class="title-large">How Raw Water Is Conditioned Before Your Tap</h3>
+          <h3 class="title-large">How Your Water Is Treated Before Your Tap</h3>
           <div style="height:14px"></div>
           <div class="stack-10">
             ${r.treatment.map((step) => `
@@ -2470,10 +2761,10 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
           </div>
         </section>
 
-        <!-- Card 3: U.S. Drought Monitor & Regional Conservation Target -->
+        <!-- Card 3: Local Drought Status & Daily Water Goal -->
         <section class="surface-card">
           <div class="flow-between">
-            <span class="mono" style="font-size:11px;font-weight:700;color:${activeDroughtIdx >= 2 ? "var(--caution)" : "var(--safe)"}">U.S. DROUGHT MONITOR &amp; WATERSHED STRESS</span>
+            <span class="mono" style="font-size:11px;font-weight:700;color:${activeDroughtIdx >= 2 ? "var(--caution)" : "var(--safe)"}">LOCAL DROUGHT STATUS</span>
             <span class="mono" style="font-size:11px;font-weight:700;color:var(--ink)">${droughtLabelMap[r.droughtLevel] || r.droughtLevel}</span>
           </div>
 
@@ -2496,10 +2787,20 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
           <div style="height:12px"></div>
 
           <div style="border-radius:14px;background:var(--surface-2);border:1px solid var(--border);padding:10px 14px" class="row-between">
-            <span class="body-small">Regional Daily Target per Person</span>
-            <span class="mono" style="font-size:11px;font-weight:700;color:var(--brand)">${r.usage.recommendedGallonsPerDay} GPD (Baseline ${r.usage.normalGallonsPerDay} GPD)</span>
+            <span class="body-small">Recommended Daily Water Use</span>
+            <span class="mono" style="font-size:11px;font-weight:700;color:var(--brand)">${r.usage.recommendedGallonsPerDay} gal/day (Avg ${r.usage.normalGallonsPerDay} gal)</span>
           </div>
         </section>
+
+        <!-- Card 4: Suggested WaterSense Conservation & Whole-Home Pre-Filtration Links (Amazon) -->
+        ${renderSuggestedMarketplaceHtml(
+          "WATER-SAVING & WHOLE-HOME FILTERS",
+          "WaterSense Fixtures & Pipe Protection",
+          `Curated Amazon links matched to ${r.city}'s ${r.usage.recommendedGallonsPerDay} gal/day water goal and ${r.sourceType.toLowerCase()} supply.`,
+          buildWhereTabConservationProducts(r, droughtLabelMap[r.droughtLevel] || r.droughtLevel),
+          "var(--safe)",
+          null
+        )}
       </div>
     `;
   }
@@ -2546,121 +2847,146 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
       return "NSF/ANSI 53 Certified Tap Filter.";
     };
 
+    const suggestedProducts = buildSuggestedProductsForReport(r);
+
     holder.innerHTML = `
-      <section class="surface-card">
-        <div class="flow-between">
-          <span class="pillar-badge" style="color:var(--caution);background:var(--caution-bg);border:1px solid color-mix(in srgb, var(--caution) 30%, transparent)">03 · WHY (CONTAMINANTS &amp; FILTERS)</span>
-          <span class="mono" style="font-size:11px;font-weight:700;color:${exceedsMclCount > 0 ? "var(--danger)" : "var(--caution)"}">
-            ${exceedsPhgCount} Above Health Goal · ${exceedsMclCount} Over Legal Limit
-          </span>
-        </div>
-
-        <div style="height:10px"></div>
-        <h3 class="headline-medium">What Was Detected in Your Tap Water</h3>
-        <div style="height:4px"></div>
-        <p class="body-small">Tap any contaminant below to see where it comes from and which home water filter removes it.</p>
-
-        <div style="height:14px"></div>
-
-        <!-- Category Filter Chips -->
-        <div class="flow-row">
-          ${filters.map(([key, label]) => {
-            const active = state.whyFilter === key;
-            return `
-              <button type="button" class="why-filter-chip" data-f="${key}" style="border-radius:999px;background:${active ? "var(--caution-bg)" : "var(--surface-2)"};border:1px solid ${active ? "var(--caution)" : "var(--border)"};padding:6px 12px;font-family:var(--font-display);font-size:10.5px;font-weight:${active ? "700" : "500"};color:${active ? "var(--caution)" : "var(--ink-2)"}">
-                ${label}
-              </button>
-            `;
-          }).join("")}
-        </div>
-
-        <div style="height:16px"></div>
-
-        <!-- WhyContaminantBenchmarkGraphic -->
-        <div style="border-radius:20px;background:var(--surface-0);border:1px solid var(--border-strong);padding:16px" class="stack-12">
-          <!-- Plain-English Color Key Box -->
-          <div style="border-radius:14px;background:var(--surface-1);border:1px solid var(--border);padding:12px" class="stack-8">
-            <div class="mono" style="font-size:10px;font-weight:700;color:var(--brand)">HOW TO READ THIS CHART</div>
-            <div class="flow-row" style="gap:14px">
-              <span style="display:inline-flex;align-items:center;gap:6px;font-family:var(--font-display);font-size:10.5px;font-weight:600;color:var(--ink)">
-                <i style="width:10px;height:10px;border-radius:999px;background:var(--safe);display:inline-block"></i>Safe (Under Health Goal)
-              </span>
-              <span style="display:inline-flex;align-items:center;gap:6px;font-family:var(--font-display);font-size:10.5px;font-weight:600;color:var(--ink)">
-                <i style="width:10px;height:10px;border-radius:999px;background:var(--caution);display:inline-block"></i>Above Health Goal (Still Legal)
-              </span>
-              <span style="display:inline-flex;align-items:center;gap:6px;font-family:var(--font-display);font-size:10.5px;font-weight:600;color:var(--ink)">
-                <i style="width:10px;height:10px;border-radius:999px;background:var(--danger);display:inline-block"></i>Over EPA Legal Limit
-              </span>
-            </div>
-            <div class="body-small" style="font-size:11.5px">• Yellow Dashed Marker = Ideal Health Goal &nbsp; • Red Solid Marker = EPA Legal Limit</div>
+      <div class="stack-18">
+        <section class="surface-card">
+          <div class="flow-between">
+            <span class="pillar-badge" style="color:var(--caution);background:var(--caution-bg);border:1px solid color-mix(in srgb, var(--caution) 30%, transparent)">CONTAMINANTS &amp; FILTERS</span>
+            <span class="mono" style="font-size:11px;font-weight:700;color:${exceedsMclCount > 0 ? "var(--danger)" : "var(--caution)"}">
+              ${exceedsPhgCount} Above Health Goal · ${exceedsMclCount} Over Legal Limit
+            </span>
           </div>
 
-          ${filtered.map((c) => {
-            const isSel = c.code === selectedContaminant.code;
-            const barColor = c.exceedsMcl ? "var(--danger)" : (c.exceedsHealthGoal ? "var(--caution)" : "var(--safe)");
-            const statusLabel = c.exceedsMcl ? "OVER LEGAL LIMIT" : (c.exceedsHealthGoal ? "ABOVE HEALTH GOAL" : "SAFE LEVEL");
+          <div style="height:10px"></div>
+          <h3 class="headline-medium">What Was Detected in Your Tap Water</h3>
+          <div style="height:4px"></div>
+          <p class="body-small">Tap any contaminant below to see where it comes from and which home water filter removes it.</p>
 
-            const maxScale = (c.mcl !== null && c.mcl > 0)
-              ? Math.max(c.mcl * 1.30, c.detected * 1.15)
-              : ((c.phg !== null && c.phg > 0) ? Math.max(c.phg * 4.0, c.detected * 1.15) : Math.max(c.detected * 1.5, 1.0));
+          <div style="height:14px"></div>
 
-            const fillPct = Math.min(100, Math.max(6, (c.detected / maxScale) * 100));
-            const phgPct = c.phg !== null ? Math.min(94, Math.max(6, (c.phg / maxScale) * 100)) : null;
-            const mclPct = c.mcl !== null ? Math.min(96, Math.max(12, (c.mcl / maxScale) * 100)) : null;
+          <!-- Category Filter Chips -->
+          <div class="flow-row">
+            ${filters.map(([key, label]) => {
+              const active = state.whyFilter === key;
+              return `
+                <button type="button" class="why-filter-chip" data-f="${key}" style="border-radius:999px;background:${active ? "var(--caution-bg)" : "var(--surface-2)"};border:1px solid ${active ? "var(--caution)" : "var(--border)"};padding:6px 12px;font-family:var(--font-display);font-size:10.5px;font-weight:${active ? "700" : "500"};color:${active ? "var(--caution)" : "var(--ink-2)"}">
+                  ${label}
+                </button>
+              `;
+            }).join("")}
+          </div>
 
-            return `
-              <button type="button" class="why-contam-row" data-code="${c.code}" style="width:100%;text-align:left;border-radius:16px;background:${isSel ? "var(--surface-2)" : "var(--surface-1)"};border:${isSel ? "2px solid var(--brand)" : "1px solid var(--border)"};padding:12px 14px;box-shadow:${isSel ? "var(--elevation)" : "none"}">
-                <div class="row-between">
-                  <div style="flex:1;min-width:0">
-                    <div class="title-medium" style="font-weight:800">${c.plainName}</div>
-                    <div class="body-small" style="font-size:11.5px">${c.category}</div>
-                  </div>
-                  <span class="mono" style="border-radius:8px;background:color-mix(in srgb, ${barColor} 20%, transparent);border:1px solid color-mix(in srgb, ${barColor} 55%, transparent);padding:4px 8px;font-size:10px;font-weight:700;color:${barColor}">
-                    ${statusLabel}
-                  </span>
-                </div>
-
-                <div style="position:relative;height:22px;margin:10px 0 8px">
-                  <div style="position:absolute;left:0;right:0;top:5px;height:12px;border-radius:999px;background:var(--surface-3)"></div>
-                  <div style="position:absolute;left:0;top:5px;height:12px;border-radius:999px;width:${fillPct}%;background:${barColor}"></div>
-                  ${phgPct !== null ? `<div style="position:absolute;top:0;bottom:0;left:${phgPct}%;border-left:2.5px dashed var(--caution)"></div>` : ""}
-                  ${mclPct !== null ? `<div style="position:absolute;top:0;bottom:0;left:${mclPct}%;border-left:3px solid var(--danger)"></div>` : ""}
-                </div>
-
-                <div class="flow-between mono" style="font-size:11px">
-                  <span style="font-size:11.5px;font-weight:700;color:var(--ink)">Detected: ${fmtVal(c.detected)} ${c.unit}</span>
-                  <span style="color:var(--caution)">Health Goal: ${c.phg !== null ? `${fmtVal(c.phg)} ${c.unit}` : "None"}</span>
-                  <span style="color:var(--ink-2)">Legal Limit: ${c.mcl !== null ? `${fmtVal(c.mcl)} ${c.unit}` : "No EPA Limit"}</span>
-                </div>
-              </button>
-            `;
-          }).join("")}
-        </div>
-
-        <!-- SelectedContaminantWhyBox -->
-        ${selectedContaminant ? `
           <div style="height:16px"></div>
-          <div style="border-radius:18px;background:var(--surface-2);border:1.5px solid color-mix(in srgb, var(--brand) 55%, transparent);padding:16px" class="stack-10">
-            <div class="flow-between">
-              <span class="mono" style="font-size:11.5px;font-weight:700;color:var(--brand)">WHY ${selectedContaminant.plainName.toUpperCase()} IS IN YOUR WATER</span>
-              <span class="label-small" style="color:var(--ink-2);letter-spacing:0">Measured in ${selectedContaminant.unitLong}</span>
-            </div>
-            <p class="body-medium" style="color:var(--ink);font-weight:500">${whyOrigin(selectedContaminant.category)}</p>
-            <p class="body-small">Health Impact: ${selectedContaminant.healthNote}</p>
 
-            <div style="border-radius:14px;background:var(--surface-1);border:1px solid color-mix(in srgb, var(--safe) 45%, transparent);padding:12px 14px" class="row-between">
-              <div style="flex:1;display:flex;flex-direction:column;gap:3px">
-                <div class="mono" style="font-size:10.5px;font-weight:700;color:var(--safe)">RECOMMENDED HOME FILTER</div>
-                <p class="body-small" style="color:var(--ink)">${nsfRemedy(selectedContaminant.category)}</p>
+          <!-- WhyContaminantBenchmarkGraphic -->
+          <div style="border-radius:20px;background:var(--surface-0);border:1px solid var(--border-strong);padding:16px" class="stack-12">
+            <!-- Plain-English Color Key Box -->
+            <div style="border-radius:14px;background:var(--surface-1);border:1px solid var(--border);padding:12px" class="stack-8">
+              <div class="mono" style="font-size:10px;font-weight:700;color:var(--brand)">HOW TO READ THIS CHART</div>
+              <div class="flow-row" style="gap:14px">
+                <span style="display:inline-flex;align-items:center;gap:6px;font-family:var(--font-display);font-size:10.5px;font-weight:600;color:var(--ink)">
+                  <i style="width:10px;height:10px;border-radius:999px;background:var(--safe);display:inline-block"></i>Safe (Under Health Goal)
+                </span>
+                <span style="display:inline-flex;align-items:center;gap:6px;font-family:var(--font-display);font-size:10.5px;font-weight:600;color:var(--ink)">
+                  <i style="width:10px;height:10px;border-radius:999px;background:var(--caution);display:inline-block"></i>Above Health Goal (Still Legal)
+                </span>
+                <span style="display:inline-flex;align-items:center;gap:6px;font-family:var(--font-display);font-size:10.5px;font-weight:600;color:var(--ink)">
+                  <i style="width:10px;height:10px;border-radius:999px;background:var(--danger);display:inline-block"></i>Over EPA Legal Limit
+                </span>
               </div>
-              <button type="button" id="flagContaminantIssueBtn" class="outlined-brand-btn" style="padding:6px 12px">
-                ${SVG.add}
-                <span>Report ${selectedContaminant.plainName.split(" ")[0]}</span>
-              </button>
+              <div class="body-small" style="font-size:11.5px">• Yellow Dashed Marker = Ideal Health Goal &nbsp; • Red Solid Marker = EPA Legal Limit</div>
             </div>
+
+            ${filtered.map((c) => {
+              const isSel = c.code === selectedContaminant.code;
+              const barColor = c.exceedsMcl ? "var(--danger)" : (c.exceedsHealthGoal ? "var(--caution)" : "var(--safe)");
+              const statusLabel = c.exceedsMcl ? "OVER LEGAL LIMIT" : (c.exceedsHealthGoal ? "ABOVE HEALTH GOAL" : "SAFE LEVEL");
+
+              const maxScale = (c.mcl !== null && c.mcl > 0)
+                ? Math.max(c.mcl * 1.30, c.detected * 1.15)
+                : ((c.phg !== null && c.phg > 0) ? Math.max(c.phg * 4.0, c.detected * 1.15) : Math.max(c.detected * 1.5, 1.0));
+
+              const fillPct = Math.min(100, Math.max(6, (c.detected / maxScale) * 100));
+              const phgPct = c.phg !== null ? Math.min(94, Math.max(6, (c.phg / maxScale) * 100)) : null;
+              const mclPct = c.mcl !== null ? Math.min(96, Math.max(12, (c.mcl / maxScale) * 100)) : null;
+
+              return `
+                <button type="button" class="why-contam-row" data-code="${c.code}" style="width:100%;text-align:left;border-radius:16px;background:${isSel ? "var(--surface-2)" : "var(--surface-1)"};border:${isSel ? "2px solid var(--brand)" : "1px solid var(--border)"};padding:12px 14px;box-shadow:${isSel ? "var(--elevation)" : "none"}">
+                  <div class="row-between">
+                    <div style="flex:1;min-width:0">
+                      <div class="title-medium" style="font-weight:800">${c.plainName}</div>
+                      <div class="body-small" style="font-size:11.5px">${c.category}</div>
+                    </div>
+                    <span class="mono" style="border-radius:8px;background:color-mix(in srgb, ${barColor} 20%, transparent);border:1px solid color-mix(in srgb, ${barColor} 55%, transparent);padding:4px 8px;font-size:10px;font-weight:700;color:${barColor}">
+                      ${statusLabel}
+                    </span>
+                  </div>
+
+                  <div style="position:relative;height:22px;margin:10px 0 8px">
+                    <div style="position:absolute;left:0;right:0;top:5px;height:12px;border-radius:999px;background:var(--surface-3)"></div>
+                    <div style="position:absolute;left:0;top:5px;height:12px;border-radius:999px;width:${fillPct}%;background:${barColor}"></div>
+                    ${phgPct !== null ? `<div style="position:absolute;top:0;bottom:0;left:${phgPct}%;border-left:2.5px dashed var(--caution)"></div>` : ""}
+                    ${mclPct !== null ? `<div style="position:absolute;top:0;bottom:0;left:${mclPct}%;border-left:3px solid var(--danger)"></div>` : ""}
+                  </div>
+
+                  <div class="flow-between mono" style="font-size:11px">
+                    <span style="font-size:11.5px;font-weight:700;color:var(--ink)">Detected: ${fmtVal(c.detected)} ${c.unit}</span>
+                    <span style="color:var(--caution)">Health Goal: ${c.phg !== null ? `${fmtVal(c.phg)} ${c.unit}` : "None"}</span>
+                    <span style="color:var(--ink-2)">Legal Limit: ${c.mcl !== null ? `${fmtVal(c.mcl)} ${c.unit}` : "No EPA Limit"}</span>
+                  </div>
+                </button>
+              `;
+            }).join("")}
           </div>
-        ` : ""}
-      </section>
+
+          <!-- SelectedContaminantWhyBox -->
+          ${selectedContaminant ? `
+            <div style="height:16px"></div>
+            <div style="border-radius:18px;background:var(--surface-2);border:1.5px solid color-mix(in srgb, var(--brand) 55%, transparent);padding:16px" class="stack-10">
+              <div class="flow-between">
+                <span class="mono" style="font-size:11.5px;font-weight:700;color:var(--brand)">ABOUT ${selectedContaminant.plainName.toUpperCase()}</span>
+                <span class="label-small" style="color:var(--ink-2);letter-spacing:0">Measured in ${selectedContaminant.unitLong}</span>
+              </div>
+              <p class="body-medium" style="color:var(--ink);font-weight:500">${whyOrigin(selectedContaminant.category)}</p>
+              <p class="body-small">Health Impact: ${selectedContaminant.healthNote}</p>
+
+              <div style="border-radius:14px;background:var(--surface-1);border:1px solid color-mix(in srgb, var(--safe) 45%, transparent);padding:12px 14px" class="stack-10">
+                <div class="row-between">
+                  <div class="mono" style="font-size:10.5px;font-weight:700;color:var(--safe)">RECOMMENDED HOME FILTER</div>
+                  <span class="mono" style="border-radius:6px;background:var(--caution-bg);border:1px solid color-mix(in srgb, var(--caution) 40%, transparent);padding:2px 7px;font-size:9px;font-weight:700;color:var(--caution)">SUGGESTED LINKS · AMAZON</span>
+                </div>
+                <p class="body-small" style="color:var(--ink)">${nsfRemedy(selectedContaminant.category)}</p>
+                <div class="flow-row" style="gap:8px">
+                  <a href="${contaminantAmazonFilterUrl(selectedContaminant)}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;border-radius:11px;background:var(--safe);color:#FFFFFF;padding:6px 12px;display:inline-flex;align-items:center;gap:5px;font-family:var(--font-display);font-size:11px;font-weight:700">
+                    <span>Shop NSF Filter on Amazon</span>
+                    ${SVG.openInNew}
+                  </a>
+                  <a href="${contaminantAmazonTestKitUrl(selectedContaminant)}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;border-radius:11px;background:transparent;border:1px solid color-mix(in srgb, var(--caution) 65%, transparent);color:var(--caution);padding:6px 11px;display:inline-flex;align-items:center;gap:4px;font-family:var(--font-display);font-size:11px;font-weight:700">
+                    <span>${selectedContaminant.plainName.split(" ")[0]} Test Kit</span>
+                    ${SVG.openInNew}
+                  </a>
+                  <button type="button" id="flagContaminantIssueBtn" class="outlined-brand-btn" style="border-radius:11px;padding:6px 11px">
+                    ${SVG.add}
+                    <span>Report ${selectedContaminant.plainName.split(" ")[0]}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          ` : ""}
+        </section>
+
+        <!-- Card 2: Suggested Filtration Systems & Home Test Kits (Amazon Partner Links) -->
+        ${renderSuggestedMarketplaceHtml(
+          "RECOMMENDED FILTERS & TEST KITS",
+          `Matched Filters & Lab Kits for ${r.name}`,
+          `NSF/ANSI-certified home filtration systems and drinking water test kits tailored to ZIP ${r.zip}'s water report.`,
+          suggestedProducts,
+          "var(--caution)",
+          selectedContaminant ? selectedContaminant.code : null
+        )}
+      </div>
     `;
 
     holder.querySelectorAll(".why-filter-chip").forEach((b) => {
@@ -2728,7 +3054,7 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
         <!-- Card 1: Unified 1Y / 5Y / 10Y Canvas Timeline -->
         <section class="surface-card">
           <div class="flow-between">
-            <span class="pillar-badge" style="color:var(--brand);background:var(--brand-soft);border:1px solid color-mix(in srgb, var(--brand) 30%, transparent)">04 · WHEN (1Y / 5Y / 10Y TIMELINE)</span>
+            <span class="pillar-badge" style="color:var(--brand);background:var(--brand-soft);border:1px solid color-mix(in srgb, var(--brand) 30%, transparent)">QUALITY TRENDS (1Y / 5Y / 10Y)</span>
             <div style="border-radius:12px;background:var(--surface-0);padding:3px;display:flex;gap:4px">
               ${[["ONE_YEAR", "1Y"], ["FIVE_YEAR", "5Y"], ["TEN_YEAR", "10Y"]].map(([tfKey, shortLbl]) => {
                 const active = state.whenTimeframe === tfKey;
@@ -2742,9 +3068,9 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
           </div>
 
           <div style="height:10px"></div>
-          <h3 class="headline-medium">${series.label} Trajectory (${deltaPts >= 0 ? `+${deltaPts}` : `${deltaPts}`} pts)</h3>
+          <h3 class="headline-medium">${series.label} Trend (${deltaPts >= 0 ? `+${deltaPts}` : `${deltaPts}`} pts)</h3>
           <div style="height:4px"></div>
-          <p class="body-small">Longitudinal curve for ${selectedContaminant.name.split(" (")[0]} &amp; EPA compliance events. Tap any node on the timeline to inspect that period.</p>
+          <p class="body-small">Historical trend for ${selectedContaminant.plainName} and water quality scores. Tap any point on the line to inspect that period.</p>
 
           <div style="height:16px"></div>
 
@@ -2760,7 +3086,7 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
                   <i style="width:10px;height:10px;border-radius:999px;background:var(--caution);display:inline-block"></i>Gold Dashed Line = ${selectedContaminant.plainName} (${selectedContaminant.unit})
                 </span>
                 <span style="display:inline-flex;align-items:center;gap:6px;font-family:var(--font-display);font-size:10.5px;font-weight:600;color:var(--ink)">
-                  <i style="width:10px;height:10px;border-radius:999px;background:var(--danger);display:inline-block"></i>Red Dot = EPA Violation Event
+                  <i style="width:10px;height:10px;border-radius:999px;background:var(--danger);display:inline-block"></i>Red Dot = Past Compliance Notice
                 </span>
               </div>
             </div>
@@ -2823,7 +3149,7 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
                   <div class="mono" style="font-size:12px;font-weight:800;color:var(--caution);margin-top:2px">${fmtVal(contValAtPoint)} ${selectedContaminant.unit}</div>
                 </div>
                 <div style="border-radius:12px;background:var(--surface-1);border:1px solid var(--border);padding:8px 10px">
-                  <div class="mono" style="font-size:9.5px;font-weight:700;color:var(--ink-2)">EPA VIOLATIONS</div>
+                  <div class="mono" style="font-size:9.5px;font-weight:700;color:var(--ink-2)">NOTICES</div>
                   <div class="mono" style="font-size:12px;font-weight:800;color:${selectedPoint.violationCount > 0 ? "var(--danger)" : "var(--safe)"};margin-top:2px">${selectedPoint.violationCount === 0 ? "None (0)" : `${selectedPoint.violationCount} Logged`}</div>
                 </div>
               </div>
@@ -2833,11 +3159,11 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
           </div>
         </section>
 
-        <!-- Card 2: 10-Year EPA SDWIS Compliance & Violation Log -->
+        <!-- Card 2: Past 10-Year Compliance & Testing History -->
         <section class="surface-card">
-          <div class="mono" style="font-size:11px;font-weight:700;color:var(--brand)">10-YEAR EPA SDWIS COMPLIANCE LOG (${r.violations.length})</div>
+          <div class="mono" style="font-size:11px;font-weight:700;color:var(--brand)">PAST 10-YEAR WATER SYSTEM RECORDS (${r.violations.length})</div>
           <div style="height:4px"></div>
-          <h3 class="title-large">Historical Monitoring &amp; Enforcement Events</h3>
+          <h3 class="title-large">Past Testing &amp; Treatment Notices</h3>
           <div style="height:12px"></div>
           <div class="stack-10">
             ${r.violations.slice(0, 6).map((v) => {
@@ -2855,12 +3181,12 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
           </div>
         </section>
 
-        <!-- Card 3: Cloud Location History Snapshots -->
+        <!-- Card 3: Saved Location Snapshots -->
         <section class="surface-card">
           <div class="flow-between">
             <div style="flex:1;min-width:180px">
-              <h3 class="title-large">Cloud Location History Snapshots</h3>
-              <p class="body-small">Track longitudinal score drift for ${r.name} in Firebase Firestore.</p>
+              <h3 class="title-large">Saved Report Snapshots</h3>
+              <p class="body-small">Save a copy of ${r.name}'s report to compare over time.</p>
             </div>
             ${state.isGuest ? `
               <button type="button" id="whenGuestSignInBtn" class="outlined-brand-btn">
@@ -2877,18 +3203,18 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
 
           ${state.isGuest ? `
             <div style="border-radius:14px;background:var(--surface-2);padding:14px">
-              <p class="body-small">Sign in with Google to record timestamped location history snapshots to Firebase Firestore.</p>
+              <p class="body-small">Sign in with Google to save timestamped report snapshots for this ZIP code.</p>
             </div>
           ` : (matchingHistory.length === 0 ? `
             <div style="border-radius:14px;background:var(--surface-2);padding:14px">
-              <p class="body-small">No saved snapshots for this system yet. Tap 'Save Snapshot' above to store a timestamped baseline.</p>
+              <p class="body-small">No saved snapshots for this system yet. Tap 'Save Snapshot' above to bookmark this report.</p>
             </div>
           ` : `
             <div class="stack-8">
               ${matchingHistory.slice(0, 4).map((snap) => `
                 <div style="border-radius:12px;background:var(--surface-2);padding:10px 14px" class="row-between">
                   <span class="body-small">${snap.createdAtText}</span>
-                  <span class="mono" style="font-size:11px;color:var(--ink)">${snap.exceedsHealthGoalCount} &gt; PHG · ${snap.violationCount} Events</span>
+                  <span class="mono" style="font-size:11px;color:var(--ink)">${snap.exceedsHealthGoalCount} Above Goal · ${snap.violationCount} Notices</span>
                 </div>
               `).join("")}
             </div>
@@ -2935,20 +3261,20 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
   function getFormattedShareText(r) {
     const topC = r.contaminants[0];
     const contLine = topC
-      ? `• WHY (${topC.name}): ${Number(topC.detected).toFixed(2)} ${topC.unit} (Legal Limit: ${topC.mcl !== null ? Number(topC.mcl).toFixed(2) : "N/A"} ${topC.unit})`
-      : "• WHY: Key parameters within federal drinking water limits";
+      ? `• Key Contaminant (${topC.plainName}): ${Number(topC.detected).toFixed(2)} ${topC.unit} (Legal Limit: ${topC.mcl !== null ? Number(topC.mcl).toFixed(2) : "N/A"} ${topC.unit})`
+      : "• Water Quality: Key parameters within federal drinking water limits";
     const d5 = r.fiveYearScoreDelta >= 0 ? `+${r.fiveYearScoreDelta}` : `${r.fiveYearScoreDelta}`;
     const d10 = r.tenYearScoreDelta >= 0 ? `+${r.tenYearScoreDelta}` : `${r.tenYearScoreDelta}`;
     return [
-      `H2Know 4W Water Quality Report — ZIP ${r.zip}`,
-      `Utility: ${r.name} (EPA ID: ${r.pwsid})`,
-      `Overall Score: ${r.qualityScore}/100 (Risk Level: ${r.riskLevel.toUpperCase()})`,
-      `• WHO: Serves ${r.population.toLocaleString()} residents in ${r.city}, ${r.state}`,
-      `• WHERE: ${r.sourceType} · ${r.sourceDescription}`,
+      `H2Know Tap Water Report — ZIP ${r.zip}`,
+      `Provider: ${r.name} (${r.city}, ${r.state})`,
+      `Water Quality Score: ${r.qualityScore}/100 (Risk Level: ${r.riskLevel.toUpperCase()})`,
+      `• People Served: ${r.population.toLocaleString()} residents`,
+      `• Water Source: ${r.sourceType}`,
       contLine,
-      `• WHEN: 5Y Trend ${d5} pts · 10Y Trend ${d10} pts · ${r.violations.length} EPA compliance records (10Y)`,
+      `• History: 5Y Trend ${d5} pts · 10Y Trend ${d10} pts · ${r.violations.length} past compliance records (10Y)`,
       "",
-      "Source: Public U.S. EPA SDWIS & U.S. Drought Monitor records via H2Know (Aegis Civic Labs)."
+      "Source: Public U.S. EPA & U.S. Drought Monitor records via H2Know (Aegis Civic Labs)."
     ].join("\n");
   }
 
@@ -2959,7 +3285,7 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
     const surface = $("snapshotDialogSurface");
     const scoreColor = r.qualityScore >= 80 ? "var(--safe)" : (r.qualityScore >= 60 ? "var(--caution)" : "var(--danger)");
     const topContam = r.contaminants[0];
-    const whyLabel = topContam ? `${topContam.name.split(" (")[0]}: ${Number(topContam.detected).toFixed(1)} ${topContam.unit}` : "Within legal limits";
+    const whyLabel = topContam ? `${topContam.plainName}: ${Number(topContam.detected).toFixed(1)} ${topContam.unit}` : "Within legal limits";
     const delta5Y = r.fiveYearScoreDelta >= 0 ? `+${r.fiveYearScoreDelta}` : `${r.fiveYearScoreDelta}`;
 
     surface.innerHTML = `
@@ -2974,14 +3300,14 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
 
         <div style="border-radius:18px;background:var(--surface-0);border:1.5px solid color-mix(in srgb, ${scoreColor} 60%, var(--border-strong));padding:16px" class="stack-12">
           <div class="row-between mono" style="font-size:10px;font-weight:700">
-            <span style="color:var(--brand)">H2KNOW WATER AUDIT</span>
+            <span style="color:var(--brand)">H2KNOW WATER REPORT</span>
             <span style="color:var(--ink-2)">ZIP ${r.zip} · ${r.city}, ${r.state}</span>
           </div>
 
           <div class="row-between">
             <div style="flex:1;min-width:0">
               <div class="title-medium" style="font-weight:800">${r.name}</div>
-              <div class="mono" style="font-size:10.5px;color:var(--ink-3);margin-top:2px">EPA PWSID ${r.pwsid}</div>
+              <div class="mono" style="font-size:10.5px;color:var(--ink-3);margin-top:2px">${r.city}, ${r.state} · System ${r.pwsid}</div>
             </div>
             <div style="border-radius:14px;background:color-mix(in srgb, ${scoreColor} 16%, transparent);border:1.5px solid color-mix(in srgb, ${scoreColor} 60%, transparent);padding:8px 14px;text-align:center">
               <div class="mono" style="font-size:24px;font-weight:800;color:${scoreColor};line-height:1">${r.qualityScore}</div>
@@ -2991,24 +3317,24 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
 
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
             <div style="border-radius:8px;background:var(--surface-2);border:1px solid var(--border);padding:6px 8px;display:flex;align-items:center;gap:6px">
-              <span class="mono" style="font-size:9px;font-weight:700;color:var(--brand)">WHO</span>
-              <span class="label-small" style="color:var(--ink);letter-spacing:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Serves ${r.population.toLocaleString()}</span>
+              <span class="mono" style="font-size:9px;font-weight:700;color:var(--brand)">SERVES</span>
+              <span class="label-small" style="color:var(--ink);letter-spacing:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.population.toLocaleString()} people</span>
             </div>
             <div style="border-radius:8px;background:var(--surface-2);border:1px solid var(--border);padding:6px 8px;display:flex;align-items:center;gap:6px">
-              <span class="mono" style="font-size:9px;font-weight:700;color:var(--brand)">WHERE</span>
+              <span class="mono" style="font-size:9px;font-weight:700;color:var(--brand)">SOURCE</span>
               <span class="label-small" style="color:var(--ink);letter-spacing:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.sourceType}</span>
             </div>
             <div style="border-radius:8px;background:var(--surface-2);border:1px solid var(--border);padding:6px 8px;display:flex;align-items:center;gap:6px">
-              <span class="mono" style="font-size:9px;font-weight:700;color:var(--brand)">WHY</span>
+              <span class="mono" style="font-size:9px;font-weight:700;color:var(--brand)">QUALITY</span>
               <span class="label-small" style="color:var(--ink);letter-spacing:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${whyLabel}</span>
             </div>
             <div style="border-radius:8px;background:var(--surface-2);border:1px solid var(--border);padding:6px 8px;display:flex;align-items:center;gap:6px">
-              <span class="mono" style="font-size:9px;font-weight:700;color:var(--brand)">WHEN</span>
+              <span class="mono" style="font-size:9px;font-weight:700;color:var(--brand)">TREND</span>
               <span class="label-small" style="color:var(--ink);letter-spacing:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${delta5Y} pts (5Y Trend)</span>
             </div>
           </div>
 
-          <div class="mono" style="font-size:8.5px;color:var(--ink-3);text-align:center">Data Source: Public U.S. EPA SDWIS Record · Independent Civic Audit</div>
+          <div class="mono" style="font-size:8.5px;color:var(--ink-3);text-align:center">Data Source: Public U.S. EPA &amp; Drought Monitor Records</div>
         </div>
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -3054,14 +3380,14 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
     const categories = ["Taste / Odor", "Discoloration", "Pressure Loss", "Lead / Pipe Concern", "Boil Notice"];
     let selectedCategory = prefillContaminant?.category === "Metals" ? "Lead / Pipe Concern" : "Taste / Odor";
     let severity = prefillContaminant?.exceedsMcl ? "high" : "medium";
-    const initTitle = prefillContaminant ? `${prefillContaminant.name.split(" (")[0]} (${fmtVal(prefillContaminant.detected)} ${prefillContaminant.unit}) concern` : "";
-    const initDesc = prefillContaminant ? `Flagged from WHY Lab Benchmark chart: ${prefillContaminant.name} detected at ${fmtVal(prefillContaminant.detected)} ${prefillContaminant.unit} in ${r.name}.` : "";
+    const initTitle = prefillContaminant ? `${prefillContaminant.plainName} (${fmtVal(prefillContaminant.detected)} ${prefillContaminant.unit}) concern` : "";
+    const initDesc = prefillContaminant ? `Flagged from Water Quality chart: ${prefillContaminant.plainName} detected at ${fmtVal(prefillContaminant.detected)} ${prefillContaminant.unit} in ${r.name}.` : "";
 
     function renderDialogForm() {
       surface.innerHTML = `
         <div class="stack-10">
           <h3 class="title-large">Report Water Quality Issue</h3>
-          <p class="body-small" style="color:var(--ink-3)">Saved directly to Firebase Firestore in the WHO tab for ${r.name} (ZIP ${r.zip}).</p>
+          <p class="body-small" style="color:var(--ink-3)">Share a local water issue for ${r.name} (ZIP ${r.zip}).</p>
 
           <div class="label-small">CATEGORY</div>
           <div class="flow-row" style="gap:6px">
@@ -3085,7 +3411,7 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
 
           <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:6px">
             <button type="button" id="cancelIssueDialogBtn" style="padding:8px 12px;font-family:var(--font-display);font-size:13px;font-weight:600;color:var(--ink-2)">Cancel</button>
-            <button type="button" id="submitIssueDialogBtn" class="solid-brand-btn" style="border-radius:12px">Save to Firestore</button>
+            <button type="button" id="submitIssueDialogBtn" class="solid-brand-btn" style="border-radius:12px">Submit Report</button>
           </div>
         </div>
       `;
@@ -3111,7 +3437,7 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
         persistCloudState();
         backdrop.classList.add("hidden");
         state.activeTab = "WHO";
-        showCloudStatusBanner("Water quality issue synced to Firebase Firestore in the WHO tab.");
+        showCloudStatusBanner("Your water quality report has been added to the Overview tab.");
         renderApp();
       });
     }
@@ -3175,8 +3501,8 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
     $("workspaceScroll").scrollTo({ top: 0, behavior: "smooth" });
   });
 
-  // Floating 4W Dock Tabs
-  document.querySelectorAll("#floatingFourWDock .dock-tab-pill").forEach((btn) => {
+  // Top Strip & Floating Dock Tabs
+  document.querySelectorAll("#activeFourWHeaderStrip .top-strip-tab-btn, #floatingFourWDock .dock-tab-pill").forEach((btn) => {
     btn.addEventListener("click", () => {
       state.activeTab = btn.getAttribute("data-tab");
       renderApp();
@@ -3188,7 +3514,7 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
     else openReportIssueDialog(null);
   });
 
-  // Horizontal touch swipe between 4W tabs
+  // Horizontal touch swipe between tabs
   const TAB_KEYS = ["WHO", "WHERE", "WHY", "WHEN"];
   let touchX = null, touchY = null;
   $("workspaceScroll").addEventListener("touchstart", (e) => {
@@ -3252,9 +3578,9 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
     if (state.screen === "results" && state.activeReport) {
       openSnapshotDialog();
     } else {
-      const appText = "H2Know — Civic Tap Water Intelligence\nInspect the WHO, WHERE, WHY, and WHEN of any U.S. ZIP code's tap water using public U.S. EPA SDWIS & U.S. Drought Monitor records.\nPublished independently by Aegis Civic Labs.";
+      const appText = "H2Know — U.S. Tap Water Quality & Filter Guide\nCheck your local tap water score, contaminant levels, and matched home water filters for any U.S. ZIP code using public EPA & U.S. Drought Monitor records.\nPublished independently by Aegis Civic Labs.";
       if (navigator.share) {
-        navigator.share({ title: "H2Know — Know Your Tap Water", text: appText, url: window.location.href }).catch(() => {});
+        navigator.share({ title: "H2Know — Tap Water Quality & Filter Guide", text: appText, url: window.location.href }).catch(() => {});
       } else if (navigator.clipboard) {
         navigator.clipboard.writeText(appText);
       }
