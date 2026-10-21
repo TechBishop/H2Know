@@ -1,0 +1,6 @@
+{
+  "name": "H2Know",
+  "description": "Civic Water Quality Intelligence, Historical Trends (1Y/5Y/10Y), Quality Change Alerts, Dual MCL & Health Goal Benchmarks, and Community Issue Tracker.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

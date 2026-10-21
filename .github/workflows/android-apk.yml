@@ -1,0 +1,64 @@
+name: Build & Release H2Know Android APK
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      - name: Decode debug keystore if present
+        run: |
+          if [ -f "debug.keystore.base64" ]; then
+            base64 -d debug.keystore.base64 > debug.keystore
+          fi
+          if [ ! -f ".env" ] && [ -f ".env.example" ]; then
+            cp .env.example .env
+          fi
+
+      - name: Build Debug APK
+        run: gradle assembleDebug
+
+      - name: Rename APK for easy phone download
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk H2Know-latest.apk
+
+      - name: Upload Installable APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: H2Know-Tester-APK
+          path: H2Know-latest.apk
+          if-no-files-found: error
+
+      - name: Publish to GitHub Releases (1-Tap Phone Download)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest-test
+          name: "H2Know — Latest Tester Build"
+          body: |
+            ### Install on Android Phone
+            1. Tap **`H2Know-latest.apk`** below under **Assets** to download on your Android phone.
+            2. Open the downloaded file and allow **Install unknown apps** if prompted.
+          files: H2Know-latest.apk
+          prerelease: true
+          make_latest: true

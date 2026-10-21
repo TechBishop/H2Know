@@ -1,0 +1,1575 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0B0E11" />
+<meta name="description" content="H2Know — Check your tap water quality. Find your local water provider, see contaminants against EPA limits, violations, drought context, and practical filter tips." />
+<meta name="author" content="Bishop's Folly" />
+<meta name="application-name" content="H2Know" />
+<title>H2Know — Know Your Tap Water</title>
+<style>
+:root {
+  --surface-0: #f4f6f8; --surface-1: #ffffff; --surface-2: #eef1f5;
+  --surface-3: #e4e9ef; --surface-4: #d8dee6;
+  --ink: #12161b; --ink-2: #3d4654; --ink-3: #6b7585;
+  --brand: #2b7fd4; --brand-soft: rgba(43,127,212,.12); --brand-glow: rgba(43,127,212,.25);
+  --safe: #1a8f5c; --safe-bg: rgba(26,143,92,.12);
+  --caution: #c4841d; --caution-bg: rgba(196,132,29,.12);
+  --danger: #c43c3c; --danger-bg: rgba(196,60,60,.12);
+  --info: #2b7fd4; --info-bg: rgba(43,127,212,.12);
+  --border: rgba(15,23,42,.08);
+  --shadow: 0 1px 3px rgba(15,23,42,.06), 0 4px 12px rgba(15,23,42,.04);
+  --shadow-el: 0 4px 16px rgba(15,23,42,.1);
+  --radius: 1rem;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif;
+  --donate: #ff5e5b;
+}
+html.dark {
+  --surface-0: #0b0e11; --surface-1: #12161b; --surface-2: #1a1f26;
+  --surface-3: #232933; --surface-4: #2c3440;
+  --ink: #e6e8eb; --ink-2: #a8b0bb; --ink-3: #6e7885;
+  --brand: #4a8fc9; --brand-soft: rgba(74,143,201,.14); --brand-glow: rgba(74,143,201,.22);
+  --safe: #3d9b6e; --safe-bg: rgba(61,155,110,.14);
+  --caution: #c9a04a; --caution-bg: rgba(201,160,74,.14);
+  --danger: #c96b6b; --danger-bg: rgba(201,107,107,.14);
+  --info: #4a8fc9; --info-bg: rgba(74,143,201,.14);
+  --border: rgba(255,255,255,.06);
+  --shadow: 0 0 0 1px rgba(255,255,255,.04), 0 4px 24px rgba(0,0,0,.35);
+  --shadow-el: 0 0 0 1px rgba(255,255,255,.06), 0 8px 32px rgba(0,0,0,.45), 0 0 40px rgba(74,143,201,.06);
+  --donate: #ff7a77;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0; min-height: 100vh; min-height: 100dvh;
+  font-family: var(--font);
+  background: var(--surface-0); color: var(--ink);
+  -webkit-font-smoothing: antialiased; line-height: 1.5;
+}
+button, input { font: inherit; }
+button { cursor: pointer; border: none; background: none; color: inherit; }
+a { color: var(--brand); }
+:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.hidden { display: none !important; }
+
+.app-header {
+  position: sticky; top: 0; z-index: 40;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 3.5rem; padding: 0 .75rem 0 1rem;
+  padding-top: max(0px, env(safe-area-inset-top));
+  background: color-mix(in srgb, var(--surface-0) 80%, transparent);
+  backdrop-filter: blur(12px); border-bottom: 1px solid var(--border);
+}
+.brand {
+  display: flex; align-items: center; gap: .65rem; min-width: 0;
+  text-align: left; padding: 0; border: none; background: none; color: inherit;
+  border-radius: .75rem; cursor: pointer;
+}
+.brand:hover .brand-icon { filter: brightness(1.1); }
+.brand:hover h1 { color: var(--brand); }
+.brand-icon {
+  width: 2.25rem; height: 2.25rem; border-radius: .75rem;
+  background: var(--brand-soft); color: var(--brand);
+  display: grid; place-items: center; flex-shrink: 0;
+}
+.brand h1 { margin: 0; font-size: 1rem; font-weight: 700; letter-spacing: -.02em; }
+.brand .sub { font-size: .7rem; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 42vw; }
+.header-actions { display: flex; align-items: center; gap: .25rem; flex-shrink: 0; }
+.icon-btn {
+  width: 2.5rem; height: 2.5rem; border-radius: .75rem;
+  display: grid; place-items: center; color: var(--ink-2);
+}
+.icon-btn:hover { background: var(--surface-2); color: var(--ink); }
+.btn-donate {
+  display: inline-flex; align-items: center; gap: .35rem;
+  height: 2rem; padding: 0 .7rem; border-radius: 999px;
+  font-size: .72rem; font-weight: 700; text-decoration: none;
+  background: color-mix(in srgb, var(--donate) 18%, transparent);
+  color: var(--donate); white-space: nowrap;
+}
+.btn-donate:hover { filter: brightness(1.1); }
+.main { max-width: 72rem; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
+
+.card {
+  background: var(--surface-1); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 1.25rem;
+}
+.card.elevated { background: var(--surface-2); box-shadow: var(--shadow-el); }
+.card h2 { margin: 0 0 .25rem; font-size: 1.05rem; }
+.card .muted { color: var(--ink-3); font-size: .85rem; margin: 0; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+  height: 2.75rem; padding: 0 1.15rem; border-radius: .85rem;
+  font-size: .9rem; font-weight: 600; transition: .15s ease;
+}
+.btn-primary { background: var(--brand); color: #fff; box-shadow: 0 0 20px var(--brand-glow); width: 100%; }
+.btn-primary:hover { filter: brightness(1.08); }
+.btn-primary:disabled { opacity: .55; cursor: not-allowed; }
+.btn-ghost { height: 2rem; padding: 0 .75rem; border-radius: .65rem; font-size: .8rem; color: var(--ink-2); }
+.btn-ghost:hover { background: var(--surface-2); }
+
+.hero { max-width: 36rem; margin: 1.5rem auto 0; }
+.hero-card { padding: 1.75rem 1.5rem; }
+.hero-icon {
+  width: 3.5rem; height: 3.5rem; margin: 0 auto 1rem; border-radius: 1rem;
+  background: var(--brand-soft); color: var(--brand); display: grid; place-items: center;
+  box-shadow: 0 0 24px var(--brand-glow);
+}
+.hero h2 { text-align: center; font-size: 1.65rem; letter-spacing: -.03em; margin: 0 0 .5rem; }
+.hero .lead { text-align: center; color: var(--ink-2); font-size: .95rem; margin: 0 0 1.5rem; }
+.field label { display: block; font-size: .7rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); margin-bottom: .4rem; }
+.field input {
+  width: 100%; height: 3rem; border: 0; border-radius: .85rem;
+  background: var(--surface-0); color: var(--ink); padding: 0 1rem 0 2.5rem;
+  box-shadow: var(--shadow);
+}
+.input-wrap { position: relative; }
+.input-wrap svg { position: absolute; left: .9rem; top: 50%; transform: translateY(-50%); color: var(--ink-3); pointer-events: none; }
+.hint { text-align: center; font-size: .75rem; color: var(--ink-3); margin: .75rem 0 0; line-height: 1.4; }
+.alert { margin-top: 1rem; padding: .85rem 1rem; border-radius: .85rem; font-size: .875rem; }
+.alert-danger { background: var(--danger-bg); color: var(--danger); }
+
+.provider-zone { margin-top: 1.75rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
+.provider-banner {
+  border: 1px solid color-mix(in srgb, var(--brand) 35%, transparent);
+  background: color-mix(in srgb, var(--brand-soft) 60%, transparent);
+  border-radius: 1rem; padding: 1rem 1.15rem; text-align: center;
+  box-shadow: 0 0 28px var(--brand-glow); margin-bottom: 1rem;
+}
+.provider-banner .kicker { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--brand); margin: 0; }
+.provider-banner .title { margin: .35rem 0 0; font-size: .95rem; font-weight: 600; }
+.provider-banner .sub { margin: .35rem 0 0; font-size: .75rem; color: var(--ink-2); }
+.provider-list { list-style: none; margin: 0; padding: 0; max-height: 26rem; overflow: auto; display: flex; flex-direction: column; gap: .5rem; }
+.provider-list button {
+  width: 100%; text-align: left; display: flex; gap: .75rem; align-items: center;
+  padding: 1rem; border-radius: .85rem; background: var(--surface-0); box-shadow: var(--shadow);
+  transition: .15s ease;
+}
+.provider-list button:hover { background: var(--surface-2); box-shadow: var(--shadow-el); }
+.provider-list .ico {
+  width: 2.5rem; height: 2.5rem; border-radius: .75rem; flex-shrink: 0;
+  background: var(--brand-soft); color: var(--brand); display: grid; place-items: center;
+}
+.provider-list .name { font-weight: 600; font-size: .9rem; }
+.provider-list .meta { font-size: .72rem; color: var(--ink-3); margin-top: .1rem; }
+.provider-list .stats { font-size: .75rem; color: var(--ink-2); margin-top: .25rem; }
+.pill {
+  display: inline-block; font-size: .65rem; font-weight: 600; padding: .15rem .45rem;
+  border-radius: 999px; background: var(--brand-soft); color: var(--brand); margin-left: .4rem; vertical-align: middle;
+}
+.empty-providers { text-align: center; padding: 2rem 1rem; color: var(--ink-3); font-size: .875rem; }
+.spinner { width: 1.25rem; height: 1.25rem; border: 2px solid var(--border); border-top-color: var(--brand); border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-row { display: flex; flex-direction: column; align-items: center; gap: .75rem; padding: 2.5rem; color: var(--ink-2); font-size: .875rem; }
+
+.tabs {
+  position: sticky; top: 3.5rem; z-index: 30;
+  background: color-mix(in srgb, var(--surface-0) 90%, transparent);
+  backdrop-filter: blur(12px); border-bottom: 1px solid var(--border);
+}
+.tabs-inner {
+  max-width: 72rem; margin: 0 auto; padding: .5rem .5rem;
+  display: flex; gap: .25rem; overflow-x: auto; scrollbar-width: none;
+}
+.tabs-inner::-webkit-scrollbar { display: none; }
+.tab {
+  flex-shrink: 0; display: flex; align-items: center; gap: .4rem;
+  padding: .5rem .85rem; border-radius: .75rem; font-size: .8rem; font-weight: 600;
+  color: var(--ink-3); white-space: nowrap;
+}
+.tab:hover { background: var(--surface-2); color: var(--ink-2); }
+.tab.active { background: var(--brand-soft); color: var(--brand); box-shadow: 0 0 16px var(--brand-glow); }
+
+.grid-2 { display: grid; gap: 1rem; }
+.grid-3 { display: grid; gap: .75rem; grid-template-columns: repeat(3, 1fr); }
+@media (min-width: 900px) {
+  .grid-2.lg { grid-template-columns: 2fr 3fr; }
+  .grid-2.eq { grid-template-columns: 1fr 1fr; }
+}
+.section-title {
+  font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--ink-3); margin: 1.5rem 0 .75rem;
+}
+.badge {
+  display: inline-flex; align-items: center; gap: .35rem;
+  font-size: .7rem; font-weight: 600; padding: .25rem .65rem; border-radius: 999px;
+}
+.badge-safe { background: var(--safe-bg); color: var(--safe); }
+.badge-caution { background: var(--caution-bg); color: var(--caution); }
+.badge-danger { background: var(--danger-bg); color: var(--danger); }
+.badge-info { background: var(--info-bg); color: var(--info); }
+.badge-muted { background: var(--surface-3); color: var(--ink-2); }
+
+.gauge-wrap { position: relative; width: 100%; max-width: 220px; margin: 0 auto; }
+.gauge-wrap svg { width: 100%; height: auto; display: block; }
+.gauge-center {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; padding-top: .5rem; pointer-events: none;
+}
+.gauge-center .score { font-size: 2.75rem; font-weight: 800; letter-spacing: -.04em; line-height: 1; }
+.gauge-center .label { font-size: .85rem; font-weight: 600; color: var(--ink-2); margin-top: .15rem; }
+.gauge-center .risk { font-size: .7rem; color: var(--ink-3); text-transform: capitalize; margin-top: .15rem; }
+
+.info-row {
+  display: flex; gap: .65rem; padding: .65rem .75rem; border-radius: .75rem;
+  background: color-mix(in srgb, var(--surface-2) 70%, transparent); margin-bottom: .5rem;
+}
+.info-row .lbl { font-size: .65rem; color: var(--ink-3); }
+.info-row .val { font-size: .85rem; font-weight: 600; }
+.stat-chip { text-align: center; padding: .75rem .35rem; border-radius: .75rem; background: color-mix(in srgb, var(--surface-2) 70%, transparent); }
+.stat-chip .n { font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.stat-chip .l { font-size: .65rem; color: var(--ink-3); line-height: 1.2; }
+
+.alert-card { border-radius: 1rem; padding: 1rem; box-shadow: var(--shadow); }
+.alert-card.danger { background: var(--danger-bg); }
+.alert-card.caution { background: var(--caution-bg); }
+.alert-card.info { background: var(--info-bg); }
+.alert-card h3 { margin: 0 0 .35rem; font-size: .875rem; }
+.alert-card.danger h3 { color: var(--danger); }
+.alert-card.caution h3 { color: var(--caution); }
+.alert-card.info h3 { color: var(--info); }
+.alert-card p { margin: 0; font-size: .85rem; color: var(--ink-2); }
+
+.drought-seg { display: flex; gap: 3px; margin: .65rem 0 .35rem; }
+.drought-seg span { flex: 1; height: .7rem; border-radius: 2px; background: var(--surface-3); opacity: .4; }
+.drought-seg span.on { opacity: 1; }
+.drought-seg span.s0.on { background: var(--safe); }
+.drought-seg span.s1.on, .drought-seg span.s2.on { background: var(--caution); }
+.drought-seg span.s3.on, .drought-seg span.s4.on, .drought-seg span.s5.on { background: var(--danger); }
+.drought-labels { display: flex; justify-content: space-between; font-size: .6rem; color: var(--ink-3); }
+
+.cont-card {
+  background: color-mix(in srgb, var(--surface-2) 60%, transparent);
+  border-radius: .85rem; padding: 1rem; box-shadow: inset 0 0 0 1px var(--border);
+}
+.cont-card h3 { margin: 0; font-size: .9rem; }
+.bar-track { position: relative; height: 2rem; margin: .75rem 0 .5rem; }
+.bar-bg { position: absolute; left: 0; right: 0; top: 50%; height: .5rem; transform: translateY(-50%); border-radius: 999px; background: var(--surface-3); }
+.bar-fill {
+  position: absolute; left: 0; top: 50%; height: .65rem; transform: translateY(-50%);
+  border-radius: 999px; transition: width .4s ease;
+}
+.bar-mcl { position: absolute; top: 0; bottom: 0; width: 0; border-left: 2px solid var(--danger); }
+.bar-dot {
+  position: absolute; top: 50%; width: 1rem; height: 1rem; margin-left: -.5rem;
+  transform: translateY(-50%); border-radius: 50%; border: 2px solid var(--surface-1);
+}
+.cont-meta { display: flex; flex-wrap: wrap; gap: .5rem 1rem; font-size: .7rem; color: var(--ink-3); margin-bottom: .65rem; }
+.mult-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.mult-box { background: var(--surface-1); border-radius: .65rem; padding: .55rem .75rem; }
+.mult-box .k { font-size: .6rem; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-3); }
+.mult-box .v { font-size: 1.15rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.health-note {
+  margin-top: .75rem; padding-top: .65rem; border-top: 1px solid var(--border);
+  font-size: .7rem; color: var(--ink-3); line-height: 1.45;
+}
+.health-note strong { color: var(--ink-2); font-weight: 600; }
+
+.chips { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1rem; }
+.chip {
+  padding: .4rem .85rem; border-radius: 999px; font-size: .75rem; font-weight: 600;
+  background: var(--surface-2); color: var(--ink-2);
+}
+.chip.on { background: var(--brand); color: #fff; box-shadow: 0 0 14px var(--brand-glow); }
+
+.table-wrap { overflow-x: auto; margin: 0 -.25rem; }
+table { width: 100%; border-collapse: collapse; font-size: .8rem; min-width: 560px; }
+th { text-align: left; font-size: .7rem; color: var(--ink-3); font-weight: 600; padding: .5rem .4rem; border-bottom: 1px solid var(--border); }
+td { padding: .7rem .4rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+.num { font-variant-numeric: tabular-nums; }
+
+.vbar-row { display: grid; grid-template-columns: 3rem 1fr; gap: .5rem; align-items: center; margin-bottom: .5rem; }
+.vbar-row .yr { font-size: .75rem; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.vbar { height: 1.35rem; display: flex; border-radius: .35rem; overflow: hidden; background: var(--surface-3); min-width: 0; }
+.vbar i { display: block; height: 100%; }
+.vbar .h { background: var(--danger); }
+.vbar .m { background: var(--caution); }
+.vbar .t { background: var(--brand); }
+.vbar .o { background: var(--ink-3); }
+.vleg { display: flex; flex-wrap: wrap; gap: .75rem; font-size: .7rem; color: var(--ink-3); margin-top: .75rem; }
+.vleg span::before {
+  content: ""; display: inline-block; width: .55rem; height: .55rem; border-radius: 50%;
+  margin-right: .3rem; vertical-align: middle;
+}
+.vleg .h::before { background: var(--danger); }
+.vleg .m::before { background: var(--caution); }
+.vleg .t::before { background: var(--brand); }
+.vleg .o::before { background: var(--ink-3); }
+
+.viol-item {
+  background: color-mix(in srgb, var(--surface-2) 50%, transparent);
+  border-radius: .85rem; padding: .9rem 1rem; margin-bottom: .5rem;
+}
+.viol-item .top { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; margin-bottom: .35rem; }
+.viol-item .title { font-weight: 600; font-size: .875rem; }
+.viol-item .desc { font-size: .8rem; color: var(--ink-2); margin: 0; }
+
+.flow { display: flex; flex-direction: column; gap: .65rem; }
+@media (min-width: 768px) {
+  .flow { flex-direction: row; align-items: stretch; }
+  .flow-step { flex: 1; }
+  .flow-arrow { display: flex; align-items: center; color: var(--ink-3); }
+}
+.flow-step {
+  background: var(--surface-1); border-radius: .85rem; padding: 1rem; text-align: center; box-shadow: var(--shadow);
+}
+.flow-step .n { font-size: .65rem; font-weight: 700; text-transform: uppercase; color: var(--brand); letter-spacing: .06em; }
+.flow-step .t { font-weight: 600; font-size: .85rem; margin: .25rem 0; }
+.flow-step .d { font-size: .72rem; color: var(--ink-3); margin: 0; }
+.flow-arrow { text-align: center; font-size: 1.1rem; }
+
+.usage-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; margin-bottom: 1rem; text-align: center; }
+.usage-stats div { background: var(--surface-2); border-radius: .75rem; padding: .65rem .35rem; }
+.usage-stats .n { font-size: 1.35rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.usage-stats .l { font-size: .65rem; color: var(--ink-3); }
+.hbar { display: grid; grid-template-columns: 7rem 1fr 3rem; gap: .5rem; align-items: center; margin-bottom: .55rem; font-size: .75rem; color: var(--ink-2); }
+.hbar .track { height: 1.4rem; background: var(--surface-3); border-radius: .4rem; overflow: hidden; }
+.hbar .fill { height: 100%; border-radius: .4rem; }
+
+.action-item {
+  display: flex; gap: .75rem; padding: 1rem; border-radius: .85rem;
+  background: var(--surface-1); box-shadow: var(--shadow); margin-bottom: .5rem;
+}
+.action-num {
+  width: 2rem; height: 2rem; border-radius: .55rem; flex-shrink: 0;
+  display: grid; place-items: center; font-weight: 800; font-size: .85rem;
+}
+.action-num.high { background: var(--danger-bg); color: var(--danger); }
+.action-num.medium { background: var(--caution-bg); color: var(--caution); }
+.action-num.low { background: var(--surface-3); color: var(--ink-3); }
+.action-item h4 { margin: 0 0 .25rem; font-size: .9rem; }
+.action-item p { margin: 0; font-size: .8rem; color: var(--ink-2); }
+
+.filter-card { margin-bottom: .75rem; }
+.eff-track { height: .45rem; background: var(--surface-3); border-radius: 999px; overflow: hidden; margin-top: .35rem; }
+.eff-fill { height: 100%; border-radius: 999px; background: var(--brand); }
+
+.tip-list { list-style: none; margin: 0; padding: 0; }
+.tip-list li { display: flex; gap: .5rem; font-size: .85rem; color: var(--ink-2); margin-bottom: .45rem; }
+.tip-list li::before { content: "✓"; color: var(--safe); font-weight: 700; }
+
+.callout {
+  border-left: 3px solid var(--brand); background: color-mix(in srgb, var(--brand-soft) 40%, transparent);
+  border-radius: .75rem; padding: .9rem 1rem; font-size: .85rem; color: var(--ink-2); margin-bottom: 1rem;
+}
+.callout strong { color: var(--ink); }
+
+.site-footer {
+  text-align: center; font-size: .75rem; color: var(--ink-3); line-height: 1.55;
+  padding: 1.75rem 1.25rem 2.25rem; border-top: 1px solid var(--border); margin-top: 1.5rem;
+}
+.site-footer .brand-line { font-weight: 600; color: var(--ink-2); margin-bottom: .35rem; }
+.site-footer .legal { max-width: 28rem; margin: .5rem auto 0; font-size: .7rem; }
+.site-footer .donate-block {
+  margin: 1rem auto 0; max-width: 20rem; padding: .9rem 1rem;
+  border-radius: .85rem; background: var(--surface-1); box-shadow: var(--shadow);
+}
+.site-footer .donate-block p { margin: 0 0 .65rem; font-size: .8rem; color: var(--ink-2); }
+.site-footer .btn-donate-lg {
+  display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
+  width: 100%; height: 2.5rem; border-radius: .75rem; text-decoration: none;
+  font-weight: 700; font-size: .85rem;
+  background: var(--donate); color: #fff;
+}
+.skel { background: var(--surface-2); border-radius: .85rem; height: 8rem; position: relative; overflow: hidden; }
+.skel::after {
+  content: ""; position: absolute; inset: 0; transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--ink) 6%, transparent), transparent);
+  animation: shimmer 1.3s infinite;
+}
+@keyframes shimmer { to { transform: translateX(100%); } }
+</style>
+</head>
+<body>
+<header class="app-header">
+  <button type="button" class="brand" id="btnHome" title="Back to ZIP search" aria-label="H2Know home — back to ZIP search">
+    <div class="brand-icon" aria-hidden="true">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+    </div>
+    <div>
+      <h1>H2Know</h1>
+      <div class="sub" id="headerSub">Know your tap water</div>
+    </div>
+  </button>
+  <div class="header-actions">
+    <a class="btn-donate" id="btnDonateHeader" href="#" target="_blank" rel="noopener noreferrer" title="Support H2Know">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21s-7-4.35-9.5-8.5C.5 9 2.5 5 6.5 5c2 0 3.5 1.2 4.5 2.5C12 6.2 13.5 5 15.5 5c4 0 6 4 4 7.5C19 16.65 12 21 12 21z"/></svg>
+      Support
+    </a>
+    <button type="button" class="icon-btn hidden" id="btnReset" title="New search" aria-label="Back to ZIP search">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+    </button>
+    <button type="button" class="icon-btn" id="btnTheme" title="Toggle theme" aria-label="Toggle light or dark theme">
+      <svg id="iconSun" class="hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      <svg id="iconMoon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+    </button>
+  </div>
+</header>
+
+<section id="viewSearch" class="main">
+  <div class="hero">
+    <div class="card elevated hero-card">
+      <div class="hero-icon" aria-hidden="true">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+      </div>
+      <h2>Check your tap water</h2>
+      <p class="lead">Enter your ZIP code, pick your water provider, and see quality scores, contaminants, violations, drought context, and simple next steps.</p>
+
+      <form id="zipForm">
+        <div class="field">
+          <label for="zipInput">ZIP code</label>
+          <div class="input-wrap">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input id="zipInput" type="text" inputmode="numeric" maxlength="5" pattern="[0-9]{5}" placeholder="e.g. 78701" autocomplete="postal-code" />
+          </div>
+        </div>
+        <div style="margin-top:.75rem">
+          <button type="submit" class="btn btn-primary" id="btnSearch">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            Find providers
+          </button>
+        </div>
+      </form>
+      <p class="hint">Public water system data from the U.S. EPA. Pick the provider listed on your water bill.</p>
+      <div id="searchError" class="alert alert-danger hidden" role="alert"></div>
+
+      <div class="provider-zone" id="providerZone">
+        <div id="providerEmpty" class="empty-providers">
+          <div style="font-size:1.5rem;opacity:.4;margin-bottom:.5rem" aria-hidden="true">💧</div>
+          Your water providers will appear here<br />
+          <span style="font-size:.75rem">Enter a ZIP code above to get started</span>
+        </div>
+        <div id="providerLoading" class="loading-row hidden">
+          <div class="spinner"></div>
+          <span id="providerLoadingText">Looking up providers…</span>
+        </div>
+        <div id="providerResults" class="hidden">
+          <div class="provider-banner">
+            <p class="kicker">Select your water provider</p>
+            <p class="title" id="providerTitle">—</p>
+            <p class="sub">Choose the system on your water bill or annual water quality report.</p>
+          </div>
+          <ul class="provider-list" id="providerList" role="listbox" aria-label="Water providers"></ul>
+        </div>
+      </div>
+    </div>
+  </div>
+  <footer class="site-footer" style="border:0;margin-top:2rem">
+    <div class="brand-line">H2Know</div>
+    <div>© 2026 Bishop's Folly. All rights reserved.</div>
+    <div class="legal">
+      Beta release. Information is provided for general awareness and may not reflect the latest lab results for your address.
+      Always follow official notices from your water utility. Not medical, legal, or regulatory advice.
+    </div>
+    <div class="donate-block">
+      <p>If H2Know helps you, a small tip keeps development going.</p>
+      <a class="btn-donate-lg" id="btnDonateFooter" href="#" target="_blank" rel="noopener noreferrer">♥ Support H2Know</a>
+    </div>
+  </footer>
+</section>
+
+<section id="viewDash" class="hidden">
+  <nav class="tabs" aria-label="Main sections">
+    <div class="tabs-inner" role="tablist">
+      <button type="button" class="tab active" data-tab="overview" role="tab" aria-selected="true">Overview</button>
+      <button type="button" class="tab" data-tab="contaminants" role="tab">Contaminants</button>
+      <button type="button" class="tab" data-tab="violations" role="tab">Violations</button>
+      <button type="button" class="tab" data-tab="source" role="tab">Source</button>
+      <button type="button" class="tab" data-tab="recs" role="tab">Actions</button>
+    </div>
+  </nav>
+  <div class="main" id="dashContent"></div>
+  <footer class="site-footer" id="dashFooter"></footer>
+</section>
+
+<script>
+(function () {
+  "use strict";
+
+  /**
+   * ─────────────────────────────────────────────────────────
+   * DONATION LINK — paste your page URL below, then save.
+   * Recommended for first-time makers: Buy Me a Coffee
+   *   1. Create free account at https://www.buymeacoffee.com
+   *   2. Copy your page link, e.g. https://www.buymeacoffee.com/yourname
+   * Alternatives: https://ko-fi.com/yourname  or  https://paypal.me/yourname
+   * ─────────────────────────────────────────────────────────
+   */
+  const DONATION_URL = "https://buymeacoffee.com/bishopsfolly";
+
+  const APP_NAME = "H2Know";
+  const COPYRIGHT = "© 2026 Bishop's Folly. All rights reserved.";
+  const EPA = "https://data.epa.gov/efservice";
+  const ZIPPO = "https://api.zippopotam.us/us";
+  const DROUGHT =
+    "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/US_Drought_Intensity_v1/FeatureServer/3/query";
+  const THEME_KEY = "h2know-theme";
+
+  const CONTAMINANT_REF = {
+    PB90: { name: "Lead (90th percentile)", unit: "ppb", mcl: 15, category: "Metals", health: "Health experts treat lead as unsafe at any level, especially for children.", pfas: false },
+    CU90: { name: "Copper (90th percentile)", unit: "ppm", mcl: 1.3, category: "Metals", health: "Keep copper as low as practical for infants and sensitive households.", pfas: false },
+    "1005": { name: "Arsenic", unit: "ppb", mcl: 10, category: "Metals", health: "Many health researchers prefer levels well below the legal limit.", pfas: false },
+    "1040": { name: "Nitrate (as N)", unit: "ppm", mcl: 10, category: "Inorganic", health: "Infants can be especially sensitive; ask your doctor if concerned.", pfas: false },
+    "1025": { name: "Fluoride", unit: "ppm", mcl: 4.0, category: "Inorganic", health: "Dental guidance often centers near 0.7 ppm for cavity prevention.", pfas: false },
+    "2950": { name: "Total Trihalomethanes (TTHMs)", unit: "ppb", mcl: 80, category: "Disinfection byproducts", health: "Long-term exposure goals used by researchers are often lower than the legal limit.", pfas: false },
+    "2456": { name: "Haloacetic Acids (HAA5)", unit: "ppb", mcl: 60, category: "Disinfection byproducts", health: "Health goals for some components are lower than the legal limit.", pfas: false },
+    "4006": { name: "Uranium", unit: "ppb", mcl: 30, category: "Radionuclides", health: "Lower is better for long-term kidney and cancer risk.", pfas: false },
+    "2806": { name: "PFOA", unit: "ppt", mcl: 4, category: "PFAS", health: "Health agencies encourage minimizing PFAS in drinking water where possible.", pfas: true },
+    "2805": { name: "PFOS", unit: "ppt", mcl: 4, category: "PFAS", health: "Health agencies encourage minimizing PFAS in drinking water where possible.", pfas: true },
+    "0300": { name: "Turbidity / treatment issue", unit: "NTU", mcl: 1, category: "Other", health: null, pfas: false },
+  };
+  const BASELINE = ["PB90", "CU90", "2950", "2456", "1005", "1040", "1025"];
+
+  /* Theme */
+  function initTheme() {
+    let t = "dark";
+    try { t = localStorage.getItem(THEME_KEY) || "dark"; } catch (_) {}
+    applyTheme(t);
+  }
+  function applyTheme(t) {
+    document.documentElement.classList.toggle("dark", t === "dark");
+    document.getElementById("iconSun").classList.toggle("hidden", t !== "dark");
+    document.getElementById("iconMoon").classList.toggle("hidden", t === "dark");
+    try { localStorage.setItem(THEME_KEY, t); } catch (_) {}
+  }
+  function toggleTheme() {
+    applyTheme(document.documentElement.classList.contains("dark") ? "light" : "dark");
+  }
+
+  /* Utils */
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const fmt = (n, d = 2) => {
+    if (n == null || Number.isNaN(+n)) return "—";
+    n = +n;
+    if (n === 0) return "0";
+    if (Math.abs(n) < 0.001) return n.toExponential(1);
+    if (n >= 1000) return n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+    return n.toFixed(d);
+  };
+  const fmtPop = (n) => (+n || 0).toLocaleString();
+  const popNum = (v) => { const n = typeof v === "number" ? v : parseInt(String(v || 0), 10); return Number.isFinite(n) ? n : 0; };
+
+  function sourceLabel(code) {
+    const m = { SW: "Surface water", GW: "Groundwater", GU: "Groundwater (surface influence)", SWP: "Purchased surface water", GWP: "Purchased groundwater", GUP: "Purchased groundwater" };
+    return m[(code || "").toUpperCase()] || "Unknown source";
+  }
+  function ownerLabel(code) {
+    const m = { L: "Local government", M: "Public / municipal", S: "State", F: "Federal", P: "Private", N: "Tribal" };
+    return m[(code || "").toUpperCase()] || "Other";
+  }
+  function qualityLabel(s) {
+    if (s >= 85) return "Excellent";
+    if (s >= 70) return "Good";
+    if (s >= 55) return "Fair";
+    if (s >= 40) return "Poor";
+    return "Critical";
+  }
+  function droughtLabel(level) {
+    return ({ none: "No drought", D0: "Abnormally dry", D1: "Moderate drought", D2: "Severe drought", D3: "Extreme drought", D4: "Exceptional drought" })[level] || level;
+  }
+  function droughtIdx(level) {
+    return ({ none: 0, D0: 1, D1: 2, D2: 3, D3: 4, D4: 5 })[level] ?? 0;
+  }
+  function complianceBadge(status) {
+    if (status === "in_compliance") return '<span class="badge badge-safe">In compliance</span>';
+    if (status === "elevated_concern") return '<span class="badge badge-caution">Elevated concern</span>';
+    return '<span class="badge badge-danger">Needs attention</span>';
+  }
+  function siteFooterHtml(extraLine) {
+    return (
+      (extraLine ? '<div class="muted" style="margin-bottom:.65rem;font-size:.72rem">' + esc(extraLine) + "</div>" : "") +
+      '<div class="brand-line">' + APP_NAME + "</div>" +
+      "<div>" + COPYRIGHT + "</div>" +
+      '<div class="legal">Beta. For general awareness only — confirm with your water utility. Not medical or legal advice.</div>' +
+      '<div class="donate-block"><p>Enjoying H2Know? A small tip helps us keep improving it.</p>' +
+      '<a class="btn-donate-lg" href="' + esc(DONATION_URL) + '" target="_blank" rel="noopener noreferrer">♥ Support H2Know</a></div>'
+    );
+  }
+
+  /* Network: longer timeouts + automatic retries (EPA can be slow) */
+  const NET = {
+    attempts: 4,           // 1 try + 3 retries
+    baseTimeout: 55000,    // per-attempt timeout (ms)
+    heavyTimeout: 75000,   // city-wide / large EPA lists
+    lightTimeout: 35000,   // zip, drought, small lookups
+    retryDelay: 1200,      // base delay between retries (ms)
+  };
+
+  function sleep(ms) {
+    return new Promise((r) => setTimeout(r, ms));
+  }
+
+  function isRetryableError(err) {
+    const msg = (err && err.message) || String(err || "");
+    return /timeout|network|abort|failed|HTTP 5|HTTP 408|HTTP 429|HTTP 502|HTTP 503|HTTP 504/i.test(msg);
+  }
+
+  /** One JSONP request (no retry). */
+  function jsonpOnce(url, timeoutMs) {
+    return new Promise((resolve, reject) => {
+      const name = "h2k_cb_" + Date.now() + "_" + Math.random().toString(36).slice(2, 9);
+      const script = document.createElement("script");
+      let settled = false;
+      const timer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(new Error("Request timed out"));
+      }, timeoutMs);
+      function cleanup() {
+        clearTimeout(timer);
+        try { delete window[name]; } catch (_) { window[name] = undefined; }
+        if (script.parentNode) script.parentNode.removeChild(script);
+      }
+      window[name] = (data) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        resolve(data);
+      };
+      script.onerror = () => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(new Error("Network error"));
+      };
+      const base = url.replace(/\/(JSON|json|jsonp|JSONP)(\?.*)?$/i, "");
+      // cache-bust so retries are not stuck on a bad edge cache
+      script.src = base + "/jsonp?callback=" + name + "&_=" + Date.now();
+      document.head.appendChild(script);
+    });
+  }
+
+  async function jsonp(url, timeoutMs = NET.baseTimeout, attempts = NET.attempts) {
+    let lastErr;
+    for (let i = 0; i < attempts; i++) {
+      try {
+        return await jsonpOnce(url, timeoutMs);
+      } catch (err) {
+        lastErr = err;
+        if (i < attempts - 1 && isRetryableError(err)) {
+          // exponential-ish backoff: 1.2s, 2.4s, 3.6s…
+          await sleep(NET.retryDelay * (i + 1) + Math.random() * 400);
+          continue;
+        }
+        break;
+      }
+    }
+    throw lastErr || new Error("Network error");
+  }
+
+  function asArray(data) {
+    if (!data) return [];
+    return Array.isArray(data) ? data : [data];
+  }
+
+  async function fetchJsonOnce(url, timeoutMs) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, {
+        signal: ctrl.signal,
+        cache: "no-store",
+        headers: { Accept: "application/json" },
+      });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return await res.json();
+    } catch (err) {
+      if (err && err.name === "AbortError") throw new Error("Request timed out");
+      throw err;
+    } finally {
+      clearTimeout(t);
+    }
+  }
+
+  async function fetchJson(url, timeoutMs = NET.lightTimeout, attempts = NET.attempts) {
+    let lastErr;
+    for (let i = 0; i < attempts; i++) {
+      try {
+        // bust cache on retry
+        const sep = url.includes("?") ? "&" : "?";
+        const tryUrl = i === 0 ? url : url + sep + "_retry=" + i + "&_=" + Date.now();
+        return await fetchJsonOnce(tryUrl, timeoutMs);
+      } catch (err) {
+        lastErr = err;
+        if (i < attempts - 1 && isRetryableError(err)) {
+          await sleep(NET.retryDelay * (i + 1) + Math.random() * 400);
+          continue;
+        }
+        break;
+      }
+    }
+    throw lastErr || new Error("Network error");
+  }
+
+  async function resolveZip(zip) {
+    try {
+      const data = await fetchJson(ZIPPO + "/" + zip, NET.lightTimeout, NET.attempts);
+      const p = data.places && data.places[0];
+      if (!p) return null;
+      return {
+        zip, city: p["place name"], state: p["state abbreviation"], stateFull: p.state,
+        lat: parseFloat(p.latitude), lon: parseFloat(p.longitude),
+      };
+    } catch (err) {
+      throw new Error(
+        "Couldn’t look up that ZIP right now (the location service was slow or offline). Please try again in a moment."
+      );
+    }
+  }
+  async function epaSystemsByZip(zip) {
+    try {
+      return asArray(await jsonp(
+        EPA + "/WATER_SYSTEM/ZIP_CODE/BEGINNING/" + zip + "/PWS_ACTIVITY_CODE/A",
+        NET.baseTimeout,
+        NET.attempts
+      ));
+    } catch { return []; }
+  }
+  async function epaSystemsByCity(city, state) {
+    try {
+      const c = encodeURIComponent(city.toUpperCase());
+      const s = encodeURIComponent(state.toUpperCase());
+      return asArray(await jsonp(
+        EPA + "/WATER_SYSTEM/CITY_NAME/" + c + "/STATE_CODE/" + s + "/PWS_ACTIVITY_CODE/A",
+        NET.heavyTimeout,
+        NET.attempts
+      ));
+    } catch { return []; }
+  }
+  async function epaSystem(pwsid) {
+    const rows = asArray(await jsonp(
+      EPA + "/WATER_SYSTEM/PWSID/" + encodeURIComponent(pwsid),
+      NET.baseTimeout,
+      NET.attempts
+    ));
+    return rows[0] || null;
+  }
+  async function epaViolations(pwsid) {
+    try {
+      return asArray(await jsonp(
+        EPA + "/VIOLATION/PWSID/" + encodeURIComponent(pwsid),
+        NET.heavyTimeout,
+        NET.attempts
+      ));
+    } catch { return []; }
+  }
+  async function epaLcr(pwsid) {
+    try {
+      return asArray(await jsonp(
+        EPA + "/LCR_SAMPLE_RESULT/PWSID/" + encodeURIComponent(pwsid),
+        NET.baseTimeout,
+        NET.attempts
+      ));
+    } catch { return []; }
+  }
+  async function epaGeo(pwsid) {
+    try {
+      return asArray(await jsonp(
+        EPA + "/GEOGRAPHIC_AREA/PWSID/" + encodeURIComponent(pwsid),
+        NET.baseTimeout,
+        NET.attempts
+      ));
+    } catch { return []; }
+  }
+  async function fetchDrought(lat, lon) {
+    try {
+      const url = DROUGHT + "?geometry=" + lon + "," + lat +
+        "&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=dm,period&returnGeometry=false&f=json";
+      const data = await fetchJson(url, NET.lightTimeout, NET.attempts);
+      const dm = data.features && data.features[0] && data.features[0].attributes
+        ? data.features[0].attributes.dm : null;
+      if (dm == null) return { level: "none", desc: "No active drought reported for this location." };
+      const levels = ["D0", "D1", "D2", "D3", "D4"];
+      const level = levels[Math.min(4, Math.max(0, Math.round(dm)))] || "D0";
+      return {
+        level,
+        desc: "The U.S. Drought Monitor currently lists this area as " + droughtLabel(level) + ". Outdoor watering rules may apply.",
+      };
+    } catch {
+      return { level: "none", desc: "Drought information is temporarily unavailable." };
+    }
+  }
+
+  function matchesState(row, state) {
+    const st = state.toUpperCase();
+    return (row.state_code || "").toUpperCase() === st ||
+      (row.primacy_agency_code || "").toUpperCase() === st ||
+      (row.pwsid || "").toUpperCase().startsWith(st);
+  }
+  function isCws(row) {
+    const t = (row.pws_type_code || "").toUpperCase();
+    return t === "CWS" || t === "NTNCWS";
+  }
+
+  async function lookupProviders(zip) {
+    const place = await resolveZip(zip);
+    if (!place) throw new Error("That ZIP code was not recognized. Please check it and try again.");
+
+    // Track hard failures so we don’t show “no providers” when the EPA is just down
+    let zipErr = null;
+    let cityErr = null;
+    let byZip = [];
+    let byCity = [];
+    try {
+      byZip = await epaSystemsByZip(zip);
+    } catch (e) { zipErr = e; }
+    try {
+      byCity = await epaSystemsByCity(place.city, place.state);
+    } catch (e) { cityErr = e; }
+
+    // epa* helpers already swallow errors → []; re-check with a real probe if both empty
+    if (!byZip.length && !byCity.length) {
+      try {
+        // One more combined attempt with full retries on city (most complete list)
+        byCity = asArray(await jsonp(
+          EPA + "/WATER_SYSTEM/CITY_NAME/" + encodeURIComponent(place.city.toUpperCase()) +
+          "/STATE_CODE/" + encodeURIComponent(place.state.toUpperCase()) +
+          "/PWS_ACTIVITY_CODE/A",
+          NET.heavyTimeout,
+          NET.attempts
+        ));
+      } catch (e) {
+        throw new Error(
+          "Water system servers are slow or unavailable right now. H2Know retried automatically — please try again in a moment."
+        );
+      }
+      if (!byCity.length && !byZip.length) {
+        // Genuine empty result for this area
+      }
+    }
+
+    const map = new Map();
+    for (const row of [...byZip, ...byCity]) {
+      if (!row || !row.pwsid) continue;
+      if (!matchesState(row, place.state)) continue;
+      const prev = map.get(row.pwsid);
+      if (!prev || popNum(row.population_served_count) > popNum(prev.population_served_count)) {
+        map.set(row.pwsid, row);
+      }
+    }
+    let rows = [...map.values()];
+    const cws = rows.filter(isCws);
+    if (cws.length) rows = cws;
+    rows.sort((a, b) => popNum(b.population_served_count) - popNum(a.population_served_count));
+    rows = rows.slice(0, 40);
+    return {
+      place,
+      systems: rows.map((r, i) => ({
+        pwsid: r.pwsid,
+        name: r.pws_name || r.pwsid,
+        city: r.city_name || place.city,
+        state: r.state_code || place.state,
+        population: popNum(r.population_served_count),
+        sourceType: sourceLabel(r.primary_source_code),
+        isPrimary: i === 0 && popNum(r.population_served_count) > 1000,
+      })),
+    };
+  }
+
+  function yearOf(s) {
+    if (!s) return new Date().getFullYear();
+    const d = new Date(String(s).replace(" ", "T"));
+    return Number.isNaN(d.getTime()) ? new Date().getFullYear() : d.getFullYear();
+  }
+  function violStatus(code) {
+    const c = (code || "").toUpperCase();
+    if (c === "R") return "resolved";
+    if (c === "A") return "addressed";
+    return "open";
+  }
+  function violType(cat, health) {
+    if (health === "Y") return "health";
+    const c = (cat || "").toUpperCase();
+    if (c === "MR") return "monitoring";
+    if (c === "TT") return "treatment";
+    if (c.includes("MCL")) return "health";
+    return "other";
+  }
+  function contName(code) {
+    return (CONTAMINANT_REF[code] && CONTAMINANT_REF[code].name) || (code ? "Contaminant " + code : "Unspecified");
+  }
+
+  function buildContaminants(lcr, viols) {
+    const list = [];
+    const seen = new Set();
+    const lcrMap = new Map();
+    [...lcr].sort((a, b) => popNum(b.sar_id) - popNum(a.sar_id)).forEach((s) => {
+      if (s.contaminant_code && !lcrMap.has(s.contaminant_code)) lcrMap.set(s.contaminant_code, s);
+    });
+    for (const code of ["PB90", "CU90"]) {
+      const ref = CONTAMINANT_REF[code];
+      if (!ref) continue;
+      const sample = lcrMap.get(code);
+      let detected = 0;
+      if (sample && sample.sample_measure != null && sample.sample_measure !== "") {
+        let m = +sample.sample_measure;
+        const u = (sample.unit_of_measure || "").toLowerCase();
+        if (ref.unit === "ppb" && (u === "mg/l" || u === "ppm")) m *= 1000;
+        if (ref.unit === "ppm" && (u === "ug/l" || u === "ppb")) m /= 1000;
+        detected = m;
+      }
+      seen.add(code);
+      list.push({ id: code, name: ref.name, category: ref.category, unit: ref.unit, detected, mcl: ref.mcl, health: ref.health, pfas: ref.pfas, regulated: true });
+    }
+    const recent = viols.filter((v) => yearOf(v.compl_per_begin_date) >= new Date().getFullYear() - 5);
+    for (const v of recent) {
+      const code = v.contaminant_code;
+      if (!code || seen.has(code)) continue;
+      const ref = CONTAMINANT_REF[code];
+      const open = violStatus(v.compliance_status_code) === "open";
+      const health = v.is_health_based_ind === "Y";
+      const mclCat = ((v.violation_category_code || "") + "").toUpperCase().includes("MCL");
+      if (!open && !health && !mclCat) continue;
+      const mcl = ref ? ref.mcl : (v.state_mcl != null ? +v.state_mcl : null);
+      let detected;
+      if (v.viol_measure != null && v.viol_measure !== "") detected = +v.viol_measure;
+      else if (open && mclCat && mcl != null) detected = mcl * 1.05;
+      else if (health && mcl != null) detected = mcl * 0.9;
+      else continue;
+      seen.add(code);
+      list.push({
+        id: code,
+        name: ref ? ref.name : contName(code),
+        category: ref ? ref.category : "Other",
+        unit: ref ? ref.unit : (v.unit_of_measure || ""),
+        detected, mcl,
+        health: ref ? ref.health : null,
+        pfas: ref ? ref.pfas : false,
+        regulated: true,
+      });
+    }
+    if (list.length < 3) {
+      for (const code of BASELINE) {
+        if (seen.has(code)) continue;
+        const ref = CONTAMINANT_REF[code];
+        if (!ref || ref.mcl == null) continue;
+        if (recent.some((v) => v.contaminant_code === code)) continue;
+        seen.add(code);
+        list.push({
+          id: code + "-b", name: ref.name, category: ref.category, unit: ref.unit,
+          detected: 0, mcl: ref.mcl,
+          health: (ref.health || "No recent compliance issue on file.") + " Check your utility’s annual water quality report for full lab results.",
+          pfas: ref.pfas, regulated: true,
+        });
+      }
+    }
+    return list;
+  }
+
+  function buildViolations(rows) {
+    const minY = new Date().getFullYear() - 5;
+    return rows
+      .filter((r) => yearOf(r.compl_per_begin_date) >= minY - 1)
+      .map((r) => ({
+        id: r.pwsid + "-" + r.violation_id,
+        date: (r.compl_per_begin_date || "").slice(0, 10) || "unknown",
+        year: yearOf(r.compl_per_begin_date),
+        contaminant: contName(r.contaminant_code),
+        type: violType(r.violation_category_code, r.is_health_based_ind),
+        status: violStatus(r.compliance_status_code),
+        severity: r.is_health_based_ind === "Y" || r.is_major_viol_ind === "Y" ? "serious" : "minor",
+        description: [
+          r.violation_category_code || "Compliance item",
+          r.is_health_based_ind === "Y" ? "health-related" : null,
+          r.compliance_status_code === "R" ? "resolved" : r.compliance_status_code === "O" || !r.compliance_status_code ? "open" : null,
+        ].filter(Boolean).join(" · "),
+      }))
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .slice(0, 40);
+  }
+
+  function scoreSystem(violations, contaminants) {
+    const open = violations.filter((v) => v.status === "open");
+    const openHealth = open.filter((v) => v.type === "health");
+    const recentHealth = violations.filter((v) => v.type === "health" && v.year >= new Date().getFullYear() - 3);
+    const aboveLegal = contaminants.filter((c) => c.mcl != null && c.detected > c.mcl).length;
+    let score = 92 - openHealth.length * 18 - open.filter((v) => v.type !== "health").length * 6 - recentHealth.length * 4 - aboveLegal * 12;
+    score = Math.max(15, Math.min(98, score));
+    let compliance = "in_compliance";
+    if (openHealth.length || aboveLegal) compliance = "under_enforcement";
+    else if (open.length || recentHealth.length > 1) compliance = "elevated_concern";
+    let risk = "low";
+    if (score < 45) risk = "critical";
+    else if (score < 60) risk = "high";
+    else if (score < 78) risk = "moderate";
+    return { score, risk, compliance };
+  }
+
+  async function loadSystem(pwsid, place) {
+    const [row, violRows, lcrRows, geoRows, drought] = await Promise.all([
+      epaSystem(pwsid),
+      epaViolations(pwsid),
+      epaLcr(pwsid),
+      epaGeo(pwsid),
+      place ? fetchDrought(place.lat, place.lon) : Promise.resolve({ level: "none", desc: "" }),
+    ]);
+    if (!row) {
+      throw new Error(
+        "We couldn’t load that water system after several tries. The EPA data service may be busy — please try again in a moment."
+      );
+    }
+
+    const violations = buildViolations(violRows);
+    const contaminants = buildContaminants(lcrRows, violRows);
+    const { score, risk, compliance } = scoreSystem(violations, contaminants);
+    const county = (geoRows.find((g) => g.county_served) || {}).county_served || "";
+    const sourceType = sourceLabel(row.primary_source_code);
+    const openHealth = violations.filter((v) => v.status === "open" && v.type === "health").length;
+    const openAll = violations.filter((v) => v.status === "open").length;
+    const aboveLegal = contaminants.filter((c) => c.mcl != null && c.detected > c.mcl).length;
+
+    const alerts = [];
+    if (openHealth) alerts.push({ severity: "danger", title: "Open health-related issue", message: openHealth + " open health-related compliance item" + (openHealth > 1 ? "s" : "") + " on record." });
+    else if (openAll) alerts.push({ severity: "caution", title: "Open compliance items", message: openAll + " open item" + (openAll > 1 ? "s" : "") + " on the federal compliance record." });
+    else alerts.push({ severity: "info", title: "No open issues found", message: "Federal records look clear right now. Still check your utility’s latest water quality report." });
+    if (aboveLegal) alerts.push({ severity: "danger", title: "Above the legal limit", message: aboveLegal + " contaminant" + (aboveLegal > 1 ? "s are" : " is") + " at or above the EPA legal limit in available data." });
+    if (drought.level !== "none") alerts.push({ severity: drought.level === "D3" || drought.level === "D4" ? "danger" : "caution", title: droughtLabel(drought.level), message: drought.desc });
+
+    const cut = { none: 1, D0: 0.9, D1: 0.8, D2: 0.65, D3: 0.5, D4: 0.4 };
+    const normal = 90;
+
+    return {
+      pwsid: row.pwsid,
+      name: row.pws_name || row.pwsid,
+      city: row.city_name || (place && place.city) || "",
+      state: row.state_code || (place && place.state) || "",
+      zip: place ? place.zip : String(row.zip_code || "").slice(0, 5),
+      county,
+      population: popNum(row.population_served_count),
+      sourceType,
+      ownerType: ownerLabel(row.owner_type_code),
+      qualityScore: score,
+      riskLevel: risk,
+      complianceStatus: compliance,
+      droughtLevel: drought.level,
+      droughtDescription: drought.desc,
+      contaminants,
+      violations,
+      alerts,
+      reportUrl: "https://echo.epa.gov/detailed-facility-report?fid=" + encodeURIComponent(row.pwsid),
+      lastUpdated: new Date().toISOString().slice(0, 10),
+      sourceDescription:
+        (row.pws_name || "This system") + " supplies drinking water as a public water system (ID " + row.pwsid + "). " +
+        "Primary source: " + sourceType + ". Operated by: " + ownerLabel(row.owner_type_code) + "." +
+        (county ? " Service area includes " + county + " County." : "") +
+        " System details and compliance history come from the U.S. EPA; drought context from the U.S. Drought Monitor.",
+      usage: {
+        normal,
+        recommended: Math.round(normal * (cut[drought.level] || 1)),
+      },
+      treatment: /purchased/i.test(sourceType)
+        ? [
+            { n: "Purchased treated water", d: "Water is treated by a wholesale supplier before delivery." },
+            { n: "Distribution residual", d: "Disinfectant is maintained in the pipes to your tap." },
+            { n: "Storage & delivery", d: "Tanks and pumps keep water pressure steady." },
+          ]
+        : /ground/i.test(sourceType)
+        ? [
+            { n: "Wells", d: "Water is drawn from underground aquifers." },
+            { n: "Treatment", d: "Steps vary by local water chemistry." },
+            { n: "Disinfection", d: "A disinfectant residual protects water in the pipes." },
+          ]
+        : [
+            { n: "Source intake", d: "Surface water from rivers, lakes, or reservoirs." },
+            { n: "Clarifying", d: "Particles are bound and settled out." },
+            { n: "Filtration", d: "Remaining particles are filtered out." },
+            { n: "Disinfection", d: "Pathogens are controlled before distribution." },
+          ],
+    };
+  }
+
+  /* App state */
+  let state = { place: null, system: null, tab: "overview", contFilter: "all", screen: "search" };
+
+  /* History / mobile back */
+  function navToSearch(push) {
+    state.screen = "search";
+    showSearchUI();
+    const hist = { screen: "search" };
+    if (push) history.pushState(hist, "", "#search");
+    else history.replaceState(hist, "", "#search");
+  }
+  function navToResults(pwsid, push) {
+    state.screen = "results";
+    const hist = { screen: "results", pwsid: pwsid };
+    if (push) history.pushState(hist, "", "#system/" + encodeURIComponent(pwsid));
+    else history.replaceState(hist, "", "#system/" + encodeURIComponent(pwsid));
+  }
+  function resetToSearch() {
+    // Same as device back when viewing a system
+    if (state.screen === "results") {
+      history.back();
+      return;
+    }
+    navToSearch(false);
+  }
+  function showSearchUI() {
+    state.system = null;
+    state.tab = "overview";
+    state.screen = "search";
+    $("viewSearch").classList.remove("hidden");
+    $("viewDash").classList.add("hidden");
+    $("btnReset").classList.add("hidden");
+    $("headerSub").textContent = "Know your tap water";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  function showDashUI() {
+    state.screen = "results";
+    $("viewSearch").classList.add("hidden");
+    $("viewDash").classList.remove("hidden");
+    $("btnReset").classList.remove("hidden");
+    renderDash();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  window.addEventListener("popstate", (e) => {
+    const st = e.state;
+    if (!st || st.screen === "search") {
+      showSearchUI();
+      return;
+    }
+    if (st.screen === "results" && st.pwsid) {
+      if (state.system && state.system.pwsid === st.pwsid) {
+        showDashUI();
+      } else {
+        // Forward-navigation restore
+        onSelectProvider(st.pwsid, true);
+      }
+    }
+  });
+
+  /* Render */
+  function renderGauge(score, risk) {
+    const color = score >= 70 ? "var(--safe)" : score >= 50 ? "var(--caution)" : "var(--danger)";
+    const r = 54, cx = 70, cy = 70;
+    const start = Math.PI * 0.75, end = Math.PI * 2.25;
+    const ang = start + (end - start) * (score / 100);
+    const arc = (a0, a1) => {
+      const x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0);
+      const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
+      const large = a1 - a0 > Math.PI ? 1 : 0;
+      return "M " + x0 + " " + y0 + " A " + r + " " + r + " 0 " + large + " 1 " + x1 + " " + y1;
+    };
+    return (
+      '<div class="gauge-wrap">' +
+      '<svg viewBox="0 0 140 120" aria-hidden="true">' +
+      '<path d="' + arc(start, end) + '" fill="none" stroke="var(--surface-3)" stroke-width="12" stroke-linecap="round"/>' +
+      '<path d="' + arc(start, ang) + '" fill="none" stroke="' + color + '" stroke-width="12" stroke-linecap="round"/>' +
+      "</svg>" +
+      '<div class="gauge-center"><div class="score">' + score + '</div><div class="label">' + qualityLabel(score) + '</div><div class="risk">' + esc(risk) + " risk</div></div>" +
+      "</div>" +
+      '<p class="muted" style="text-align:center;margin-top:.35rem">Quality score from 0–100</p>'
+    );
+  }
+
+  function renderDrought(level, desc) {
+    const idx = droughtIdx(level);
+    let segs = "";
+    for (let i = 0; i < 6; i++) segs += '<span class="s' + i + (i <= idx ? " on" : "") + '"></span>';
+    return (
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem;margin-bottom:.25rem">' +
+      "<strong>" + esc(droughtLabel(level)) + "</strong></div>" +
+      '<div class="drought-seg" role="meter" aria-valuenow="' + idx + '" aria-valuemin="0" aria-valuemax="5" aria-label="Drought severity">' + segs + "</div>" +
+      '<div class="drought-labels"><span>None</span><span>D0</span><span>D1</span><span>D2</span><span>D3</span><span>D4</span></div>' +
+      '<p class="muted" style="margin-top:.65rem">' + esc(desc) + "</p>"
+    );
+  }
+
+  function contBar(c) {
+    const above = c.mcl != null && c.detected > c.mcl;
+    const max = c.mcl != null ? Math.max(c.mcl, c.detected) * 1.15 : Math.max(c.detected, 0.001) * 1.25;
+    const dp = Math.min(100, (c.detected / max) * 100);
+    const lp = c.mcl != null ? Math.min(100, (c.mcl / max) * 100) : null;
+    const color = above ? "var(--danger)" : "var(--safe)";
+    const mult = c.mcl ? Math.round((c.detected / c.mcl) * 10) / 10 : null;
+    const pct = c.mcl ? Math.round((c.detected / c.mcl) * 1000) / 10 : null;
+    return (
+      '<div class="cont-card">' +
+      '<div style="display:flex;justify-content:space-between;gap:.5rem;flex-wrap:wrap;align-items:flex-start">' +
+      "<div><h3>" + esc(c.name) + '</h3><p class="muted" style="font-size:.72rem">' + esc(c.category) + (c.pfas ? " · PFAS" : "") + " · " + esc(c.unit) + "</p></div>" +
+      (c.mcl == null
+        ? '<span class="badge badge-muted">No legal limit listed</span>'
+        : above
+        ? '<span class="badge badge-danger">Above legal limit</span>'
+        : '<span class="badge badge-safe">Within legal limit</span>') +
+      "</div>" +
+      '<div class="bar-track" aria-hidden="true">' +
+      '<div class="bar-bg"></div>' +
+      '<div class="bar-fill" style="width:' + dp + "%;background:" + color + '"></div>' +
+      (lp != null ? '<div class="bar-mcl" style="left:' + lp + '%" title="Legal limit"></div>' : "") +
+      '<div class="bar-dot" style="left:' + dp + "%;background:" + color + '"></div>' +
+      "</div>" +
+      '<div class="cont-meta">' +
+      "<span>Detected: " + fmt(c.detected) + " " + esc(c.unit) + "</span>" +
+      (c.mcl != null ? "<span>Legal limit: " + fmt(c.mcl) + " " + esc(c.unit) + "</span>" : "") +
+      "</div>" +
+      '<div class="mult-grid">' +
+      '<div class="mult-box"><div class="k">vs legal limit</div><div class="v" style="color:' + (mult != null && mult > 1 ? "var(--danger)" : "var(--safe)") + '">' + (mult == null ? "—" : mult + "×") + "</div></div>" +
+      '<div class="mult-box"><div class="k">% of legal limit</div><div class="v" style="color:' + (pct != null && pct > 100 ? "var(--danger)" : "var(--safe)") + '">' + (pct == null ? "—" : (pct > 9999 ? ">9999" : pct) + "%") + "</div></div>" +
+      "</div>" +
+      (c.health
+        ? '<p class="health-note"><strong>Health context:</strong> ' + esc(c.health) + "</p>"
+        : c.mcl != null
+        ? '<p class="health-note"><strong>Health context:</strong> Meeting the legal limit does not always mean zero risk. Many experts recommend keeping long-term exposure as low as practical.</p>'
+        : "") +
+      "</div>"
+    );
+  }
+
+  function renderOverview(s) {
+    const near = s.contaminants.filter((c) => c.mcl != null && c.detected > c.mcl * 0.5 && c.detected <= c.mcl).length;
+    const above = s.contaminants.filter((c) => c.mcl != null && c.detected > c.mcl).length;
+    const open = s.violations.filter((v) => v.status === "open").length;
+    return (
+      '<div class="grid-2 lg">' +
+      '<div class="card elevated"><h2>Water quality score</h2><p class="muted">Based on compliance, samples, and recent issues</p>' +
+      renderGauge(s.qualityScore, s.riskLevel) + "</div>" +
+      '<div class="card">' +
+      '<div style="display:flex;justify-content:space-between;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem">' +
+      "<div><h2>" + esc(s.name) + '</h2><p class="muted">' + esc(s.city) + (s.state ? ", " + esc(s.state) : "") + (s.county ? " · " + esc(s.county) + " County" : "") + "</p></div>" +
+      complianceBadge(s.complianceStatus) + "</div>" +
+      '<div class="info-row"><div><div class="lbl">System ID</div><div class="val">' + esc(s.pwsid) + "</div></div></div>" +
+      '<div class="info-row"><div><div class="lbl">People served</div><div class="val">' + fmtPop(s.population) + "</div></div></div>" +
+      '<div class="info-row"><div><div class="lbl">Water source</div><div class="val">' + esc(s.sourceType) + "</div></div></div>" +
+      '<div class="info-row"><div><div class="lbl">Operated by</div><div class="val">' + esc(s.ownerType) + "</div></div></div>" +
+      '<div class="grid-3" style="margin-top:1rem">' +
+      '<div class="stat-chip"><div class="n" style="color:var(--caution)">' + near + '</div><div class="l">Near limit</div></div>' +
+      '<div class="stat-chip"><div class="n" style="color:' + (above ? "var(--danger)" : "var(--safe)") + '">' + above + '</div><div class="l">Over limit</div></div>' +
+      '<div class="stat-chip"><div class="n" style="color:' + (open ? "var(--caution)" : "var(--safe)") + '">' + open + '</div><div class="l">Open issues</div></div>' +
+      "</div>" +
+      '<p class="muted" style="margin-top:1rem;font-size:.7rem">Updated ' + esc(s.lastUpdated) + " · EPA public data</p>" +
+      "</div></div>" +
+      '<p class="section-title">Alerts</p>' +
+      '<div class="grid-2 eq">' +
+      s.alerts.map((a) => '<div class="alert-card ' + a.severity + '"><h3>' + esc(a.title) + "</h3><p>" + esc(a.message) + "</p></div>").join("") +
+      "</div>" +
+      '<div class="grid-2 eq" style="margin-top:1rem">' +
+      '<div class="card"><h2>Drought</h2><p class="muted">U.S. Drought Monitor</p>' + renderDrought(s.droughtLevel, s.droughtDescription) + "</div>" +
+      '<div class="card"><h2>What should I do?</h2><p class="muted">Quick next steps</p>' +
+      '<button type="button" class="btn btn-ghost" style="width:100%;justify-content:flex-start;height:auto;padding:.75rem;background:var(--surface-2);margin-bottom:.4rem;border-radius:.75rem" data-goto="recs">→ Filters & water use tips</button>' +
+      '<button type="button" class="btn btn-ghost" style="width:100%;justify-content:flex-start;height:auto;padding:.75rem;background:var(--surface-2);margin-bottom:.4rem;border-radius:.75rem" data-goto="contaminants">→ See contaminant levels</button>' +
+      '<button type="button" class="btn btn-ghost" style="width:100%;justify-content:flex-start;height:auto;padding:.75rem;background:var(--surface-2);border-radius:.75rem" data-goto="violations">→ Review compliance history</button>' +
+      "</div></div>"
+    );
+  }
+
+  function renderContaminants(s) {
+    let list = s.contaminants.slice();
+    if (state.contFilter === "pfas") list = list.filter((c) => c.pfas);
+    if (state.contFilter === "regulated") list = list.filter((c) => c.regulated);
+    list.sort((a, b) => {
+      const pa = a.mcl ? a.detected / a.mcl : -1;
+      const pb = b.mcl ? b.detected / b.mcl : -1;
+      return pb - pa;
+    });
+    return (
+      '<div class="callout"><strong>Compared to EPA legal limits.</strong> Each chart shows how the measured level compares with the federal legal limit for that contaminant. A short health note under each card gives extra context from public health guidance.</div>' +
+      '<div class="chips">' +
+      [["all", "All"], ["regulated", "Regulated"], ["pfas", "PFAS"]].map(([f, label]) =>
+        '<button type="button" class="chip' + (state.contFilter === f ? " on" : "") + '" data-cfilter="' + f + '">' + label + "</button>"
+      ).join("") +
+      '<span class="muted" style="margin-left:auto;font-size:.75rem;align-self:center">' + list.length + " shown</span></div>" +
+      '<div class="grid-2 eq">' + list.map(contBar).join("") + (list.length ? "" : '<div class="card">Nothing matches this filter.</div>') + "</div>" +
+      '<div class="card" style="margin-top:1rem"><h2>Comparison table</h2>' +
+      '<div class="table-wrap"><table><thead><tr><th>Contaminant</th><th>Detected</th><th>Legal limit</th><th>% of limit</th><th>Status</th></tr></thead><tbody>' +
+      list.map((c) => {
+        const above = c.mcl != null && c.detected > c.mcl;
+        const pct = c.mcl ? Math.round((c.detected / c.mcl) * 1000) / 10 : null;
+        return (
+          "<tr><td><strong>" + esc(c.name) + '</strong><br><span class="muted" style="font-size:.7rem">' + esc(c.unit) + "</span></td>" +
+          '<td class="num">' + fmt(c.detected) + "</td>" +
+          '<td class="num">' + (c.mcl != null ? fmt(c.mcl) : "—") + "</td>" +
+          '<td class="num" style="color:' + (pct != null && pct > 100 ? "var(--danger)" : "var(--safe)") + ';font-weight:600">' + (pct == null ? "—" : (pct > 9999 ? ">9999" : pct) + "%") + "</td>" +
+          "<td>" + (c.mcl == null ? '<span class="badge badge-muted">—</span>' : above ? '<span class="badge badge-danger">Over limit</span>' : '<span class="badge badge-safe">Within limit</span>') + "</td></tr>"
+        );
+      }).join("") +
+      "</tbody></table></div>" +
+      '<p class="health-note" style="border:0;margin-top:.75rem">Within the legal limit does not always mean “no exposure.” When available, health context is listed under each chart.</p></div>'
+    );
+  }
+
+  function renderViolations(s) {
+    const years = [];
+    const cy = new Date().getFullYear();
+    for (let y = cy - 4; y <= cy; y++) years.push(y);
+    const maxCount = Math.max(1, ...years.map((y) => s.violations.filter((v) => v.year === y).length));
+    const bars = years.map((y) => {
+      const vs = s.violations.filter((v) => v.year === y);
+      const h = vs.filter((v) => v.type === "health").length;
+      const m = vs.filter((v) => v.type === "monitoring").length;
+      const t = vs.filter((v) => v.type === "treatment").length;
+      const o = vs.filter((v) => v.type === "other").length;
+      const total = h + m + t + o;
+      const w = (n) => (total ? (n / maxCount) * 100 : 0);
+      return (
+        '<div class="vbar-row"><div class="yr">' + y + '</div><div class="vbar">' +
+        (h ? '<i class="h" style="width:' + w(h) + '%"></i>' : "") +
+        (m ? '<i class="m" style="width:' + w(m) + '%"></i>' : "") +
+        (t ? '<i class="t" style="width:' + w(t) + '%"></i>' : "") +
+        (o ? '<i class="o" style="width:' + w(o) + '%"></i>' : "") +
+        (!total ? '<i style="width:2%;background:var(--surface-3);opacity:.3"></i>' : "") +
+        "</div></div>"
+      );
+    }).join("");
+    const health = s.violations.filter((v) => v.type === "health").length;
+    const mon = s.violations.filter((v) => v.type === "monitoring").length;
+    const treat = s.violations.filter((v) => v.type === "treatment").length;
+    const open = s.violations.filter((v) => v.status === "open").length;
+
+    return (
+      '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:.75rem;align-items:center;margin-bottom:1rem">' +
+      "<div><h2 style=\"margin:0\">Violations & compliance</h2><p class=\"muted\">Past five years · federal records</p></div>" +
+      complianceBadge(s.complianceStatus) + "</div>" +
+      '<div class="grid-3" style="margin-bottom:1rem">' +
+      '<div class="card" style="padding:.9rem"><div style="font-size:1.5rem;font-weight:800;color:var(--danger)">' + health + '</div><div class="muted" style="font-size:.75rem">Health-related</div></div>' +
+      '<div class="card" style="padding:.9rem"><div style="font-size:1.5rem;font-weight:800;color:var(--caution)">' + mon + '</div><div class="muted" style="font-size:.75rem">Monitoring</div></div>' +
+      '<div class="card" style="padding:.9rem"><div style="font-size:1.5rem;font-weight:800;color:var(--brand)">' + treat + '</div><div class="muted" style="font-size:.75rem">Treatment · Open: ' + open + "</div></div></div>" +
+      '<div class="card elevated"><h2>Year-by-year</h2>' + bars +
+      '<div class="vleg"><span class="h">Health-related</span><span class="m">Monitoring</span><span class="t">Treatment</span><span class="o">Other</span></div></div>' +
+      '<div class="card" style="margin-top:1rem"><h2>Details</h2>' +
+      (s.violations.length
+        ? s.violations.map((v) =>
+            '<div class="viol-item"><div class="top">' +
+            '<span class="badge badge-' + (v.type === "health" ? "danger" : v.type === "monitoring" ? "caution" : "info") + '">' + esc(v.type) + "</span>" +
+            '<span class="badge badge-muted">' + esc(v.severity) + "</span>" +
+            '<span class="muted" style="font-size:.7rem">' + esc(v.date) + "</span>" +
+            '<span class="badge badge-' + (v.status === "open" ? "caution" : "safe") + '" style="margin-left:auto">' + esc(v.status) + "</span>" +
+            '</div><div class="title">' + esc(v.contaminant) + '</div><p class="desc">' + esc(v.description) + "</p></div>"
+          ).join("")
+        : '<p class="muted">No violations in this period.</p>') +
+      "</div>"
+    );
+  }
+
+  function renderSource(s) {
+    return (
+      '<div class="card elevated" style="margin-bottom:1rem">' +
+      "<h2>Water source</h2><p class=\"muted\">" + esc(s.sourceType) + " · " + esc(s.city) + ", " + esc(s.state) + "</p>" +
+      '<p style="font-size:.9rem;color:var(--ink-2)">' + esc(s.sourceDescription) + "</p>" +
+      '<div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.75rem">' +
+      '<span class="badge badge-muted">' + esc(s.sourceType) + "</span>" +
+      '<span class="badge badge-muted">' + esc(s.ownerType) + "</span>" +
+      '<span class="badge badge-muted">ID ' + esc(s.pwsid) + "</span></div></div>" +
+      '<p class="section-title">Typical treatment steps</p>' +
+      '<div class="flow">' +
+      s.treatment.map((t, i) =>
+        (i ? '<div class="flow-arrow" aria-hidden="true">→</div>' : "") +
+        '<div class="flow-step"><div class="n">Step ' + (i + 1) + '</div><div class="t">' + esc(t.n) + '</div><p class="d">' + esc(t.d) + "</p></div>"
+      ).join("") +
+      "</div>" +
+      '<div class="card" style="margin-top:1rem"><h2>Official records</h2>' +
+      '<p class="muted" style="margin-bottom:.75rem">Open the EPA facility report for this system. Your utility’s annual water quality report has the full laboratory tables.</p>' +
+      '<a class="btn btn-primary" style="width:auto;text-decoration:none" href="' + esc(s.reportUrl) + '" target="_blank" rel="noopener noreferrer">View EPA report ↗</a></div>'
+    );
+  }
+
+  function renderRecs(s) {
+    const hot = s.contaminants.filter((c) => c.mcl != null && c.detected > c.mcl * 0.5);
+    const actions = [];
+    if (hot.some((c) => c.detected > c.mcl) || s.violations.some((v) => v.status === "open" && v.type === "health")) {
+      actions.push({ p: "high", t: "Filter water used for drinking and cooking", d: "Available data shows issues worth treating at the tap until your utility says otherwise." });
+    } else {
+      actions.push({ p: "low", t: "Optional filter for taste and peace of mind", d: "No open legal exceedances were loaded. A simple carbon filter can still improve taste." });
+    }
+    if (s.droughtLevel !== "none") {
+      actions.push({ p: s.droughtLevel === "D3" || s.droughtLevel === "D4" ? "high" : "medium", t: "Follow local outdoor watering rules", d: s.droughtDescription });
+    }
+    actions.push({ p: "medium", t: "Read your utility’s annual water quality report", d: "Federal records cover compliance; the utility report has the full set of lab results." });
+    if (s.contaminants.some((c) => /lead/i.test(c.name) && c.detected > 0)) {
+      actions.push({ p: "medium", t: "Use cold water and flush after sitting", d: "Run cold water 30–60 seconds after overnight stagnation. Don’t cook with hot tap water if lead is a concern." });
+    }
+    const filters = [
+      { name: "Under-sink reverse osmosis", type: "RO + carbon", eff: 95, cost: "higher", d: "Strong option for metals, nitrate, and many emerging contaminants.", targets: hot.length ? hot.map((c) => c.name).slice(0, 4) : ["Lead", "Nitrate", "PFAS"] },
+      { name: "Carbon pitcher or faucet filter", type: "Carbon", eff: 75, cost: "lower", d: "Affordable step for taste, chlorine, and many disinfection byproducts.", targets: ["Chlorine", "TTHMs", "Taste"] },
+      { name: "Lead-certified filter", type: "NSF/ANSI 53", eff: 90, cost: "mid", d: "Look for certification when lead or older plumbing is a concern.", targets: ["Lead"] },
+    ];
+    return (
+      '<div class="callout"><strong>Practical next steps</strong> based on legal limits, open compliance items, and drought conditions in your area.</div>' +
+      '<p class="section-title">Priority list</p>' +
+      actions.map((a, i) =>
+        '<div class="action-item"><div class="action-num ' + a.p + '">' + (i + 1) + "</div><div>" +
+        "<h4>" + esc(a.t) + ' <span class="badge badge-' + (a.p === "high" ? "danger" : a.p === "medium" ? "caution" : "muted") + '">' + a.p + " priority</span></h4>" +
+        "<p>" + esc(a.d) + "</p></div></div>"
+      ).join("") +
+      '<p class="section-title">Filter ideas</p>' +
+      '<div class="grid-2 eq">' +
+      filters.map((f) =>
+        '<div class="card filter-card elevated"><strong>' + esc(f.name) + '</strong><div class="muted" style="font-size:.75rem">' + esc(f.type) + " · " + f.cost + " cost</div>" +
+        '<p style="font-size:.85rem;color:var(--ink-2);margin:.5rem 0">' + esc(f.d) + "</p>" +
+        '<div style="display:flex;justify-content:space-between;font-size:.75rem"><span class="muted">Typical reduction</span><strong>' + f.eff + "%</strong></div>" +
+        '<div class="eff-track"><div class="eff-fill" style="width:' + f.eff + '%"></div></div>' +
+        '<div style="margin-top:.55rem;display:flex;flex-wrap:wrap;gap:.3rem">' +
+        f.targets.map((t) => '<span class="badge badge-muted">' + esc(t) + "</span>").join("") +
+        "</div></div>"
+      ).join("") +
+      "</div>" +
+      '<div class="card elevated" style="margin-top:1rem"><h2>Daily water use</h2><p class="muted">Typical household use vs a drought-aware target</p>' +
+      '<div class="usage-stats">' +
+      '<div><div class="n">' + s.usage.normal + '</div><div class="l">gal/day typical</div></div>' +
+      '<div><div class="n" style="color:var(--caution)">' + s.usage.recommended + '</div><div class="l">gal/day suggested</div></div>' +
+      '<div><div class="n" style="color:var(--safe)">−' + Math.round(((s.usage.normal - s.usage.recommended) / s.usage.normal) * 100) + '%</div><div class="l">reduction</div></div></div>' +
+      '<div class="hbar"><span>Typical</span><div class="track"><div class="fill" style="width:100%;background:var(--ink-3)"></div></div><span>' + s.usage.normal + "</span></div>" +
+      '<div class="hbar"><span>Suggested</span><div class="track"><div class="fill" style="width:' + Math.round((s.usage.recommended / s.usage.normal) * 100) + '%;background:var(--caution)"></div></div><span>' + s.usage.recommended + "</span></div></div>" +
+      '<div class="grid-2 eq" style="margin-top:1rem">' +
+      '<div class="card"><h2>Indoors</h2><ul class="tip-list"><li>Fix drips quickly</li><li>Shorter showers</li><li>Full laundry & dishwasher loads</li><li>WaterSense fixtures when you replace</li></ul></div>' +
+      '<div class="card"><h2>Outdoors</h2><ul class="tip-list"><li>Water early morning</li><li>Prefer drip irrigation</li><li>Mulch beds to hold moisture</li><li>Follow local watering days</li></ul></div></div>'
+    );
+  }
+
+  function renderDash() {
+    const s = state.system;
+    if (!s) return;
+    $("headerSub").textContent = s.name;
+    $("btnReset").classList.remove("hidden");
+    document.querySelectorAll(".tab").forEach((t) => {
+      const on = t.dataset.tab === state.tab;
+      t.classList.toggle("active", on);
+      t.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    const fn = { overview: renderOverview, contaminants: renderContaminants, violations: renderViolations, source: renderSource, recs: renderRecs }[state.tab];
+    $("dashContent").innerHTML = fn(s);
+    $("dashFooter").innerHTML = siteFooterHtml(s.name + " · ID " + s.pwsid + " · " + s.lastUpdated);
+
+    $("dashContent").querySelectorAll("[data-goto]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        state.tab = btn.getAttribute("data-goto");
+        renderDash();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+    });
+    $("dashContent").querySelectorAll("[data-cfilter]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        state.contFilter = btn.getAttribute("data-cfilter");
+        renderDash();
+      });
+    });
+  }
+
+  /* Controllers */
+  function setSearching(on) {
+    $("providerEmpty").classList.toggle("hidden", on || !!state._hasResults);
+    $("providerLoading").classList.toggle("hidden", !on);
+    $("providerResults").classList.toggle("hidden", on || !state._hasResults);
+    $("btnSearch").disabled = on;
+  }
+
+  async function onSearch(e) {
+    e.preventDefault();
+    const zip = $("zipInput").value.replace(/\D/g, "").slice(0, 5);
+    $("searchError").classList.add("hidden");
+    if (!/^\d{5}$/.test(zip)) {
+      $("searchError").textContent = "Enter a valid 5-digit U.S. ZIP code.";
+      $("searchError").classList.remove("hidden");
+      return;
+    }
+    state._hasResults = false;
+    $("providerLoadingText").textContent =
+      "Looking up providers near " + zip + "… (may take a moment; retries automatically if needed)";
+    setSearching(true);
+    try {
+      const result = await lookupProviders(zip);
+      state.place = result.place;
+      if (!result.systems.length) {
+        $("searchError").textContent =
+          "No community water providers found near " + result.place.city + ", " + result.place.state + ". Try a nearby ZIP.";
+        $("searchError").classList.remove("hidden");
+        state._hasResults = false;
+        setSearching(false);
+        $("providerEmpty").classList.remove("hidden");
+        return;
+      }
+      state._hasResults = true;
+      $("providerTitle").innerHTML =
+        result.systems.length + " provider" + (result.systems.length !== 1 ? "s" : "") +
+        " near <strong>" + esc(result.place.city) + ", " + esc(result.place.state) + "</strong>" +
+        ' <span style="color:var(--ink-3);font-weight:400">· ' + esc(zip) + "</span>";
+      $("providerList").innerHTML = result.systems.map((s) =>
+        '<li><button type="button" role="option" data-pwsid="' + esc(s.pwsid) + '">' +
+        '<span class="ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12h12"/><path d="M6 16h12"/></svg></span>' +
+        '<div style="min-width:0;flex:1"><div class="name">' + esc(s.name) +
+        (s.isPrimary ? '<span class="pill">Largest nearby</span>' : "") +
+        '</div><div class="meta">ID ' + esc(s.pwsid) + " · " + esc(s.city) + ", " + esc(s.state) + "</div>" +
+        '<div class="stats">' + fmtPop(s.population) + " served · " + esc(s.sourceType) + "</div></div>" +
+        '<span style="color:var(--ink-3)">›</span></button></li>'
+      ).join("");
+      $("providerList").querySelectorAll("button").forEach((btn) => {
+        btn.addEventListener("click", () => onSelectProvider(btn.getAttribute("data-pwsid"), false));
+      });
+      setSearching(false);
+      $("providerResults").classList.remove("hidden");
+      $("providerEmpty").classList.add("hidden");
+    } catch (err) {
+      setSearching(false);
+      $("searchError").textContent = err.message || "Something went wrong. Check your connection and try again.";
+      $("searchError").classList.remove("hidden");
+      $("providerEmpty").classList.remove("hidden");
+    }
+  }
+
+  async function onSelectProvider(pwsid, fromHistory) {
+    $("viewSearch").classList.add("hidden");
+    $("viewDash").classList.remove("hidden");
+    $("btnReset").classList.remove("hidden");
+    $("headerSub").textContent = "Loading…";
+    $("dashContent").innerHTML =
+      '<div class="skel" style="height:12rem;margin-bottom:1rem"></div>' +
+      '<div class="grid-2 eq"><div class="skel"></div><div class="skel"></div></div>' +
+      '<p class="muted" style="text-align:center;margin-top:1rem;font-size:.8rem">Fetching from EPA data services — this can take a few seconds. Slow responses are retried automatically.</p>';
+    $("dashFooter").innerHTML = siteFooterHtml("Loading your water system…");
+    if (!fromHistory) navToResults(pwsid, true);
+    else state.screen = "results";
+
+    try {
+      const system = await loadSystem(pwsid, state.place);
+      state.system = system;
+      state.tab = "overview";
+      state.contFilter = "all";
+      showDashUI();
+    } catch (err) {
+      const msg = err.message || "Could not load this system";
+      $("dashContent").innerHTML =
+        '<div class="alert alert-danger" role="alert">' + esc(msg) + "</div>" +
+        '<div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem">' +
+        '<button type="button" class="btn btn-primary" style="width:auto" id="retryLoad">Try again</button>' +
+        '<button type="button" class="btn btn-ghost" style="height:2.75rem;padding:0 1rem;background:var(--surface-2)" id="backSearch">Back to search</button>' +
+        "</div>";
+      $("retryLoad").onclick = () => onSelectProvider(pwsid, true);
+      $("backSearch").onclick = resetToSearch;
+    }
+  }
+
+  /* Wire up */
+  function applyDonationLinks() {
+    const urls = [ $("btnDonateHeader"), $("btnDonateFooter") ];
+    document.querySelectorAll('a.btn-donate, a.btn-donate-lg').forEach((a) => {
+      a.href = DONATION_URL;
+    });
+  }
+
+  initTheme();
+  applyDonationLinks();
+  history.replaceState({ screen: "search" }, "", "#search");
+
+  $("btnTheme").addEventListener("click", toggleTheme);
+  $("btnReset").addEventListener("click", resetToSearch);
+  $("btnHome").addEventListener("click", resetToSearch);
+  $("zipForm").addEventListener("submit", onSearch);
+  $("zipInput").addEventListener("input", (e) => {
+    e.target.value = e.target.value.replace(/\D/g, "").slice(0, 5);
+  });
+  document.querySelectorAll(".tab").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      if (!state.system) return;
+      state.tab = tab.dataset.tab;
+      renderDash();
+    });
+  });
+})();
+</script>
+</body>
+</html>

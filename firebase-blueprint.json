@@ -1,0 +1,172 @@
+{
+  "entities": {
+    "WaterIssue": {
+      "title": "WaterIssue",
+      "description": "User-reported water quality issue stored in Firestore and scoped to the authenticated user.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "UID of the authenticated user who reported the water issue."
+        },
+        "pwsid": {
+          "type": "string",
+          "description": "EPA Public Water System ID (e.g. TX2270001)."
+        },
+        "systemName": {
+          "type": "string",
+          "description": "Name of the public water system."
+        },
+        "zip": {
+          "type": "string",
+          "description": "5-digit US ZIP code for the reported water issue."
+        },
+        "category": {
+          "type": "string",
+          "description": "Category of the water issue (e.g. Taste / Odor, Discoloration, Lead / Pipe Concern)."
+        },
+        "title": {
+          "type": "string",
+          "description": "Short summary title of the reported issue."
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed observation of the water quality issue."
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["low", "medium", "high"],
+          "description": "Severity level of the water quality issue."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["open", "investigating", "resolved"],
+          "description": "Lifecycle status of the reported issue."
+        },
+        "affectedCount": {
+          "type": "integer",
+          "description": "Number of affected household confirmations."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the issue was created (FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the issue was last updated (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": [
+        "userId",
+        "pwsid",
+        "systemName",
+        "zip",
+        "category",
+        "title",
+        "description",
+        "severity",
+        "status",
+        "affectedCount",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "LocationHistory": {
+      "title": "LocationHistory",
+      "description": "Location-based historical water quality snapshot saved for an authenticated user.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "UID of the authenticated user who recorded this location history snapshot."
+        },
+        "pwsid": {
+          "type": "string",
+          "description": "EPA Public Water System ID."
+        },
+        "systemName": {
+          "type": "string",
+          "description": "Name of the water utility."
+        },
+        "zip": {
+          "type": "string",
+          "description": "5-digit ZIP code."
+        },
+        "city": {
+          "type": "string",
+          "description": "City served by the water system."
+        },
+        "state": {
+          "type": "string",
+          "description": "Two-letter state code."
+        },
+        "qualityScore": {
+          "type": "integer",
+          "description": "Composite water quality score (0 to 100)."
+        },
+        "fiveYearDelta": {
+          "type": "integer",
+          "description": "5-year historical score delta in points."
+        },
+        "tenYearDelta": {
+          "type": "integer",
+          "description": "10-year historical score delta in points."
+        },
+        "primaryWhySummary": {
+          "type": "string",
+          "description": "Diagnostic summary explaining why the score and contaminant profile look the way they do."
+        },
+        "exceedsHealthGoalCount": {
+          "type": "integer",
+          "description": "Count of contaminants exceeding their Public Health Goal (PHG)."
+        },
+        "violationCount": {
+          "type": "integer",
+          "description": "Count of recorded EPA SDWIS violations."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the snapshot was first logged (FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the snapshot was last updated (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": [
+        "userId",
+        "pwsid",
+        "systemName",
+        "zip",
+        "city",
+        "state",
+        "qualityScore",
+        "fiveYearDelta",
+        "tenYearDelta",
+        "primaryWhySummary",
+        "exceedsHealthGoalCount",
+        "violationCount",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/water_issues/{issueId}": {
+      "schema": {
+        "$ref": "#/entities/WaterIssue"
+      },
+      "description": "Stores user-reported water quality issues scoped by userId."
+    },
+    "/location_history/{historyId}": {
+      "schema": {
+        "$ref": "#/entities/LocationHistory"
+      },
+      "description": "Stores location-based historical water quality records and snapshots scoped by userId."
+    }
+  }
+}

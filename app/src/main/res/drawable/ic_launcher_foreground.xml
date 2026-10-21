@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Outer subtle hydrological ring -->
+    <path
+        android:fillColor="#334A8FC9"
+        android:pathData="M54,22 A32,32 0 1,1 53.99,22 Z" />
+    <!-- Bold water droplet silhouette -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,27 L71,44 A24,24 0 1,1 37,44 Z" />
+    <!-- Inner telemetry wave/spark highlight -->
+    <path
+        android:fillColor="#2B7FD4"
+        android:pathData="M45,59 L51,53 L56,57 L63,48 L66,51 L56,63 L51,58 L48,62 Z" />
+</vector>

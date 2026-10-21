@@ -1,0 +1,174 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidWaterIssue(data) {
+      return data.userId is string &&
+             data.userId == request.auth.uid &&
+             data.userId.size() >= 1 &&
+             data.userId.size() <= 128 &&
+             data.pwsid is string &&
+             data.pwsid.size() >= 1 &&
+             data.pwsid.size() <= 64 &&
+             data.systemName is string &&
+             data.systemName.size() >= 1 &&
+             data.systemName.size() <= 200 &&
+             data.zip is string &&
+             data.zip.size() >= 5 &&
+             data.zip.size() <= 10 &&
+             data.category is string &&
+             data.category.size() >= 1 &&
+             data.category.size() <= 60 &&
+             data.title is string &&
+             data.title.size() >= 1 &&
+             data.title.size() <= 160 &&
+             data.description is string &&
+             data.description.size() >= 1 &&
+             data.description.size() <= 1000 &&
+             data.severity is string &&
+             data.severity in ['low', 'medium', 'high'] &&
+             data.status is string &&
+             data.status in ['open', 'investigating', 'resolved'] &&
+             data.affectedCount is int &&
+             data.affectedCount >= 1 &&
+             data.affectedCount <= 100000 &&
+             data.createdAt is timestamp &&
+             data.createdAt <= request.time &&
+             data.updatedAt is timestamp &&
+             data.updatedAt <= request.time;
+    }
+
+    function isValidLocationHistory(data) {
+      return data.userId is string &&
+             data.userId == request.auth.uid &&
+             data.userId.size() >= 1 &&
+             data.userId.size() <= 128 &&
+             data.pwsid is string &&
+             data.pwsid.size() >= 1 &&
+             data.pwsid.size() <= 64 &&
+             data.systemName is string &&
+             data.systemName.size() >= 1 &&
+             data.systemName.size() <= 200 &&
+             data.zip is string &&
+             data.zip.size() >= 5 &&
+             data.zip.size() <= 10 &&
+             data.city is string &&
+             data.city.size() >= 1 &&
+             data.city.size() <= 100 &&
+             data.state is string &&
+             data.state.size() >= 1 &&
+             data.state.size() <= 40 &&
+             data.qualityScore is int &&
+             data.qualityScore >= 0 &&
+             data.qualityScore <= 100 &&
+             data.fiveYearDelta is int &&
+             data.fiveYearDelta >= -100 &&
+             data.fiveYearDelta <= 100 &&
+             data.tenYearDelta is int &&
+             data.tenYearDelta >= -100 &&
+             data.tenYearDelta <= 100 &&
+             data.primaryWhySummary is string &&
+             data.primaryWhySummary.size() >= 1 &&
+             data.primaryWhySummary.size() <= 500 &&
+             data.exceedsHealthGoalCount is int &&
+             data.exceedsHealthGoalCount >= 0 &&
+             data.exceedsHealthGoalCount <= 100 &&
+             data.violationCount is int &&
+             data.violationCount >= 0 &&
+             data.violationCount <= 1000 &&
+             data.createdAt is timestamp &&
+             data.createdAt <= request.time &&
+             data.updatedAt is timestamp &&
+             data.updatedAt <= request.time;
+    }
+
+    match /water_issues/{issueId} {
+      allow get: if isSignedIn() && isValidId(issueId) && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && existing().userId == request.auth.uid;
+
+      allow create: if isSignedIn() &&
+                       isValidId(issueId) &&
+                       incoming().keys().hasAll([
+                         'userId', 'pwsid', 'systemName', 'zip', 'category',
+                         'title', 'description', 'severity', 'status',
+                         'affectedCount', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'pwsid', 'systemName', 'zip', 'category',
+                         'title', 'description', 'severity', 'status',
+                         'affectedCount', 'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidWaterIssue(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(issueId) &&
+                       isValidWaterIssue(incoming()) &&
+                       existing().userId == request.auth.uid &&
+                       incoming().userId == existing().userId &&
+                       incoming().pwsid == existing().pwsid &&
+                       incoming().createdAt == existing().createdAt &&
+                       existing().status != 'resolved' &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'title', 'description', 'severity', 'status', 'affectedCount', 'updatedAt'
+                       ]);
+
+      allow delete: if isSignedIn() && isValidId(issueId) && existing().userId == request.auth.uid;
+    }
+
+    match /location_history/{historyId} {
+      allow get: if isSignedIn() && isValidId(historyId) && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && existing().userId == request.auth.uid;
+
+      allow create: if isSignedIn() &&
+                       isValidId(historyId) &&
+                       incoming().keys().hasAll([
+                         'userId', 'pwsid', 'systemName', 'zip', 'city', 'state',
+                         'qualityScore', 'fiveYearDelta', 'tenYearDelta',
+                         'primaryWhySummary', 'exceedsHealthGoalCount',
+                         'violationCount', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'pwsid', 'systemName', 'zip', 'city', 'state',
+                         'qualityScore', 'fiveYearDelta', 'tenYearDelta',
+                         'primaryWhySummary', 'exceedsHealthGoalCount',
+                         'violationCount', 'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidLocationHistory(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(historyId) &&
+                       isValidLocationHistory(incoming()) &&
+                       existing().userId == request.auth.uid &&
+                       incoming().userId == existing().userId &&
+                       incoming().pwsid == existing().pwsid &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'qualityScore', 'fiveYearDelta', 'tenYearDelta',
+                         'primaryWhySummary', 'exceedsHealthGoalCount',
+                         'violationCount', 'updatedAt'
+                       ]);
+
+      allow delete: if isSignedIn() && isValidId(historyId) && existing().userId == request.auth.uid;
+    }
+  }
+}
