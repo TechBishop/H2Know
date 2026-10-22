@@ -289,9 +289,7 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
   font-size: 12px;
   line-height: 17px;
   color: var(--ink-3);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
 }
 .top-right-actions {
   display: flex;
@@ -1725,12 +1723,17 @@ html.dark {
     return `${meta.limitKind || "Limit"} ${fmtVal(meta.mcl)} ${meta.unit}`.trim();
   }
 
+  function strictlyAbove(value, bound) {
+    const limit = Number(bound);
+    return bound != null && Number.isFinite(value) && Number.isFinite(limit) && value > limit;
+  }
+
   function decorateMeasurement(meta, readings) {
     const list = readings ? readings.slice() : [];
     const newest = list.length ? list[list.length - 1] : null;
     const measured = list.length > 0;
-    const overLimit = measured && meta.mcl != null && list.some((pt) => pt.value > meta.mcl);
-    const overGoal = measured && meta.phg != null && list.some((pt) => pt.value > meta.phg);
+    const overLimit = measured && list.some((pt) => strictlyAbove(pt.value, meta.mcl));
+    const overGoal = measured && list.some((pt) => strictlyAbove(pt.value, meta.phg));
     return {
       ...meta,
       readings: list,
@@ -1974,15 +1977,31 @@ html.dark {
     `;
   }
 
-  function readingListHtml(item) {
+  function lcrResultUrl(pwsid, sampleId) {
+    return `${EPA_BASE}/LCR_SAMPLE_RESULT/PWSID/${encodeURIComponent(pwsid)}/SAMPLE_ID/${encodeURIComponent(sampleId)}/JSON`;
+  }
+
+  function lcrSampleUrl(pwsid, sampleId) {
+    return `${EPA_BASE}/LCR_SAMPLE/PWSID/${encodeURIComponent(pwsid)}/SAMPLE_ID/${encodeURIComponent(sampleId)}/JSON`;
+  }
+
+  function readingListHtml(item, pwsid) {
     const newestFirst = item.readings.slice().reverse();
-    return newestFirst.map((pt) => `
-      <li>
+    return newestFirst.map((pt) => {
+      const overLimit = strictlyAbove(pt.value, item.mcl);
+      const overGoal = strictlyAbove(pt.value, item.phg);
+      const flag = overLimit ? "OVER LIMIT" : (overGoal ? "ABOVE GOAL" : "");
+      const resultHref = pt.sampleId ? lcrResultUrl(pwsid, pt.sampleId) : "";
+      const sampleHref = pt.sampleId ? lcrSampleUrl(pwsid, pt.sampleId) : "";
+      return `
+      <li data-sample-id="${escHtml(pt.sampleId || "")}" data-above-goal="${overGoal ? "1" : "0"}" data-over-limit="${overLimit ? "1" : "0"}">
         <span class="epa-value">${escHtml(fmtVal(pt.value))} ${escHtml(pt.unit)}</span>
-        <span class="epa-meta">${escHtml(periodLabel(pt))}</span>
-        <span class="epa-meta">EPA sample ${escHtml(pt.sampleId || "—")} · sample_measure ${escHtml(String(pt.raw))} ${escHtml(pt.rawUnit)}</span>
+        ${flag ? `<span class="epa-badge ${overLimit ? "epa-badge-over" : "epa-badge-goal"}">${flag}</span>` : ""}
+        <span class="epa-meta">${sampleHref ? `<a class="epa-source" href="${escHtml(sampleHref)}" target="_blank" rel="noopener noreferrer">${escHtml(periodLabel(pt))}</a>` : escHtml(periodLabel(pt))}</span>
+        <span class="epa-meta">sample_measure ${escHtml(String(pt.raw))} ${escHtml(pt.rawUnit)}${resultHref ? ` · <a class="epa-source" href="${escHtml(resultHref)}" target="_blank" rel="noopener noreferrer">EPA result ${escHtml(pt.sampleId)}</a>` : ""}</span>
       </li>
-    `).join("");
+    `;
+    }).join("");
   }
 
   function missingPhrase(item, lcrUnavailable) {
@@ -1990,7 +2009,7 @@ html.dark {
     return NOT_MEASURED;
   }
 
-  function measurementCardHtml(item, selectedCode, sourceUrl, lcrUnavailable) {
+  function measurementCardHtml(item, selectedCode, sourceUrl, lcrUnavailable, ccr, pwsid) {
     const selected = item.code === selectedCode;
     if (!item.measured) {
       const failed = lcrUnavailable && (item.code === "PB90" || item.code === "CU90");
@@ -2004,18 +2023,19 @@ html.dark {
         </article>
       `;
     }
-    const badge = item.exceedsMcl ? "MEASURED · OVER LIMIT" : (item.exceedsHealthGoal ? "MEASURED · ABOVE GOAL" : "MEASURED");
-    const badgeClass = item.exceedsMcl ? "epa-badge-over" : (item.exceedsHealthGoal ? "epa-badge-goal" : "epa-badge-measured");
+    const badge = item.exceedsMcl ? "MEASURED · OVER LIMIT" : "MEASURED";
+    const badgeClass = item.exceedsMcl ? "epa-badge-over" : "epa-badge-measured";
     return `
       <article class="epa-card epa-measured ${selected ? "is-selected" : ""}" data-code="${escHtml(item.code)}" data-measured="1">
         <button type="button" class="why-contam-row epa-card-btn" data-code="${escHtml(item.code)}">
           <span class="epa-name">${escHtml(item.plainName)}</span>
           <span class="epa-badge ${badgeClass}">${badge}</span>
         </button>
-        <ul class="epa-readings">${readingListHtml(item)}</ul>
+        <ul class="epa-readings">${readingListHtml(item, pwsid || "")}</ul>
         <p class="epa-limit">Limit: ${escHtml(limitPhrase(item))}</p>
         ${measurementGraphSvg(item)}
         <a class="epa-source" href="${escHtml(sourceUrl)}" target="_blank" rel="noopener noreferrer">EPA lead and copper results</a>
+        ${ccr ? `<a class="epa-source" href="${escHtml(ccr.url)}" target="_blank" rel="noopener noreferrer">${escHtml(ccr.label)}</a>` : ""}
       </article>
     `;
   }
@@ -2046,12 +2066,12 @@ html.dark {
     const body = groupOrder.map((name) => {
       const present = measuredGroups[name] || [];
       const absent = groups[name] || [];
-      const cards = present.map((item) => measurementCardHtml(item, selected && selected.code, lcrUrl, lcrUnavailable)).join("");
+      const cards = present.map((item) => measurementCardHtml(item, selected && selected.code, lcrUrl, lcrUnavailable, r.ccr, r.pwsid)).join("");
       const ucmrNote = name.indexOf("UCMR") === 0
         ? `<p class="epa-source-note">UCMR rows are not filled from a per-system browser feed. The national files are at <a href="${UCMR_NATIONAL_URL}" target="_blank" rel="noopener noreferrer">EPA UCMR occurrence data</a>.</p>`
         : "";
       const inlineMissing = present.length
-        ? absent.map((item) => measurementCardHtml(item, selected && selected.code, lcrUrl, lcrUnavailable)).join("")
+        ? absent.map((item) => measurementCardHtml(item, selected && selected.code, lcrUrl, lcrUnavailable, r.ccr, r.pwsid)).join("")
         : "";
       const openMissing = absent.length > 0 && present.length === 0 && !openedMissing;
       if (openMissing) openedMissing = true;
@@ -2060,7 +2080,7 @@ html.dark {
             <summary>${escHtml(name)} · ${absent.length} with no EPA record</summary>
             ${ucmrNote}
             <div class="epa-missing-list">
-              ${absent.map((item) => measurementCardHtml(item, selected && selected.code, lcrUrl, lcrUnavailable)).join("")}
+              ${absent.map((item) => measurementCardHtml(item, selected && selected.code, lcrUrl, lcrUnavailable, r.ccr, r.pwsid)).join("")}
             </div>
           </details>`
         : "";
@@ -2079,8 +2099,8 @@ html.dark {
         <p>${escHtml(selected.healthNote)}</p>
         ${selected.measured ? "" : `<p class="epa-phrase">${escHtml(missingPhrase(selected, lcrUnavailable))}</p>`}
         <div class="flow-row" style="gap:8px">
-          <a href="${contaminantAmazonFilterUrl(selected)}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;border-radius:11px;background:var(--safe);color:#04120c;padding:6px 12px;font-family:var(--font-display);font-size:11px;font-weight:700">Shop NSF Filter on Amazon</a>
-          <a href="${contaminantAmazonTestKitUrl(selected)}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;border-radius:11px;border:1px solid var(--caution);color:var(--caution);padding:6px 11px;font-family:var(--font-display);font-size:11px;font-weight:700">Test kit</a>
+          <a href="${withAmazonTag(contaminantAmazonFilterUrl(selected))}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;border-radius:11px;background:var(--safe);color:#04120c;padding:6px 12px;font-family:var(--font-display);font-size:11px;font-weight:700">Shop NSF Filter on Amazon</a>
+          <a href="${withAmazonTag(contaminantAmazonTestKitUrl(selected))}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;border-radius:11px;border:1px solid var(--caution);color:var(--caution);padding:6px 11px;font-family:var(--font-display);font-size:11px;font-weight:700">Test kit</a>
           <button type="button" id="flagContaminantIssueBtn" class="outlined-brand-btn" style="border-radius:11px;padding:6px 11px">${SVG.add}<span>Report</span></button>
         </div>
       </div>
@@ -2106,9 +2126,34 @@ html.dark {
     return null;
   }
 
+  function stampSearchedZip(report, place, summary) {
+    const searched = String((place && place.zip) || (summary && summary.zip) || "").replace(/\D/g, "").slice(0, 5);
+    if (searched) {
+      report.searchedZip = searched;
+      report.zip = searched;
+    }
+    return report;
+  }
+
+  function prettyPlace(value) {
+    return String(value || "").trim().toLowerCase().replace(/(^|[^a-z])([a-z])/g, (all, pre, ch) => pre + ch.toUpperCase());
+  }
+
+  function servedAreaText(r) {
+    const city = prettyPlace(r.servedCity || r.cityServed || "");
+    if (city && r.state) return `${city}, ${r.state}`;
+    return city || r.state || "Served area not in the EPA geographic row";
+  }
+
+  function mailingAddressText(r) {
+    const city = prettyPlace(r.mailingCity || "");
+    const place = [city, [r.state, r.mailingZip].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+    return [r.address, place].filter((part) => part && String(part).trim()).join(", ");
+  }
+
   async function loadSystemReport(summary, place) {
     const pwsid = summary.pwsid;
-    if (systemReportCache[pwsid]) return systemReportCache[pwsid];
+    if (systemReportCache[pwsid]) return stampSearchedZip(systemReportCache[pwsid], place, summary);
 
     const droughtKey = (place && place.zip) || summary.zip || "none";
     const droughtPromise = droughtCache[droughtKey]
@@ -2135,7 +2180,9 @@ html.dark {
     const name = String(field(sysObj, "pws_name") || summary.name || "WATER SYSTEM");
     const city = String(field(sysObj, "city_name") || summary.city || (place && place.city) || "");
     const st = String(field(sysObj, "state_code") || summary.state || (place && place.state) || pwsid.slice(0, 2));
-    const zip = String(field(sysObj, "zip_code") || (place && place.zip) || summary.zip || "").slice(0, 5);
+    const mailingZip = String(field(sysObj, "zip_code") || "").trim();
+    const searchedZip = String((place && place.zip) || summary.zip || "").replace(/\D/g, "").slice(0, 5);
+    const zip = searchedZip || mailingZip.slice(0, 5);
     const popRaw = parseInt(field(sysObj, "population_served_count") || "0", 10);
     const population = !Number.isNaN(popRaw) && popRaw > 0 ? popRaw : (summary.population || 0);
     const connectionsRaw = parseInt(field(sysObj, "service_connections_count") || "0", 10);
@@ -2201,7 +2248,10 @@ html.dark {
       name,
       city,
       state: st,
-      zip: zip || (place && place.zip) || summary.zip || "",
+      zip,
+      searchedZip: zip,
+      mailingCity: city,
+      mailingZip,
       county,
       cityServed,
       zipServed,
@@ -2249,7 +2299,7 @@ html.dark {
     };
 
     systemReportCache[pwsid] = report;
-    return report;
+    return stampSearchedZip(report, place, summary);
   }
 
   /* ==========================================================================
@@ -2561,8 +2611,8 @@ html.dark {
     zone.innerHTML = `
       <div class="stack-10">
         <div class="row-between">
-          <span class="mono" style="font-size:11px;font-weight:700;color:var(--safe);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-            ${state.providerListKind === "nearby" ? "Nearby systems" : `Serves ZIP ${state.currentPlace?.zip || primary.zip}`}
+          <span class="mono" style="font-size:11px;font-weight:700;color:var(--safe);white-space:normal;line-height:1.35">
+            ${state.providerListKind === "nearby" ? "Systems with a mailing address in this ZIP (service area not on record)" : `Serves ZIP ${state.currentPlace?.zip || primary.zip}`}
           </span>
           <span class="label-small" style="color:var(--ink-2);letter-spacing:0">${state.currentPlace?.city || primary.city}, ${state.currentPlace?.state || primary.state}</span>
         </div>
@@ -2584,7 +2634,7 @@ html.dark {
 
         ${others.length > 0 ? `
           <button type="button" id="inlineOtherToggleBtn" style="width:100%;border-radius:14px;background:var(--surface-2);border:1px solid var(--border-strong);padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px">
-            <span class="title-small" style="font-weight:700">${state.providerListKind === "nearby" ? `Other nearby systems (${others.length})` : `Other systems that serve ZIP ${primary.zip} (${others.length})`}</span>
+            <span class="title-small" style="font-weight:700">${state.providerListKind === "nearby" ? `Other systems with a mailing address in this ZIP (${others.length})` : `Other systems that serve ZIP ${state.currentPlace?.zip || primary.zip} (${others.length})`}</span>
             <span class="mono" style="font-size:11px;font-weight:700;color:var(--brand)">${state.showOtherInline ? "Hide ▲" : "Select ▾"}</span>
           </button>
           ${state.showOtherInline ? `
@@ -2626,26 +2676,33 @@ html.dark {
   /* ==========================================================================
      SUGGESTED AMAZON & NSF FILTRATION / TESTING HELPERS (1:1 ReferenceWaterData.kt)
      ========================================================================== */
+  function withAmazonTag(url) {
+    const raw = String(url || "");
+    if (raw.indexOf("amazon.com") < 0) return raw;
+    if (/[?&]tag=/.test(raw)) return raw;
+    return raw + (raw.indexOf("?") >= 0 ? "&" : "?") + "tag=bishopsfolly-20";
+  }
+
   function contaminantAmazonFilterUrl(c) {
     const code = c?.code || "";
-    if (code === "PB90") return "https://www.amazon.com/s?k=NSF+53+lead+water+filter+pitcher+faucet+under+sink";
-    if (code === "CU90") return "https://www.amazon.com/s?k=NSF+53+copper+and+lead+drinking+water+filter";
-    if (code === "2950" || code === "2456") return "https://www.amazon.com/s?k=NSF+53+42+activated+carbon+water+filter+TTHM+chlorine+byproducts";
-    if (code === "2806" || code === "2805") return "https://www.amazon.com/s?k=NSF+53+58+P473+PFAS+PFOA+PFOS+water+filter";
-    if (code === "1040") return "https://www.amazon.com/s?k=NSF+58+reverse+osmosis+nitrate+water+filter+system";
-    if (code === "1005") return "https://www.amazon.com/s?k=NSF+58+reverse+osmosis+arsenic+water+filter+system";
-    if (code === "1025") return "https://www.amazon.com/s?k=NSF+58+reverse+osmosis+fluoride+water+filter";
-    return "https://www.amazon.com/s?k=NSF+53+58+certified+drinking+water+filter";
+    if (code === "PB90") return "https://www.amazon.com/s?k=NSF+53+lead+water+filter+pitcher+faucet+under+sink&tag=bishopsfolly-20";
+    if (code === "CU90") return "https://www.amazon.com/s?k=NSF+53+copper+and+lead+drinking+water+filter&tag=bishopsfolly-20";
+    if (code === "2950" || code === "2456") return "https://www.amazon.com/s?k=NSF+53+42+activated+carbon+water+filter+TTHM+chlorine+byproducts&tag=bishopsfolly-20";
+    if (code === "2806" || code === "2805") return "https://www.amazon.com/s?k=NSF+53+58+P473+PFAS+PFOA+PFOS+water+filter&tag=bishopsfolly-20";
+    if (code === "1040") return "https://www.amazon.com/s?k=NSF+58+reverse+osmosis+nitrate+water+filter+system&tag=bishopsfolly-20";
+    if (code === "1005") return "https://www.amazon.com/s?k=NSF+58+reverse+osmosis+arsenic+water+filter+system&tag=bishopsfolly-20";
+    if (code === "1025") return "https://www.amazon.com/s?k=NSF+58+reverse+osmosis+fluoride+water+filter&tag=bishopsfolly-20";
+    return "https://www.amazon.com/s?k=NSF+53+58+certified+drinking+water+filter&tag=bishopsfolly-20";
   }
 
   function contaminantAmazonTestKitUrl(c) {
     const code = c?.code || "";
-    if (code === "PB90" || code === "CU90") return "https://www.amazon.com/s?k=EPA+lead+and+copper+in+drinking+water+home+test+kit";
-    if (code === "2806" || code === "2805") return "https://www.amazon.com/s?k=PFAS+forever+chemicals+mail+in+water+test+kit";
-    if (code === "1040") return "https://www.amazon.com/s?k=nitrate+nitrite+drinking+water+test+kit+strips";
-    if (code === "1005") return "https://www.amazon.com/s?k=arsenic+in+drinking+water+test+kit";
-    if (code === "2950" || code === "2456") return "https://www.amazon.com/s?k=complete+home+drinking+water+test+kit+chlorine+VOC";
-    return "https://www.amazon.com/s?k=16+in+1+drinking+water+test+kit+lead+copper+nitrate";
+    if (code === "PB90" || code === "CU90") return "https://www.amazon.com/s?k=EPA+lead+and+copper+in+drinking+water+home+test+kit&tag=bishopsfolly-20";
+    if (code === "2806" || code === "2805") return "https://www.amazon.com/s?k=PFAS+forever+chemicals+mail+in+water+test+kit&tag=bishopsfolly-20";
+    if (code === "1040") return "https://www.amazon.com/s?k=nitrate+nitrite+drinking+water+test+kit+strips&tag=bishopsfolly-20";
+    if (code === "1005") return "https://www.amazon.com/s?k=arsenic+in+drinking+water+test+kit&tag=bishopsfolly-20";
+    if (code === "2950" || code === "2456") return "https://www.amazon.com/s?k=complete+home+drinking+water+test+kit+chlorine+VOC&tag=bishopsfolly-20";
+    return "https://www.amazon.com/s?k=16+in+1+drinking+water+test+kit+lead+copper+nitrate&tag=bishopsfolly-20";
   }
 
   function buildSuggestedProductsForReport(r) {
@@ -2685,9 +2742,9 @@ html.dark {
         priceTier: "$169–$249 · Prime Eligible",
         matchReason: roMatchText,
         targetCodes: ["PB90", "2806", "2805", "1040", "1005", "2950"],
-        amazonUrl: "https://www.amazon.com/s?k=NSF+58+53+under+sink+reverse+osmosis+water+filter+system",
+        amazonUrl: "https://www.amazon.com/s?k=NSF+58+53+under+sink+reverse+osmosis+water+filter+system&tag=bishopsfolly-20",
         secondaryLabel: "RO Filter Packs ↗",
-        secondaryUrl: "https://www.amazon.com/s?k=reverse+osmosis+replacement+filter+set+NSF+58"
+        secondaryUrl: "https://www.amazon.com/s?k=reverse+osmosis+replacement+filter+set+NSF+58&tag=bishopsfolly-20"
       },
       {
         id: "amz-pitcher-nsf53",
@@ -2697,9 +2754,9 @@ html.dark {
         priceTier: "$34–$58 · Prime Eligible",
         matchReason: pitcherMatchText,
         targetCodes: ["PB90", "CU90", "2950", "2456", "2806", "2805"],
-        amazonUrl: "https://www.amazon.com/s?k=NSF+53+lead+and+PFAS+water+filter+pitcher",
+        amazonUrl: "https://www.amazon.com/s?k=NSF+53+lead+and+PFAS+water+filter+pitcher&tag=bishopsfolly-20",
         secondaryLabel: "NSF-53 Cartridges ↗",
-        secondaryUrl: "https://www.amazon.com/s?k=NSF+53+replacement+water+pitcher+filter+cartridges"
+        secondaryUrl: "https://www.amazon.com/s?k=NSF+53+replacement+water+pitcher+filter+cartridges&tag=bishopsfolly-20"
       },
       {
         id: "amz-faucet-mount",
@@ -2709,9 +2766,9 @@ html.dark {
         priceTier: "$28–$46 · Prime Eligible",
         matchReason: faucetMatchText,
         targetCodes: ["PB90", "CU90", "2950", "2456"],
-        amazonUrl: "https://www.amazon.com/s?k=NSF+53+faucet+mount+water+filter+lead+reduction",
+        amazonUrl: "https://www.amazon.com/s?k=NSF+53+faucet+mount+water+filter+lead+reduction&tag=bishopsfolly-20",
         secondaryLabel: "Faucet Refills ↗",
-        secondaryUrl: "https://www.amazon.com/s?k=NSF+53+faucet+water+filter+replacement+cartridges"
+        secondaryUrl: "https://www.amazon.com/s?k=NSF+53+faucet+water+filter+replacement+cartridges&tag=bishopsfolly-20"
       },
       {
         id: "amz-home-test-kit",
@@ -2721,9 +2778,9 @@ html.dark {
         priceTier: "$22–$79 · Prime Eligible",
         matchReason: testKitMatchText,
         targetCodes: ["PB90", "CU90", "1040", "1005", "2950"],
-        amazonUrl: "https://www.amazon.com/s?k=drinking+water+test+kit+lead+copper+pfas+nitrate",
+        amazonUrl: "https://www.amazon.com/s?k=drinking+water+test+kit+lead+copper+pfas+nitrate&tag=bishopsfolly-20",
         secondaryLabel: "Mail-In Lab Kits ↗",
-        secondaryUrl: "https://www.amazon.com/s?k=certified+laboratory+mail+in+water+test+kit+lead+PFAS"
+        secondaryUrl: "https://www.amazon.com/s?k=certified+laboratory+mail+in+water+test+kit+lead+PFAS&tag=bishopsfolly-20"
       }
     ];
   }
@@ -2738,9 +2795,9 @@ html.dark {
         priceTier: "$19–$39 · Amazon",
         matchReason: `Amazon search for ZIP ${r.zip}. Not an EPA sample result.`,
         targetCodes: [],
-        amazonUrl: "https://www.amazon.com/s?k=EPA+WaterSense+high+efficiency+showerhead+and+faucet+aerator+kit",
+        amazonUrl: "https://www.amazon.com/s?k=EPA+WaterSense+high+efficiency+showerhead+and+faucet+aerator+kit&tag=bishopsfolly-20",
         secondaryLabel: "Smart Leak Sensors ↗",
-        secondaryUrl: "https://www.amazon.com/s?k=smart+home+water+leak+detector+sensor+shutoff"
+        secondaryUrl: "https://www.amazon.com/s?k=smart+home+water+leak+detector+sensor+shutoff&tag=bishopsfolly-20"
       },
       {
         id: "amz-whole-house-sediment",
@@ -2750,9 +2807,9 @@ html.dark {
         priceTier: "$52–$115 · Amazon",
         matchReason: `Protects plumbing & water heaters on ${r.sourceType.toLowerCase()} mains`,
         targetCodes: ["PB90", "CU90", "2950"],
-        amazonUrl: "https://www.amazon.com/s?k=whole+house+spin+down+sediment+and+carbon+water+filter",
+        amazonUrl: "https://www.amazon.com/s?k=whole+house+spin+down+sediment+and+carbon+water+filter&tag=bishopsfolly-20",
         secondaryLabel: "Shower Filters ↗",
-        secondaryUrl: "https://www.amazon.com/s?k=vitamin+C+activated+carbon+chlorine+shower+head+filter"
+        secondaryUrl: "https://www.amazon.com/s?k=vitamin+C+activated+carbon+chlorine+shower+head+filter&tag=bishopsfolly-20"
       }
     ];
   }
@@ -2766,9 +2823,9 @@ html.dark {
       priceTier: "$34–$58",
       matchReason: "Most Popular Renter & Kitchen Choice",
       targetCodes: ["PB90", "2806", "2950"],
-      amazonUrl: "https://www.amazon.com/s?k=NSF+53+lead+and+PFAS+water+filter+pitcher",
+      amazonUrl: "https://www.amazon.com/s?k=NSF+53+lead+and+PFAS+water+filter+pitcher&tag=bishopsfolly-20",
       secondaryLabel: "Refills ↗",
-      secondaryUrl: "https://www.amazon.com/s?k=NSF+53+replacement+water+pitcher+filter+cartridges"
+      secondaryUrl: "https://www.amazon.com/s?k=NSF+53+replacement+water+pitcher+filter+cartridges&tag=bishopsfolly-20"
     },
     {
       id: "home-amz-testkit",
@@ -2778,9 +2835,9 @@ html.dark {
       priceTier: "$22–$49",
       matchReason: "Verify Pre-1986 Household Plumbing",
       targetCodes: ["PB90", "CU90", "1040"],
-      amazonUrl: "https://www.amazon.com/s?k=16+in+1+drinking+water+test+kit+lead+copper+nitrate",
+      amazonUrl: "https://www.amazon.com/s?k=16+in+1+drinking+water+test+kit+lead+copper+nitrate&tag=bishopsfolly-20",
       secondaryLabel: "Lab Mail-In ↗",
-      secondaryUrl: "https://www.amazon.com/s?k=certified+laboratory+mail+in+water+test+kit+lead+PFAS"
+      secondaryUrl: "https://www.amazon.com/s?k=certified+laboratory+mail+in+water+test+kit+lead+PFAS&tag=bishopsfolly-20"
     },
     {
       id: "home-amz-ro",
@@ -2790,9 +2847,9 @@ html.dark {
       priceTier: "$169–$249",
       matchReason: "Strict Public Health Goal (PHG) Barrier",
       targetCodes: ["1005", "1040", "2806", "PB90"],
-      amazonUrl: "https://www.amazon.com/s?k=NSF+58+53+under+sink+reverse+osmosis+water+filter+system",
+      amazonUrl: "https://www.amazon.com/s?k=NSF+58+53+under+sink+reverse+osmosis+water+filter+system&tag=bishopsfolly-20",
       secondaryLabel: "Faucet Mounts ↗",
-      secondaryUrl: "https://www.amazon.com/s?k=NSF+53+faucet+mount+water+filter+lead+reduction"
+      secondaryUrl: "https://www.amazon.com/s?k=NSF+53+faucet+mount+water+filter+lead+reduction&tag=bishopsfolly-20"
     }
   ];
 
@@ -2808,6 +2865,7 @@ html.dark {
         <h3 class="title-large">${title}</h3>
         <div style="height:4px"></div>
         <p class="body-small">${subtitle}</p>
+        <p class="body-small">Affiliate link. H2Know may earn a commission at no extra cost to you. This is not an EPA recommendation.</p>
         <div style="height:14px"></div>
 
         <div class="stack-12">
@@ -2831,11 +2889,11 @@ html.dark {
                 </div>
 
                 <div class="flow-row" style="gap:8px;padding-top:2px">
-                  <a href="${p.amazonUrl}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;border-radius:12px;background:var(--brand);color:#FFFFFF;padding:8px 14px;display:inline-flex;align-items:center;gap:5px;font-family:var(--font-display);font-size:11.5px;font-weight:700">
+                  <a href="${withAmazonTag(p.amazonUrl)}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;border-radius:12px;background:var(--brand);color:#FFFFFF;padding:8px 14px;display:inline-flex;align-items:center;gap:5px;font-family:var(--font-display);font-size:11.5px;font-weight:700">
                     <span>Shop on Amazon</span>
                     ${SVG.openInNew}
                   </a>
-                  <a href="${p.secondaryUrl}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;border-radius:12px;background:transparent;border:1px solid var(--border-strong);color:var(--ink);padding:8px 12px;display:inline-flex;align-items:center;gap:4px;font-family:var(--font-display);font-size:11px;font-weight:600">
+                  <a href="${withAmazonTag(p.secondaryUrl)}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;border-radius:12px;background:transparent;border:1px solid var(--border-strong);color:var(--ink);padding:8px 12px;display:inline-flex;align-items:center;gap:4px;font-family:var(--font-display);font-size:11px;font-weight:600">
                     <span>${p.secondaryLabel}</span>
                   </a>
                 </div>
@@ -3053,7 +3111,7 @@ html.dark {
         <div style="border-radius:18px;background:color-mix(in srgb, var(--surface-1) 96%, transparent);border:1px solid var(--border-strong);padding:10px 14px;box-shadow:var(--elevation)">
           <button type="button" id="resultsSwitchToggleBtn" style="width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;gap:10px">
             <div style="flex:1;min-width:0">
-              <div class="mono" style="font-size:10px;font-weight:700;color:var(--brand)">${state.providerListKind === "nearby" ? `NEARBY SYSTEMS (${activeIdx} OF ${state.providers.length})` : `SERVES ZIP ${r.zip} (${activeIdx} OF ${state.providers.length})`}</div>
+              <div class="mono" style="font-size:10px;font-weight:700;color:var(--brand)">${state.providerListKind === "nearby" ? `Systems with a mailing address in this ZIP (service area not on record) (${activeIdx} OF ${state.providers.length})` : `SERVES ZIP ${r.searchedZip || r.zip} (${activeIdx} OF ${state.providers.length})`}</div>
               <div class="title-small" style="font-weight:800;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.name}</div>
             </div>
             <span class="mono" style="border-radius:999px;padding:7px 12px;font-size:11px;font-weight:700;background:${state.showResultsDropdown ? "var(--brand)" : "var(--surface-2)"};color:${state.showResultsDropdown ? "#FFFFFF" : "var(--brand)"};border:1px solid color-mix(in srgb, var(--brand) 55%, transparent)">
@@ -3099,7 +3157,7 @@ html.dark {
 
     // 2. Top Header & Integrated Top Navigation Strip
     $("topHeaderTitle").textContent = r.name;
-    $("topHeaderSubtitle").textContent = `${r.city}, ${r.state} · ZIP ${r.zip}`;
+    $("topHeaderSubtitle").textContent = `Serves ${servedAreaText(r)} · ZIP ${r.searchedZip || r.zip}`;
 
     document.querySelectorAll("#activeFourWHeaderStrip .top-strip-tab-btn").forEach((btn) => {
       const isAct = btn.getAttribute("data-tab") === state.activeTab;
@@ -3185,9 +3243,12 @@ html.dark {
             <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
               <div class="label-small">LOCAL WATER PROVIDER</div>
               <h3 class="title-large" style="font-size:17.5px">${r.name}</h3>
-              <div class="body-small" style="color:var(--ink-2)">${r.city}, ${r.state} · ZIP ${r.zip}</div>
-              <div class="mono" style="font-size:10.5px;color:var(--ink-3)">Updated ${r.lastUpdated} · System ID ${r.pwsid}</div>
             </div>
+          </div>
+          <div class="stack-8" style="margin-top:12px">
+            <div class="body-small" style="color:var(--ink-2)">Serves ${servedAreaText(r)} · ZIP ${r.searchedZip || r.zip}</div>
+            <div class="body-small" style="color:var(--ink-2)">Mailing address: ${mailingAddressText(r) || "blank"}</div>
+            <div class="mono" style="font-size:10.5px;color:var(--ink-3)">Updated ${r.lastUpdated} · System ID ${r.pwsid}</div>
           </div>
 
           <div style="height:18px"></div>
@@ -3407,8 +3468,8 @@ html.dark {
           <h3 class="headline-medium">${escHtml(r.sourceType)}</h3>
           <p class="body-small">${escHtml(r.sourceDescription)}</p>
           <ul class="epa-readings">
-            <li>Mailing city ${escHtml(r.city || "blank")} · ZIP ${escHtml(r.zip || "blank")}</li>
-            <li>Address ${escHtml(r.address || "blank")} · phone ${escHtml(r.phone || "blank")}</li>
+            <li>Served area ${escHtml(servedAreaText(r))} · searched ZIP ${escHtml(r.searchedZip || r.zip || "blank")}</li>
+            <li>Mailing address: ${escHtml(mailingAddressText(r) || "blank")} · phone ${escHtml(r.phone || "blank")}</li>
             <li>Service connections ${r.connections == null ? "blank" : escHtml(r.connections.toLocaleString())} · wholesaler flag ${escHtml(r.wholesaler || "blank")}</li>
             <li>Geographic area: city served ${escHtml(r.cityServed || "blank")} · county ${escHtml(r.county || "blank")} · ZIP served ${escHtml(r.zipServed || "none in the EPA row")}</li>
             <li>${sellerLine}</li>
@@ -3619,8 +3680,10 @@ html.dark {
       ? `H2Know score: ${r.qualityScore}/100 (${r.riskLevel}). This is not an EPA score.`
       : "H2Know score: unavailable because an EPA request failed.";
     return [
-      `H2Know Tap Water Report — ZIP ${r.zip}`,
-      `Provider: ${r.name} (${r.city}, ${r.state})`,
+      `H2Know Tap Water Report — ZIP ${r.searchedZip || r.zip}`,
+      `Provider: ${r.name}`,
+      `Served area: ${servedAreaText(r)}`,
+      `Mailing address: ${mailingAddressText(r) || "blank"}`,
       scoreLine,
       `• People served: ${r.population.toLocaleString()}`,
       `• Water source: ${r.sourceType}`,
@@ -3641,6 +3704,7 @@ html.dark {
     const topContam = r.contaminants.find((c) => c.measured);
     const whyLabel = topContam ? `${topContam.plainName}: ${topContam.readings.length} EPA periods` : "No EPA sample row";
     const delta5Y = "No estimated trend";
+    const shareText = getFormattedShareText(r);
 
     surface.innerHTML = `
       <div class="stack-14">
@@ -3655,13 +3719,14 @@ html.dark {
         <div style="border-radius:18px;background:var(--surface-0);border:1.5px solid color-mix(in srgb, ${scoreColor} 60%, var(--border-strong));padding:16px" class="stack-12">
           <div class="row-between mono" style="font-size:10px;font-weight:700">
             <span style="color:var(--brand)">H2KNOW WATER REPORT</span>
-            <span style="color:var(--ink-2)">ZIP ${r.zip} · ${r.city}, ${r.state}</span>
+            <span style="color:var(--ink-2)">ZIP ${r.searchedZip || r.zip} · ${servedAreaText(r)}</span>
           </div>
 
           <div class="row-between">
             <div style="flex:1;min-width:0">
               <div class="title-medium" style="font-weight:800">${r.name}</div>
-              <div class="mono" style="font-size:10.5px;color:var(--ink-3);margin-top:2px">${r.city}, ${r.state} · System ${r.pwsid}</div>
+              <div class="mono" style="font-size:10.5px;color:var(--ink-3);margin-top:2px">Serves ${servedAreaText(r)} · System ${r.pwsid}</div>
+              <div class="mono" style="font-size:10.5px;color:var(--ink-3);margin-top:2px">Mailing address: ${mailingAddressText(r) || "blank"}</div>
             </div>
             <div style="border-radius:14px;background:color-mix(in srgb, ${scoreColor} 16%, transparent);border:1.5px solid color-mix(in srgb, ${scoreColor} 60%, transparent);padding:8px 14px;text-align:center">
               <div class="mono" style="font-size:24px;font-weight:800;color:${scoreColor};line-height:1">${scoreText(r.qualityScore)}</div>
@@ -3691,6 +3756,8 @@ html.dark {
           <div class="mono" style="font-size:8.5px;color:var(--ink-3);text-align:center">Data Source: Public U.S. EPA &amp; Drought Monitor Records</div>
         </div>
 
+        <pre id="snapshotShareText" style="margin:0;white-space:pre-wrap;font-family:ui-monospace,monospace;font-size:11px;line-height:1.45;color:var(--ink);background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:10px">${escHtml(shareText)}</pre>
+
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <button type="button" id="shareSheetSnapshotBtn" class="solid-brand-btn" style="border-radius:12px;justify-content:center">
             ${SVG.share}<span>Share Sheet</span>
@@ -3706,7 +3773,6 @@ html.dark {
 
     backdrop.classList.remove("hidden");
     $("closeSnapshotDialogBtn").addEventListener("click", () => backdrop.classList.add("hidden"));
-    const shareText = getFormattedShareText(r);
 
     $("shareSheetSnapshotBtn").addEventListener("click", () => {
       if (navigator.share) {

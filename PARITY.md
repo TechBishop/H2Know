@@ -30,8 +30,8 @@ Reference is the restored Argon app on `main` (commit `830c7e3`), live at the si
 | Report Water Quality Issue | Dialog. On the web it stays in this browser | Same dialog. "Save in this browser" is labeled as not Firebase. "Submit to Firebase" needs an authorized Google sign-in | Matches |
 | Download for Android | Footer and the desktop bar. GitHub release APK | Home, report, and footer. Same APK URL | Matches |
 | Phone frame | Desktop frame, full screen on a narrow phone | Desktop frame, full screen below 720px | Matches |
-| Amazon affiliate tag | Quality and home links are not tagged | Every Amazon link ends with `tag=bishopsfolly-20` | Matches |
-| Affiliate disclosure | Not shown next to the links | Shown on the filter card | Matches |
+| Amazon affiliate tag | Quality and home links are not tagged | Every Amazon link in `/reskin/` ends with `tag=bishopsfolly-20` | Tagged in the reskin |
+| Affiliate disclosure | Not shown next to the links | Shown on every Amazon card: commission notice, and the link is not an EPA recommendation | Matches |
 | Priced marketplace and home kits | Prices, reduction percents, and featured kits | Not shown. The card says those figures are unavailable | Unavailable |
 | WaterSense and whole-home cards | Source tab Amazon cards | Named unavailable. There is no utility catalog | Unavailable |
 | Premium and checkout | Not charged in this build | `PREMIUM_ENABLED` is false. No checkout and no paid-tier copy | Removed by rule |
