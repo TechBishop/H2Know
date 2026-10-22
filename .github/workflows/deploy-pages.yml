@@ -24,39 +24,44 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Checkout repository and assemble 1:1 Android Simulator Web App bundle
+      # actions/checkout retries and avoids the hand-rolled fetch that died with
+      # "curl 92 HTTP/2 stream was not closed cleanly" before _site was built.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          ref: ${{ github.sha }}
+
+      - name: Assemble site bundle
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          set -e
-          git init
-          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          git fetch --depth=1 origin "${GITHUB_SHA}"
-          git checkout FETCH_HEAD
-
+          set -euo pipefail
           rm -rf _site
           mkdir -p _site/release _site/icons _site/v2/icons
-          cp index.html styles.css app.js data.js config.js sw.js manifest.json _site/
+          cp index.html styles.css app.js data.js config.js sw.js manifest.json counties.json _site/
           cp index.html _site/404.html
           cp PRIVACY_POLICY.md _site/PRIVACY_POLICY.md
           if [ -d icons ]; then cp -r icons/. _site/icons/; fi
           # Keep a copy at /v2/ so a preview path survives alongside the root site.
-          cp index.html styles.css app.js data.js config.js sw.js manifest.json _site/v2/
+          cp index.html styles.css app.js data.js config.js sw.js manifest.json counties.json _site/v2/
           if [ -d icons ]; then cp -r icons/. _site/v2/icons/; fi
           touch _site/.nojekyll
           if [ -f "release/H2Know-latest.apk" ]; then
             cp release/H2Know-latest.apk _site/release/H2Know-latest.apk
           fi
 
-          # Also mirror to gh-pages branch so branch-based Pages configurations stay 100% in sync
+          # Also mirror to gh-pages branch so branch-based Pages configurations stay 100% in sync.
+          # HTTP/1.1 avoids the same HTTP/2 disconnect that failed the old fetch.
           (
             cd _site
             git init -b gh-pages
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git config http.version HTTP/1.1
             git add -A
-            git commit -m "Deploy H2Know 1:1 Android Simulator Web App (${GITHUB_SHA})"
-            git push -f "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" gh-pages:gh-pages
+            git commit -m "Deploy H2Know web app (${GITHUB_SHA})"
+            git -c http.version=HTTP/1.1 push -f "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" gh-pages:gh-pages
           ) || true
 
       - name: Configure GitHub Pages
