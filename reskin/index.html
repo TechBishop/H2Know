@@ -1258,22 +1258,22 @@ html.dark {
 
   const PRESET_SYSTEMS = {
     "78701": [
-      { pwsid: "TX2270001", name: "AUSTIN WATER", city: "Austin", state: "TX", zip: "78701", county: "Travis", population: 1045200, sourceType: "Surface water", isPrimary: true, currentScore: 84, fiveYearDeltaPts: 2 },
-      { pwsid: "TX2270049", name: "TRAVIS COUNTY WCID 10", city: "Austin", state: "TX", zip: "78701", county: "Travis", population: 18450, sourceType: "Purchased surface water", isPrimary: false, currentScore: 88, fiveYearDeltaPts: 4 }
+      { pwsid: "TX2270001", name: "AUSTIN WATER", city: "Austin", state: "TX", zip: "78701", county: "Travis", population: 1045200, sourceType: "Surface water", isPrimary: true, currentScore: null, fiveYearDeltaPts: null },
+      { pwsid: "TX2270049", name: "TRAVIS COUNTY WCID 10", city: "Austin", state: "TX", zip: "78701", county: "Travis", population: 18450, sourceType: "Purchased surface water", isPrimary: false, currentScore: null, fiveYearDeltaPts: null }
     ],
     "48502": [
-      { pwsid: "MI0002310", name: "FLINT, CITY OF", city: "Flint", state: "MI", zip: "48502", county: "Genesee", population: 81252, sourceType: "Purchased surface water", isPrimary: true, currentScore: 76, fiveYearDeltaPts: 14 },
-      { pwsid: "MI0002635", name: "GENESEE COUNTY DRAIN COMM - WATER", city: "Flint", state: "MI", zip: "48502", county: "Genesee", population: 142000, sourceType: "Surface water", isPrimary: false, currentScore: 86, fiveYearDeltaPts: 3 }
+      { pwsid: "MI0002310", name: "FLINT, CITY OF", city: "Flint", state: "MI", zip: "48502", county: "Genesee", population: 81252, sourceType: "Purchased surface water", isPrimary: true, currentScore: null, fiveYearDeltaPts: null },
+      { pwsid: "MI0002635", name: "GENESEE COUNTY DRAIN COMM - WATER", city: "Flint", state: "MI", zip: "48502", county: "Genesee", population: 142000, sourceType: "Surface water", isPrimary: false, currentScore: null, fiveYearDeltaPts: null }
     ],
     "07102": [
-      { pwsid: "NJ0714001", name: "NEWARK WATER DEPARTMENT", city: "Newark", state: "NJ", zip: "07102", county: "Essex", population: 311549, sourceType: "Surface water", isPrimary: true, currentScore: 82, fiveYearDeltaPts: 19 }
+      { pwsid: "NJ0714001", name: "NEWARK WATER DEPARTMENT", city: "Newark", state: "NJ", zip: "07102", county: "Essex", population: 311549, sourceType: "Surface water", isPrimary: true, currentScore: null, fiveYearDeltaPts: null }
     ],
     "39201": [
-      { pwsid: "MS0250008", name: "CITY OF JACKSON WATER SYSTEM", city: "Jackson", state: "MS", zip: "39201", county: "Hinds", population: 153701, sourceType: "Surface water", isPrimary: true, currentScore: 61, fiveYearDeltaPts: 8 }
+      { pwsid: "MS0250008", name: "CITY OF JACKSON WATER SYSTEM", city: "Jackson", state: "MS", zip: "39201", county: "Hinds", population: 153701, sourceType: "Surface water", isPrimary: true, currentScore: null, fiveYearDeltaPts: null }
     ],
     "90210": [
-      { pwsid: "CA1910003", name: "BEVERLY HILLS PUBLIC WORKS", city: "Beverly Hills", state: "CA", zip: "90210", county: "Los Angeles", population: 42180, sourceType: "Purchased surface water", isPrimary: true, currentScore: 86, fiveYearDeltaPts: 1 },
-      { pwsid: "CA1910067", name: "LOS ANGELES DEPT OF WATER AND POWER", city: "Los Angeles", state: "CA", zip: "90210", county: "Los Angeles", population: 3898747, sourceType: "Surface water", isPrimary: false, currentScore: 85, fiveYearDeltaPts: 2 }
+      { pwsid: "CA1910003", name: "BEVERLY HILLS PUBLIC WORKS", city: "Beverly Hills", state: "CA", zip: "90210", county: "Los Angeles", population: 42180, sourceType: "Purchased surface water", isPrimary: true, currentScore: null, fiveYearDeltaPts: null },
+      { pwsid: "CA1910067", name: "LOS ANGELES DEPT OF WATER AND POWER", city: "Los Angeles", state: "CA", zip: "90210", county: "Los Angeles", population: 3898747, sourceType: "Surface water", isPrimary: false, currentScore: null, fiveYearDeltaPts: null }
     ]
   };
 
@@ -1318,12 +1318,6 @@ html.dark {
     if (Math.abs(v) < 0.01) return Number(v).toFixed(3);
     if (Math.abs(v) >= 100) return Math.round(v).toString();
     return Number(v).toFixed(2).replace(/\.?0+$/, "");
-  }
-
-  function hashStr(str) {
-    let h = 0;
-    for (let i = 0; i < str.length; i++) h = ((h << 5) - h + str.charCodeAt(i)) | 0;
-    return Math.abs(h);
   }
 
   /* ==========================================================================
@@ -1428,12 +1422,23 @@ html.dark {
   const EPA_BASE = "https://data.epa.gov/efservice";
   const UCMR_NATIONAL_URL = "https://www.epa.gov/dwucmr/occurrence-data-unregulated-contaminant-monitoring-rule";
   const NOT_MEASURED = "Not measured / no EPA record for this system";
+  const LCR_UNAVAILABLE = "The EPA lead-and-copper request failed. This is not a record of no measurement.";
 
   const CITED_CCR = {
     IN5213007: {
       url: "https://ecm.idem.in.gov/cs/idcplg?IdcService=GET_FILE&allowInterrupt=1&dDocName=83669354&dID=83665311",
       label: "IDEM file: Patoka Water Company, Inc. 2023 Annual Water Quality Report",
       note: "The 2023 report names Patoka Lake Regional Water and Sewer District as the distributor and lists copper at 0.158 ppm for 2018–2021. That period is not the EPA lead-and-copper row of 1.44 mg/L for 2022-01-01 to 2024-12-31. The EPA water-system row has no seller PWSID. A separate EPA name search returns IN5219012, PATOKA LAKE REGIONAL WATER (Dubois, ZIP 47527)."
+    },
+    IN5219012: {
+      url: "https://www.plrws.net/_files/ugd/c5c8e4_1e4f067fd77b472e909df3cdb6585ef2.pdf",
+      label: "Patoka Lake Regional Water and Sewer District 2025 Consumer Confidence Report",
+      note: "The file names Public Water System ID IN5219012 and says the district provides water to 26 utilities. The EPA wholesaler flag on this row is N, and IN5213007 has no seller PWSID column. The report table prints lead 6.7 ppb and copper 0.423 ppm for 2020–2023. Lead 6.7 ppb is the same value as EPA sample IN60575 (2021-01-01 to 2023-12-31). There is no EPA copper row, so 0.423 ppm is not graphed. The introduction says 2024 UCMR 5 samples were below detection limits. Those utility sentences stay in this note and are not copied into the measurement list."
+    },
+    IN5249004: {
+      url: "https://info.citizensenergygroup.com/hubfs/site/water/2024%20Citizens%20Water%20Quality%20Report.pdf",
+      label: "Citizens Energy Group 2024 Drinking Water Report",
+      note: "The Indianapolis and Morgan County customer-tap table lists 2024 lead at a 90th percentile of 5.2 ppb (1 of 66 sites above the 15 ppb action level) and copper at a 90th percentile of 0.20 ppm (0 of 66 above 1.3 ppm). The same PDF also includes Westfield tables, which are not this system. Those summary lines are not EPA lead-and-copper sample rows. EPA returned eight lead periods for IN5249004 and no copper row, so the copper line is not graphed."
     }
   };
 
@@ -1980,16 +1985,22 @@ html.dark {
     `).join("");
   }
 
-  function measurementCardHtml(item, selectedCode, sourceUrl) {
+  function missingPhrase(item, lcrUnavailable) {
+    if (lcrUnavailable && (item.code === "PB90" || item.code === "CU90")) return LCR_UNAVAILABLE;
+    return NOT_MEASURED;
+  }
+
+  function measurementCardHtml(item, selectedCode, sourceUrl, lcrUnavailable) {
     const selected = item.code === selectedCode;
     if (!item.measured) {
+      const failed = lcrUnavailable && (item.code === "PB90" || item.code === "CU90");
       return `
         <article class="epa-card epa-missing" data-code="${escHtml(item.code)}">
           <button type="button" class="why-contam-row epa-card-btn" data-code="${escHtml(item.code)}">
             <span class="epa-name">${escHtml(item.plainName)}</span>
-            <span class="epa-badge epa-badge-missing">NOT MEASURED</span>
+            <span class="epa-badge epa-badge-missing">${failed ? "REQUEST FAILED" : "NOT MEASURED"}</span>
           </button>
-          <p class="epa-phrase">${NOT_MEASURED}</p>
+          <p class="epa-phrase">${escHtml(missingPhrase(item, lcrUnavailable))}</p>
         </article>
       `;
     }
@@ -2031,15 +2042,16 @@ html.dark {
     let openedMissing = false;
     const selected = rows.find((item) => item.code === state.selectedContamCode) || measured[0] || rows[0];
     const lcrUrl = r.sources && r.sources.lcrResults;
+    const lcrUnavailable = Boolean(r.lcrUnavailable);
     const body = groupOrder.map((name) => {
       const present = measuredGroups[name] || [];
       const absent = groups[name] || [];
-      const cards = present.map((item) => measurementCardHtml(item, selected && selected.code, lcrUrl)).join("");
+      const cards = present.map((item) => measurementCardHtml(item, selected && selected.code, lcrUrl, lcrUnavailable)).join("");
       const ucmrNote = name.indexOf("UCMR") === 0
         ? `<p class="epa-source-note">UCMR rows are not filled from a per-system browser feed. The national files are at <a href="${UCMR_NATIONAL_URL}" target="_blank" rel="noopener noreferrer">EPA UCMR occurrence data</a>.</p>`
         : "";
       const inlineMissing = present.length
-        ? absent.map((item) => measurementCardHtml(item, selected && selected.code, lcrUrl)).join("")
+        ? absent.map((item) => measurementCardHtml(item, selected && selected.code, lcrUrl, lcrUnavailable)).join("")
         : "";
       const openMissing = absent.length > 0 && present.length === 0 && !openedMissing;
       if (openMissing) openedMissing = true;
@@ -2048,7 +2060,7 @@ html.dark {
             <summary>${escHtml(name)} · ${absent.length} with no EPA record</summary>
             ${ucmrNote}
             <div class="epa-missing-list">
-              ${absent.map((item) => measurementCardHtml(item, selected && selected.code, lcrUrl)).join("")}
+              ${absent.map((item) => measurementCardHtml(item, selected && selected.code, lcrUrl, lcrUnavailable)).join("")}
             </div>
           </details>`
         : "";
@@ -2065,7 +2077,7 @@ html.dark {
       <div class="epa-about">
         <div class="epa-about-kicker">ABOUT ${escHtml(selected.plainName.toUpperCase())}</div>
         <p>${escHtml(selected.healthNote)}</p>
-        ${selected.measured ? "" : `<p class="epa-phrase">${NOT_MEASURED}</p>`}
+        ${selected.measured ? "" : `<p class="epa-phrase">${escHtml(missingPhrase(selected, lcrUnavailable))}</p>`}
         <div class="flow-row" style="gap:8px">
           <a href="${contaminantAmazonFilterUrl(selected)}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;border-radius:11px;background:var(--safe);color:#04120c;padding:6px 12px;font-family:var(--font-display);font-size:11px;font-weight:700">Shop NSF Filter on Amazon</a>
           <a href="${contaminantAmazonTestKitUrl(selected)}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;border-radius:11px;border:1px solid var(--caution);color:var(--caution);padding:6px 11px;font-family:var(--font-display);font-size:11px;font-weight:700">Test kit</a>
@@ -2229,6 +2241,7 @@ html.dark {
         ? `${name} is EPA water system ${pwsid}. Population served ${population.toLocaleString()}. Primary source code ${rawSrcCode || "blank"} (${sourceType}). Owner code ${rawOwnerCode || "blank"} (${ownerType}). Wholesaler flag ${wholesaler || "blank"}. Service connections ${connections == null ? "blank" : connections.toLocaleString()}.`
         : "The EPA water-system row did not load. No profile numbers were estimated.",
       ccr: CITED_CCR[pwsid] || null,
+      lcrUnavailable: !(lcrRes.ok && lcrSampleRes.ok),
       echoSummary: echo.summary,
       sources,
       fetches,
@@ -3463,6 +3476,7 @@ html.dark {
           <div style="height:10px"></div>
           <h3 class="headline-medium">Every catalog measurement for this system</h3>
           <p class="body-small">Measured rows come first and show only EPA sample periods. A row with no sample says so, with no number and no chart.</p>
+          ${r.lcrUnavailable ? `<p class="epa-phrase">${LCR_UNAVAILABLE}</p>` : ""}
           <div style="height:12px"></div>
           <div class="flow-row">
             ${filters.map(([key, label]) => {
