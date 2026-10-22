@@ -7,6 +7,7 @@
 <meta name="description" content="H2Know gives any U.S. ZIP code a plain 0–100 tap water score from public EPA records." />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="h2know-build" content="__H2KNOW_BUILD__" />
 <title>H2Know Beta</title>
 <link rel="manifest" href="./manifest.json" />
 <link rel="icon" href="./icons/icon-192.png" />
@@ -14,7 +15,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="./styles.css" />
+<link rel="stylesheet" href="./styles.css?v=__H2KNOW_BUILD__" />
+<link rel="preload" href="./counties.json?v=__H2KNOW_BUILD__" as="fetch" />
 </head>
 <body>
 <div class="stage">
@@ -155,8 +157,27 @@
 </div>
 </div>
 
-<script src="./config.js"></script>
-<script src="./data.js"></script>
-<script src="./app.js"></script>
+<script>
+(function () {
+  if (!("serviceWorker" in navigator)) return;
+  var hadController = !!navigator.serviceWorker.controller;
+  var buildMeta = document.querySelector('meta[name="h2know-build"]');
+  var build = (buildMeta && buildMeta.getAttribute("content")) || "";
+  var reloadKey = "h2know-sw-reloaded-" + build;
+  navigator.serviceWorker.addEventListener("controllerchange", function () {
+    if (!hadController) return;
+    var already = false;
+    try { already = sessionStorage.getItem(reloadKey) === "1"; } catch (e) {}
+    if (already) return;
+    try { sessionStorage.setItem(reloadKey, "1"); } catch (e) {}
+    window.location.reload();
+  });
+  var swUrl = "./sw.js" + (build ? "?v=" + encodeURIComponent(build) : "");
+  navigator.serviceWorker.register(swUrl, { updateViaCache: "none" }).catch(function () {});
+})();
+</script>
+<script src="./config.js?v=__H2KNOW_BUILD__"></script>
+<script src="./data.js?v=__H2KNOW_BUILD__"></script>
+<script src="./app.js?v=__H2KNOW_BUILD__"></script>
 </body>
 </html>

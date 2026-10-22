@@ -51,6 +51,21 @@ jobs:
             cp release/H2Know-latest.apk _site/release/H2Know-latest.apk
           fi
 
+          # Stamp shell URLs so a returning browser cannot reuse an older stylesheet or script.
+          python3 - << 'PY'
+          import os
+          import pathlib
+          build = os.environ["GITHUB_SHA"]
+          root = pathlib.Path("_site")
+          for path in root.rglob("*"):
+              if not path.is_file() or path.suffix not in {".html", ".js"}:
+                  continue
+              text = path.read_text()
+              if "__H2KNOW_BUILD__" not in text:
+                  continue
+              path.write_text(text.replace("__H2KNOW_BUILD__", build))
+          PY
+
           # Also mirror to gh-pages branch so branch-based Pages configurations stay 100% in sync.
           # HTTP/1.1 avoids the same HTTP/2 disconnect that failed the old fetch.
           (

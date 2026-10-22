@@ -393,7 +393,10 @@
 
   function loadAdjacency() {
     if (!adjacencyPromise) {
-      adjacencyPromise = fetch("./counties.json", { signal: AbortSignal.timeout(20000) })
+      const buildMeta = document.querySelector('meta[name="h2know-build"]');
+      const build = buildMeta && buildMeta.getAttribute("content");
+      const countiesUrl = "./counties.json" + (build ? "?v=" + encodeURIComponent(build) : "");
+      adjacencyPromise = fetch(countiesUrl, { cache: "reload", signal: AbortSignal.timeout(20000) })
         .then((resp) => {
           if (!resp.ok) throw new Error("adjacency");
           return resp.json();

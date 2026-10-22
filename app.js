@@ -1286,6 +1286,9 @@
   renderPresets();
   render();
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("./sw.js").catch(() => {});
+    const buildMeta = document.querySelector('meta[name="h2know-build"]');
+    const build = buildMeta && buildMeta.getAttribute("content");
+    const swUrl = build ? "./sw.js?v=" + encodeURIComponent(build) : "./sw.js";
+    navigator.serviceWorker.register(swUrl, { updateViaCache: "none" }).catch(() => {});
   }
 })();
