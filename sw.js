@@ -2,7 +2,7 @@
    __H2KNOW_BUILD__ is replaced with the deploy SHA. Each deploy gets its own cache. */
 const BUILD = "__H2KNOW_BUILD__";
 const CACHE = "h2know-shell-" + BUILD;
-const VERSIONED = ["styles.css", "app.js", "data.js", "config.js", "counties.json"];
+const VERSIONED = ["manifest.json"];
 
 function withVersion(path) {
   const name = path.replace(/^\.\//, "");
@@ -13,14 +13,7 @@ function withVersion(path) {
 const SHELL = [
   "./",
   "./index.html",
-  withVersion("./styles.css"),
-  withVersion("./app.js"),
-  withVersion("./data.js"),
-  withVersion("./config.js"),
-  withVersion("./counties.json"),
-  "./manifest.json",
-  "./icons/icon-192.png",
-  "./icons/icon-512.png"
+  withVersion("./manifest.json")
 ];
 
 function isVersionedPath(pathname) {
