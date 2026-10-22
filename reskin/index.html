@@ -729,6 +729,115 @@ html.dark {
   --border: #343841;
   --border-strong: #4a5160;
 }
+
+.epa-card {
+  border-radius: 14px;
+  padding: 12px;
+  margin-top: 8px;
+}
+.epa-measured {
+  background: #172033;
+  border: 1.5px solid #8ee0b0;
+  color: #f4f1ea;
+}
+.epa-missing {
+  background: #12151b;
+  border: 1px solid #6d7584;
+  color: #f4f1ea;
+}
+.epa-card-btn {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  background: transparent;
+  color: #f4f1ea;
+}
+.epa-name {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 800;
+  color: #f7f4ec;
+}
+.epa-badge {
+  flex-shrink: 0;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 800;
+}
+.epa-badge-measured { background: #145c3a; color: #e9fff3; }
+.epa-badge-goal { background: #6a4b12; color: #fff4d2; }
+.epa-badge-over { background: #6e1d1d; color: #ffe4e4; }
+.epa-badge-missing { background: #2a3140; color: #f4f1ea; }
+.epa-phrase {
+  margin: 8px 0 0;
+  color: #f7f4ec;
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1.35;
+}
+.epa-readings {
+  margin: 8px 0 0;
+  padding-left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.epa-readings li { color: #f4f1ea; font-size: 12.5px; line-height: 1.35; }
+.epa-value { font-weight: 800; color: #ffffff; }
+.epa-meta, .epa-limit, .epa-graph-note, .epa-source-note {
+  color: #ddd6c8;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.epa-limit { margin: 6px 0 0; font-weight: 700; color: #f4f1ea; }
+.epa-graph { margin-top: 8px; }
+.epa-graph svg { width: 100%; height: auto; display: block; }
+.epa-source, .epa-source-note a {
+  color: #9fd4ff;
+  font-weight: 700;
+  font-size: 12px;
+}
+.epa-group-title {
+  margin: 12px 0 4px;
+  color: #e9fff3;
+  font-size: 13px;
+  font-weight: 800;
+}
+.epa-fold {
+  margin-top: 10px;
+  border-radius: 12px;
+  background: #10141b;
+  border: 1px solid #6d7584;
+  padding: 8px 10px;
+  color: #f4f1ea;
+}
+.epa-fold summary {
+  cursor: pointer;
+  font-weight: 800;
+  color: #f7f4ec;
+}
+.epa-about {
+  margin-top: 14px;
+  border-radius: 14px;
+  background: #172033;
+  border: 1px solid #9fd4ff;
+  padding: 12px;
+  color: #f4f1ea;
+}
+.epa-about-kicker {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 800;
+  color: #9fd4ff;
+  margin-bottom: 6px;
+}
+.is-selected { box-shadow: inset 0 0 0 2px #9fd4ff; }
+
 </style>
 </head>
 <body>
@@ -1296,445 +1405,833 @@ html.dark {
     }
   }
 
-  async function fetchDroughtSafe(lat, lon, stateCode) {
-    if (lat && lon) {
-      try {
-        const url = `https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/US_Drought_Intensity_v1/FeatureServer/3/query?geometry=${lon},${lat}&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=dm,period&returnGeometry=false&f=json`;
-        const resp = await fetch(url, { headers: { Accept: "application/json" } });
-        if (resp.ok) {
-          const root = await resp.json();
-          const attr = root && root.features && root.features[0] && root.features[0].attributes;
-          if (attr && attr.dm !== null && attr.dm !== undefined) {
-            const dm = Math.min(4, Math.max(0, Math.round(Number(attr.dm))));
-            const level = ["D0", "D1", "D2", "D3", "D4"][dm];
-            return {
-              level,
-              desc: `The U.S. Drought Monitor currently lists this area in ${droughtLabel(level)}. Reservoir mineral concentration and outdoor watering guidance apply.`
-            };
-          }
-        }
-      } catch (_) {}
-    }
-    const st = String(stateCode || "").toUpperCase();
-    if (["TX", "NM", "AZ"].includes(st)) {
-      return { level: "D1", desc: "The U.S. Drought Monitor lists parts of this watershed in Moderate Drought (D1). Seasonal conservation targets apply." };
-    }
-    if (["CA", "NV", "UT"].includes(st)) {
-      return { level: "D0", desc: "The U.S. Drought Monitor lists this area as Abnormally Dry (D0). Mindful outdoor irrigation is advised." };
-    }
-    return { level: "none", desc: "No active drought reported by the U.S. Drought Monitor for this location." };
+  function escHtml(value) {
+    return String(value == null ? "" : value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
   }
 
-  function buildViolations10Y(pwsid, violArr) {
-    const currentYear = 2026;
-    const minYear = currentYear - 10;
-    const parsed = [];
-    for (let i = 0; i < violArr.length; i++) {
-      const r = violArr[i];
-      if (!r) continue;
-      const beginDate = r.compl_per_begin_date || r.COMPL_PER_BEGIN_DATE || r.non_compl_per_begin_date || r.NON_COMPL_PER_BEGIN_DATE || "";
-      const parsedDate = parseEpaDate(beginDate);
-      if (!parsedDate) continue;
-      const yr = parsedDate.year;
-      const isoDate = parsedDate.isoDate;
-      if (yr < minYear || yr > currentYear) continue;
-      const vid = r.violation_id || r.VIOLATION_ID || String(i + 1);
-      const contCodeRaw = String(r.contaminant_code || r.CONTAMINANT_CODE || "").trim();
-      const contCode = contCodeRaw ? contCodeRaw : null;
-      const catCode = String(r.violation_category_code || r.VIOLATION_CATEGORY_CODE || "MR");
-      const isHealth = String(r.is_health_based_ind || r.IS_HEALTH_BASED_IND || "N") === "Y";
-      const rtcDate = String(r.rtc_date || r.RTC_DATE || r.compl_per_end_date || r.COMPL_PER_END_DATE || "").trim();
-      const statusRaw = String(r.compliance_status_code || r.COMPLIANCE_STATUS_CODE || r.violation_status || r.VIOLATION_STATUS || "R").trim().toUpperCase();
-      let status = "resolved";
-      if (rtcDate.length > 0 || yr < 2024) {
-        status = "resolved";
-      } else if (statusRaw.startsWith("A")) {
-        status = "addressed";
-      } else if (statusRaw === "O" || statusRaw === "UNADDRESSED") {
-        status = "open";
-      }
-      let vType = "other";
-      if (isHealth || catCode.toUpperCase().includes("MCL")) vType = "health";
-      else if (catCode.toUpperCase() === "MR") vType = "monitoring";
-      else if (catCode.toUpperCase() === "TT") vType = "treatment";
+  function scoreHue(score) {
+    if (!Number.isFinite(score)) return "var(--ink-3)";
+    if (score >= 80) return "var(--safe)";
+    if (score >= 60) return "var(--caution)";
+    return "var(--danger)";
+  }
 
-      const contMeta = contCode ? CONTAMINANT_CATALOG[contCode] : null;
-      const plainCategory = isHealth
-        ? "Exceeded a federal drinking water health standard"
-        : (catCode.toUpperCase() === "TT"
-          ? "Water treatment process step needed adjustment"
-          : "Routine water testing report submitted late");
-      const statusText = status === "open" ? "Currently under review" : (status === "addressed" ? "Corrective action in progress" : "Resolved");
+  function scoreText(score) {
+    return Number.isFinite(score) ? String(score) : "—";
+  }
+
+  const EPA_BASE = "https://data.epa.gov/efservice";
+  const UCMR_NATIONAL_URL = "https://www.epa.gov/dwucmr/occurrence-data-unregulated-contaminant-monitoring-rule";
+  const NOT_MEASURED = "Not measured / no EPA record for this system";
+
+  const CITED_CCR = {
+    IN5213007: {
+      url: "https://ecm.idem.in.gov/cs/idcplg?IdcService=GET_FILE&allowInterrupt=1&dDocName=83669354&dID=83665311",
+      label: "IDEM file: Patoka Water Company, Inc. 2023 Annual Water Quality Report",
+      note: "The 2023 report names Patoka Lake Regional Water and Sewer District as the distributor and lists copper at 0.158 ppm for 2018–2021. That period is not the EPA lead-and-copper row of 1.44 mg/L for 2022-01-01 to 2024-12-31. The EPA water-system row has no seller PWSID. A separate EPA name search returns IN5219012, PATOKA LAKE REGIONAL WATER (Dubois, ZIP 47527)."
+    }
+  };
+
+  function catalogRow(code, plainName, unit, mcl, limitKind, group, phg, pfas, healthNote) {
+    return {
+      code,
+      name: plainName,
+      plainName,
+      unit,
+      unitLong: unit,
+      mcl: mcl === "" || mcl == null ? null : Number(mcl),
+      phg: phg === "" || phg == null ? null : Number(phg),
+      limitKind: limitKind || "",
+      category: group,
+      group,
+      pfas: Boolean(pfas),
+      healthNote: healthNote || "A value is shown only when an EPA row for this system includes this analyte."
+    };
+  }
+
+  const MEASUREMENT_CATALOG = [
+    catalogRow("PB90", "Lead (90th percentile)", "ppb", 15, "Action level", "Lead and copper", 0, false, "Health experts treat lead as unsafe at any level (0 ppb public health goal). The EPA action level is 15 ppb. The number here is the 90th percentile from the EPA lead-and-copper sample row."),
+    catalogRow("CU90", "Copper (90th percentile)", "ppm", 1.3, "Action level", "Lead and copper", 0.3, false, "The EPA action level is 1.3 ppm. The health benchmark used beside it is 0.3 ppm. The number here is the 90th percentile from the EPA lead-and-copper sample row."),
+    catalogRow("2950", "Total Trihalomethanes (TTHMs)", "ppb", 80, "MCL", "Disinfection byproducts", 0.8, false, "Formed when chlorine reacts with natural organic matter. Federal MCL is 80 ppb."),
+    catalogRow("2456", "Haloacetic Acids (HAA5)", "ppb", 60, "MCL", "Disinfection byproducts", 0.5, false, "Disinfection byproduct group. Federal MCL is 60 ppb."),
+    catalogRow("2941", "Chloroform", "ppb", null, "", "Disinfection byproducts", null, false, "One of the four trihalomethanes. It has no separate MCL in this catalog; the TTHM group MCL is 80 ppb."),
+    catalogRow("2942", "Bromoform", "ppb", null, "", "Disinfection byproducts", null, false, "One of the four trihalomethanes. It has no separate MCL in this catalog."),
+    catalogRow("2943", "Bromodichloromethane", "ppb", null, "", "Disinfection byproducts", null, false, "One of the four trihalomethanes. It has no separate MCL in this catalog."),
+    catalogRow("2944", "Dibromochloromethane", "ppb", null, "", "Disinfection byproducts", null, false, "One of the four trihalomethanes. It has no separate MCL in this catalog."),
+    catalogRow("2450", "Monochloroacetic acid", "ppb", null, "", "Disinfection byproducts", null, false, "One of the haloacetic acids in the HAA5 group."),
+    catalogRow("2451", "Dichloroacetic acid", "ppb", null, "", "Disinfection byproducts", null, false, "One of the haloacetic acids in the HAA5 group."),
+    catalogRow("2452", "Trichloroacetic acid", "ppb", null, "", "Disinfection byproducts", null, false, "One of the haloacetic acids in the HAA5 group."),
+    catalogRow("2453", "Monobromoacetic acid", "ppb", null, "", "Disinfection byproducts", null, false, "One of the haloacetic acids in the HAA5 group."),
+    catalogRow("2454", "Dibromoacetic acid", "ppb", null, "", "Disinfection byproducts", null, false, "One of the haloacetic acids in the HAA5 group."),
+    catalogRow("0999", "Chlorine", "ppm", 4, "MRDL", "Disinfection byproducts", null, false, "Maximum residual disinfectant level is 4 ppm."),
+    catalogRow("1006", "Chloramine", "ppm", 4, "MRDL", "Disinfection byproducts", null, false, "Maximum residual disinfectant level is 4 ppm."),
+    catalogRow("1008", "Chlorine dioxide", "ppm", 0.8, "MRDL", "Disinfection byproducts", null, false, "Maximum residual disinfectant level is 0.8 ppm."),
+    catalogRow("1009", "Chlorite", "ppm", 1, "MCL", "Disinfection byproducts", null, false, "Federal MCL is 1 ppm."),
+    catalogRow("1011", "Bromate", "ppm", 0.01, "MCL", "Disinfection byproducts", null, false, "Federal MCL is 0.010 ppm."),
+    catalogRow("1005", "Arsenic", "ppb", 10, "MCL", "Inorganic chemicals", 0.004, false, "Federal MCL is 10 ppb."),
+    catalogRow("1025", "Fluoride", "ppm", 4, "MCL", "Inorganic chemicals", 0.7, false, "Federal MCL is 4 ppm. The public-health dental target cited beside it is 0.7 ppm."),
+    catalogRow("1040", "Nitrate (as N)", "ppm", 10, "MCL", "Inorganic chemicals", 1, false, "Federal MCL is 10 ppm as nitrogen."),
+    catalogRow("1041", "Nitrite (as N)", "ppm", 1, "MCL", "Inorganic chemicals", null, false, "Federal MCL is 1 ppm as nitrogen."),
+    catalogRow("1038", "Nitrate-nitrite (as N)", "ppm", 10, "MCL", "Inorganic chemicals", null, false, "Federal MCL is 10 ppm as nitrogen."),
+    catalogRow("1010", "Barium", "ppm", 2, "MCL", "Inorganic chemicals", null, false, "Federal MCL is 2 ppm."),
+    catalogRow("1015", "Cadmium", "ppm", 0.005, "MCL", "Inorganic chemicals", null, false, "Federal MCL is 0.005 ppm."),
+    catalogRow("1020", "Chromium (total)", "ppm", 0.1, "MCL", "Inorganic chemicals", null, false, "Federal MCL is 0.1 ppm."),
+    catalogRow("1024", "Cyanide", "ppm", 0.2, "MCL", "Inorganic chemicals", null, false, "Federal MCL is 0.2 ppm."),
+    catalogRow("1035", "Mercury", "ppm", 0.002, "MCL", "Inorganic chemicals", null, false, "Federal MCL is 0.002 ppm."),
+    catalogRow("1045", "Selenium", "ppm", 0.05, "MCL", "Inorganic chemicals", null, false, "Federal MCL is 0.05 ppm."),
+    catalogRow("1074", "Antimony", "ppm", 0.006, "MCL", "Inorganic chemicals", null, false, "Federal MCL is 0.006 ppm."),
+    catalogRow("1075", "Beryllium", "ppm", 0.004, "MCL", "Inorganic chemicals", null, false, "Federal MCL is 0.004 ppm."),
+    catalogRow("1085", "Thallium", "ppm", 0.002, "MCL", "Inorganic chemicals", null, false, "Federal MCL is 0.002 ppm."),
+    catalogRow("1094", "Asbestos", "MFL", 7, "MCL", "Inorganic chemicals", null, false, "Federal MCL is 7 million fibers per liter."),
+    catalogRow("4000", "Gross alpha", "pCi/L", 15, "MCL", "Radionuclides", null, false, "Federal MCL is 15 pCi/L, excluding radon and uranium."),
+    catalogRow("4006", "Combined radium-226 and radium-228", "pCi/L", 5, "MCL", "Radionuclides", null, false, "Federal MCL is 5 pCi/L."),
+    catalogRow("4010", "Uranium", "ppb", 30, "MCL", "Radionuclides", null, false, "Federal MCL is 30 ppb."),
+    catalogRow("3014", "E. coli", "presence", null, "MCL", "Microbiological", null, false, "Revised Total Coliform Rule maximum contaminant level."),
+    catalogRow("3100", "Total coliform", "presence", null, "Treatment technique", "Microbiological", null, false, "Assessed under the Revised Total Coliform Rule."),
+    catalogRow("0100", "Turbidity", "NTU", null, "Treatment technique", "Microbiological", null, false, "Surface-water treatment technique. No single MCL number is applied here."),
+    catalogRow("2806", "PFOA (Perfluorooctanoic acid)", "ppt", 4, "MCL", "Regulated PFAS", 0.007, true, "April 2024 national primary drinking water regulation MCL is 4 ppt. This row is not a UCMR result."),
+    catalogRow("2805", "PFOS (Perfluorooctanesulfonic acid)", "ppt", 4, "MCL", "Regulated PFAS", 0.02, true, "April 2024 national primary drinking water regulation MCL is 4 ppt. This row is not a UCMR result."),
+    catalogRow("REG-PFHXS", "PFHxS (Perfluorohexanesulfonic acid)", "ppt", 10, "MCL", "Regulated PFAS", null, true, "April 2024 national primary drinking water regulation MCL is 10 ppt."),
+    catalogRow("REG-PFNA", "PFNA (Perfluorononanoic acid)", "ppt", 10, "MCL", "Regulated PFAS", null, true, "April 2024 national primary drinking water regulation MCL is 10 ppt."),
+    catalogRow("REG-GENX", "HFPO-DA (GenX chemicals)", "ppt", 10, "MCL", "Regulated PFAS", null, true, "April 2024 national primary drinking water regulation MCL is 10 ppt.")
+  ];
+
+  [
+    ["Benzene", "0.005"], ["Carbon tetrachloride", "0.005"], ["Chlorobenzene", "0.1"],
+    ["1,2-Dichlorobenzene", "0.6"], ["1,4-Dichlorobenzene", "0.075"], ["1,2-Dichloroethane", "0.005"],
+    ["1,1-Dichloroethylene", "0.007"], ["cis-1,2-Dichloroethylene", "0.07"], ["trans-1,2-Dichloroethylene", "0.1"],
+    ["Dichloromethane", "0.005"], ["1,2-Dichloropropane", "0.005"], ["Ethylbenzene", "0.7"],
+    ["Styrene", "0.1"], ["Tetrachloroethylene", "0.005"], ["Toluene", "1"],
+    ["1,2,4-Trichlorobenzene", "0.07"], ["1,1,1-Trichloroethane", "0.2"], ["1,1,2-Trichloroethane", "0.005"],
+    ["Trichloroethylene", "0.005"], ["Vinyl chloride", "0.002"], ["Xylenes (total)", "10"]
+  ].forEach((pair, idx) => {
+    MEASUREMENT_CATALOG.push(catalogRow("VOC-" + String(idx + 1), pair[0], "ppm", pair[1], "MCL", "Volatile organic chemicals", null, false, "National primary drinking water regulation organic MCL, in ppm."));
+  });
+
+  [
+    ["Alachlor", "0.002"], ["Atrazine", "0.003"], ["Benzo(a)pyrene", "0.0002"], ["Carbofuran", "0.04"],
+    ["Chlordane", "0.002"], ["2,4-D", "0.07"], ["Dalapon", "0.2"], ["1,2-Dibromo-3-chloropropane (DBCP)", "0.0002"],
+    ["Di(2-ethylhexyl) adipate", "0.4"], ["Di(2-ethylhexyl) phthalate", "0.006"], ["Dinoseb", "0.007"],
+    ["Diquat", "0.02"], ["Endothall", "0.1"], ["Endrin", "0.002"], ["Ethylene dibromide", "0.00005"],
+    ["Glyphosate", "0.7"], ["Heptachlor", "0.0004"], ["Heptachlor epoxide", "0.0002"], ["Hexachlorobenzene", "0.001"],
+    ["Hexachlorocyclopentadiene", "0.05"], ["Lindane", "0.0002"], ["Methoxychlor", "0.04"], ["Oxamyl", "0.2"],
+    ["Polychlorinated biphenyls (PCBs)", "0.0005"], ["Pentachlorophenol", "0.001"], ["Picloram", "0.5"],
+    ["Simazine", "0.004"], ["Toxaphene", "0.003"], ["2,4,5-TP (Silvex)", "0.05"]
+  ].forEach((pair, idx) => {
+    MEASUREMENT_CATALOG.push(catalogRow("SOC-" + String(idx + 1), pair[0], "ppm", pair[1], "MCL", "Synthetic organic chemicals", null, false, "National primary drinking water regulation organic MCL, in ppm."));
+  });
+
+  [
+    ["Lithium", false],
+    ["11-chloroeicosafluoro-3-oxaundecane-1-sulfonic acid (11Cl-PF3OUdS)", true],
+    ["9-chlorohexadecafluoro-3-oxanonane-1-sulfonic acid (9Cl-PF3ONS)", true],
+    ["4,8-dioxa-3H-perfluorononanoic acid (ADONA)", true],
+    ["Hexafluoropropylene oxide dimer acid (HFPO-DA)", true],
+    ["Nonafluoro-3,6-dioxaheptanoic acid (NFDHA)", true],
+    ["Perfluorobutanoic acid (PFBA)", true],
+    ["Perfluorobutanesulfonic acid (PFBS)", true],
+    ["1H,1H,2H,2H-perfluorodecane sulfonic acid (8:2 FTS)", true],
+    ["Perfluorodecanoic acid (PFDA)", true],
+    ["Perfluorododecanoic acid (PFDoA)", true],
+    ["Perfluoro(2-ethoxyethane)sulfonic acid (PFEESA)", true],
+    ["Perfluoroheptanesulfonic acid (PFHpS)", true],
+    ["Perfluoroheptanoic acid (PFHpA)", true],
+    ["1H,1H,2H,2H-perfluorohexane sulfonic acid (4:2 FTS)", true],
+    ["Perfluorohexanesulfonic acid (PFHxS)", true],
+    ["Perfluorohexanoic acid (PFHxA)", true],
+    ["Perfluoro-3-methoxypropanoic acid (PFMPA)", true],
+    ["Perfluoro-4-methoxybutanoic acid (PFMBA)", true],
+    ["Perfluorononanoic acid (PFNA)", true],
+    ["1H,1H,2H,2H-perfluorooctane sulfonic acid (6:2 FTS)", true],
+    ["Perfluorooctanesulfonic acid (PFOS)", true],
+    ["Perfluorooctanoic acid (PFOA)", true],
+    ["Perfluoropentanoic acid (PFPeA)", true],
+    ["Perfluoropentanesulfonic acid (PFPeS)", true],
+    ["Perfluoroundecanoic acid (PFUnA)", true],
+    ["N-ethyl perfluorooctanesulfonamidoacetic acid (NEtFOSAA)", true],
+    ["N-methyl perfluorooctanesulfonamidoacetic acid (NMeFOSAA)", true],
+    ["Perfluorotridecanoic acid (PFTrDA)", true],
+    ["Perfluorotetradecanoic acid (PFTA)", true]
+  ].forEach((pair, idx) => {
+    MEASUREMENT_CATALOG.push(catalogRow("UCMR5-" + String(idx + 1), pair[0], "ppb", null, "", "UCMR 5", null, pair[1], "UCMR 5 analyte. No per-system result is available from a browser JSON feed."));
+  });
+
+  [
+    ["Germanium", false], ["Manganese", false], ["alpha-Hexachlorocyclohexane", false], ["Chlorpyrifos", false],
+    ["Dimethipin", false], ["Ethoprop", false], ["Oxyfluorfen", false], ["Profenofos", false], ["Tebuconazole", false],
+    ["Total permethrin (cis- and trans-)", false], ["Tribufos", false], ["Butylated hydroxyanisole", false],
+    ["o-Toluidine", false], ["Quinoline", false], ["1-Butanol", false], ["2-Methoxyethanol", false],
+    ["Allyl alcohol (2-propen-1-ol)", false], ["Microcystin-LA", false], ["Microcystin-LF", false],
+    ["Microcystin-LR", false], ["Microcystin-LY", false], ["Microcystin-RR", false], ["Microcystin-YR", false],
+    ["Nodularin-R", false], ["Anatoxin-a", false], ["Cylindrospermopsin", false], ["Total microcystins", false],
+    ["HAA5", false], ["HAA6Br", false], ["HAA9", false], ["Total organic carbon (TOC)", false], ["Bromide", false]
+  ].forEach((pair, idx) => {
+    MEASUREMENT_CATALOG.push(catalogRow("UCMR4-" + String(idx + 1), pair[0], "", null, "", "UCMR 4", null, false, "UCMR 4 analyte or indicator. No per-system result is available from a browser JSON feed."));
+  });
+
+  [
+    ["Chromium (total)", false], ["Cobalt", false], ["Molybdenum", false], ["Strontium", false], ["Vanadium", false],
+    ["Chromium-6", false], ["Chlorate", false], ["1,4-Dioxane", false], ["1,1-Dichloroethane", false],
+    ["1,2,3-Trichloropropane", false], ["1,3-Butadiene", false], ["Bromochloromethane", false],
+    ["Chlorodifluoromethane (HCFC-22)", false], ["Methyl bromide", false], ["Methyl chloride", false],
+    ["Perfluorobutanesulfonic acid (PFBS)", true], ["Perfluoroheptanoic acid (PFHpA)", true],
+    ["Perfluorohexanesulfonic acid (PFHxS)", true], ["Perfluorononanoic acid (PFNA)", true],
+    ["Perfluorooctanesulfonic acid (PFOS)", true], ["Perfluorooctanoic acid (PFOA)", true],
+    ["Estriol (16-alpha-hydroxyestradiol)", false], ["4-Androstene-3,17-dione", false], ["Equilin", false],
+    ["Estradiol (17-beta-estradiol)", false], ["Estrone", false], ["Ethinyl estradiol (17-alpha-ethynylestradiol)", false],
+    ["Testosterone", false], ["Enteroviruses", false], ["Noroviruses", false]
+  ].forEach((pair, idx) => {
+    MEASUREMENT_CATALOG.push(catalogRow("UCMR3-" + String(idx + 1), pair[0], "", null, "", "UCMR 3", null, pair[1], "UCMR 3 analyte. No per-system result is available from a browser JSON feed."));
+  });
+
+  async function fetchEpaJson(url) {
+    try {
+      const resp = await fetch(url, { headers: { Accept: "application/json" } });
+      if (!resp.ok) return { ok: false, status: resp.status, rows: [], url };
+      const data = await resp.json();
+      if (Array.isArray(data)) return { ok: true, status: resp.status, rows: data, url };
+      if (data && typeof data === "object") return { ok: true, status: resp.status, rows: [data], url, object: data };
+      return { ok: true, status: resp.status, rows: [], url };
+    } catch (err) {
+      return { ok: false, status: 0, rows: [], url, error: String(err && err.message || err) };
+    }
+  }
+
+  async function fetchEpaPages(tablePath) {
+    const pageSize = 100;
+    const cap = 500;
+    const rows = [];
+    let start = 0;
+    let firstUrl = `${EPA_BASE}/${tablePath}/rows/0:${pageSize - 1}/JSON`;
+    while (rows.length < cap) {
+      const url = `${EPA_BASE}/${tablePath}/rows/${start}:${start + pageSize - 1}/JSON`;
+      const res = await fetchEpaJson(url);
+      if (!res.ok) {
+        if (start === 0) return { ok: false, rows, url: firstUrl, truncated: false, status: res.status };
+        return { ok: true, rows, url: firstUrl, truncated: false, partial: true };
+      }
+      rows.push.apply(rows, res.rows);
+      if (res.rows.length < pageSize) return { ok: true, rows, url: firstUrl, truncated: false };
+      start += pageSize;
+    }
+    return { ok: true, rows, url: firstUrl, truncated: true };
+  }
+
+  async function fetchDroughtSafe(lat, lon) {
+    if (!(lat && lon)) {
+      return {
+        ok: false,
+        level: "unavailable",
+        desc: "No map point was available, so drought was not estimated.",
+        url: ""
+      };
+    }
+    const url = `https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/US_Drought_Intensity_v1/FeatureServer/3/query?geometry=${lon},${lat}&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=dm,period&returnGeometry=false&f=json`;
+    try {
+      const resp = await fetch(url, { headers: { Accept: "application/json" } });
+      if (!resp.ok) {
+        return { ok: false, level: "unavailable", desc: "The U.S. Drought Monitor request failed. No drought level was filled in.", url };
+      }
+      const root = await resp.json();
+      const attr = root && root.features && root.features[0] && root.features[0].attributes;
+      if (attr && attr.dm !== null && attr.dm !== undefined && attr.dm !== "") {
+        const dm = Math.min(4, Math.max(0, Math.round(Number(attr.dm))));
+        const level = ["D0", "D1", "D2", "D3", "D4"][dm] || "unavailable";
+        return {
+          ok: true,
+          level,
+          desc: `The U.S. Drought Monitor point query lists this location as ${droughtLabel(level)}.`,
+          url
+        };
+      }
+      return {
+        ok: true,
+        level: "none",
+        desc: "The U.S. Drought Monitor point query returned no drought polygon at this location.",
+        url
+      };
+    } catch (_) {
+      return { ok: false, level: "unavailable", desc: "The U.S. Drought Monitor request failed. No drought level was filled in.", url };
+    }
+  }
+
+  function field(row, name) {
+    if (!row) return "";
+    if (row[name] != null && row[name] !== "") return row[name];
+    const upper = name.toUpperCase();
+    if (row[upper] != null && row[upper] !== "") return row[upper];
+    return "";
+  }
+
+  function normalizeLcr(code, raw, unitRaw) {
+    const unit = String(unitRaw || "").toLowerCase().replace(/\s+/g, "");
+    if (code === "PB90" && (unit === "mg/l" || unit === "ppm")) {
+      return { value: raw * 1000, unit: "ppb" };
+    }
+    if (code === "CU90" && (unit === "ug/l" || unit === "µg/l" || unit === "ppb")) {
+      return { value: raw / 1000, unit: "ppm" };
+    }
+    if (code === "PB90") return { value: raw, unit: "ppb" };
+    if (code === "CU90") return { value: raw, unit: "ppm" };
+    return { value: raw, unit: unitRaw || "" };
+  }
+
+  function buildLcrReadings(resultRows, sampleRows) {
+    const samples = {};
+    (sampleRows || []).forEach((row) => {
+      const id = String(field(row, "sample_id") || "");
+      if (id) samples[id] = row;
+    });
+    const byCode = {};
+    (resultRows || []).forEach((row) => {
+      const code = String(field(row, "contaminant_code") || "").trim();
+      const raw = parseFloat(field(row, "sample_measure"));
+      if (!code || Number.isNaN(raw)) return;
+      const sampleId = String(field(row, "sample_id") || "");
+      const sample = samples[sampleId] || {};
+      const norm = normalizeLcr(code, raw, field(row, "unit_of_measure"));
+      const start = String(field(sample, "sampling_start_date") || "").slice(0, 10);
+      const end = String(field(sample, "sampling_end_date") || "").slice(0, 10);
+      if (!byCode[code]) byCode[code] = [];
+      byCode[code].push({
+        sampleId,
+        raw,
+        rawUnit: String(field(row, "unit_of_measure") || ""),
+        value: norm.value,
+        unit: norm.unit,
+        start,
+        end,
+        sortKey: end || start || sampleId
+      });
+    });
+    Object.keys(byCode).forEach((code) => {
+      byCode[code].sort((a, b) => (a.sortKey < b.sortKey ? -1 : (a.sortKey > b.sortKey ? 1 : 0)));
+    });
+    return byCode;
+  }
+
+  function limitPhrase(meta) {
+    if (meta.mcl == null) return meta.limitKind ? meta.limitKind : "No numeric federal limit stored in this catalog";
+    return `${meta.limitKind || "Limit"} ${fmtVal(meta.mcl)} ${meta.unit}`.trim();
+  }
+
+  function decorateMeasurement(meta, readings) {
+    const list = readings ? readings.slice() : [];
+    const newest = list.length ? list[list.length - 1] : null;
+    const measured = list.length > 0;
+    const overLimit = measured && meta.mcl != null && list.some((pt) => pt.value > meta.mcl);
+    const overGoal = measured && meta.phg != null && list.some((pt) => pt.value > meta.phg);
+    return {
+      ...meta,
+      readings: list,
+      measured,
+      detected: newest ? newest.value : null,
+      detectedUnit: newest ? newest.unit : meta.unit,
+      exceedsMcl: Boolean(overLimit),
+      exceedsHealthGoal: Boolean(overGoal)
+    };
+  }
+
+  function assembleMeasurements(readingMap) {
+    const used = {};
+    const rows = MEASUREMENT_CATALOG.map((meta) => {
+      const readings = readingMap[meta.code] || [];
+      if (readings.length) used[meta.code] = true;
+      return decorateMeasurement(meta, readings);
+    });
+    Object.keys(readingMap).forEach((code) => {
+      if (used[code]) return;
+      rows.unshift(decorateMeasurement({
+        code,
+        name: `EPA contaminant code ${code}`,
+        plainName: `EPA contaminant code ${code}`,
+        unit: (readingMap[code][0] && readingMap[code][0].unit) || "",
+        unitLong: (readingMap[code][0] && readingMap[code][0].unit) || "",
+        mcl: null,
+        phg: null,
+        limitKind: "",
+        category: "Other EPA sample results",
+        group: "Other EPA sample results",
+        pfas: false,
+        healthNote: "This code was in the EPA lead-and-copper result feed and is not one of the named catalog rows."
+      }, readingMap[code]));
+    });
+    return rows;
+  }
+
+  function parseViolations(pwsid, rows, echoById) {
+    const parsed = [];
+    (rows || []).forEach((row, idx) => {
+      const beginRaw = field(row, "compl_per_begin_date") || field(row, "non_compl_per_begin_date");
+      const parsedDate = parseEpaDate(beginRaw);
+      if (!parsedDate) return;
+      const vid = String(field(row, "violation_id") || (idx + 1));
+      const echo = echoById[vid] || null;
+      const contCode = String(field(row, "contaminant_code") || "").trim();
+      const catCode = String(field(row, "violation_category_code") || "");
+      const isHealth = String(field(row, "is_health_based_ind") || "N").toUpperCase() === "Y";
+      const rtc = String(field(row, "rtc_date") || "").trim();
+      const statusRaw = String(field(row, "compliance_status_code") || "").trim().toUpperCase();
+      let status = "open";
+      if (rtc || statusRaw.startsWith("R")) status = "resolved";
+      else if (statusRaw.startsWith("A")) status = "addressed";
+      const echoName = echo && (echo.ContaminantName || echo.FederalRule);
+      const title = echoName
+        ? String(echoName)
+        : (contCode ? `EPA contaminant code ${contCode}` : "EPA violation");
+      const ruleCode = String(field(row, "rule_code") || "");
+      const violCode = String(field(row, "violation_code") || "");
+      const endRaw = String(field(row, "compl_per_end_date") || "").slice(0, 10);
       parsed.push({
         id: `${pwsid}-${vid}`,
-        date: isoDate,
-        year: yr,
-        contaminantCode: contCode,
-        contaminant: contMeta ? contMeta.plainName : (contCode ? `Water Quality Check (${contCode})` : "Routine Testing & Reporting"),
-        type: vType,
+        violationId: vid,
+        date: parsedDate.isoDate,
+        year: parsedDate.year,
+        endDate: endRaw,
+        contaminantCode: contCode || null,
+        contaminant: title,
+        ruleCode,
+        violationCode: violCode,
+        categoryCode: catCode,
+        isHealth,
+        type: isHealth ? "health" : (catCode.toUpperCase() === "MR" ? "monitoring" : (catCode.toUpperCase() === "TT" ? "treatment" : "other")),
         status,
+        statusRaw: statusRaw || (rtc ? "RTC" : ""),
         severity: isHealth ? "serious" : "minor",
-        description: `${plainCategory} · ${statusText}`
+        echoStatus: echo && echo.Status ? String(echo.Status) : "",
+        federalRule: echo && echo.FederalRule ? String(echo.FederalRule) : "",
+        latestEnforcementId: String(field(row, "latest_enforcement_id") || ""),
+        sourceUrl: `${EPA_BASE}/VIOLATION/PWSID/${encodeURIComponent(pwsid)}/VIOLATION_ID/${encodeURIComponent(vid)}/JSON`,
+        description: [
+          `Violation code ${violCode || "—"}`,
+          `category ${catCode || "—"}`,
+          `health-based ${isHealth ? "yes" : "no"}`,
+          `SDWIS status ${statusRaw || "blank"}`,
+          ruleCode ? `rule ${ruleCode}` : "",
+          echo && echo.FederalRule ? `ECHO rule ${echo.FederalRule}` : ""
+        ].filter(Boolean).join(" · ")
       });
-    }
-
-    if (parsed.length > 0) {
-      return parsed.sort((a, b) => (b.date > a.date ? 1 : (b.date < a.date ? -1 : 0))).slice(0, 45);
-    }
-
-    const isJackson = pwsid === "MS0250008";
-    const isFlint = pwsid === "MI0002310";
-    const isNewark = pwsid === "NJ0714001";
-    if (isJackson) {
-      return [
-        { id: `${pwsid}-V26`, date: "2026-03-12", year: 2026, contaminant: "Water Clarity & Pressure", type: "treatment", status: "open", severity: "serious", description: "Surface water filtration & system pressure advisory · Currently under review" },
-        { id: `${pwsid}-V25`, date: "2025-07-19", year: 2025, contaminant: "Pipe Corrosion Control", type: "treatment", status: "addressed", severity: "serious", description: "Corrosion control treatment upgrade in progress · Addressed" },
-        { id: `${pwsid}-V23`, date: "2023-11-04", year: 2023, contaminant: "Chlorine Byproducts (TTHMs)", type: "monitoring", status: "resolved", severity: "minor", description: "Routine quarterly water sample report completed · Resolved" }
-      ];
-    }
-    if (isFlint) {
-      return [
-        { id: `${pwsid}-V25`, date: "2025-09-01", year: 2025, contaminant: "Chlorine Byproducts (TTHMs)", type: "monitoring", status: "open", severity: "minor", description: "Quarterly water testing paperwork verification · Currently under review" },
-        { id: `${pwsid}-V22`, date: "2022-05-14", year: 2022, contaminant: "Lead Pipe Protection", type: "treatment", status: "resolved", severity: "serious", description: "Lead pipe replacement & anti-corrosion treatment verified · Resolved" },
-        { id: `${pwsid}-V18`, date: "2018-06-20", year: 2018, contaminant: "Lead & Copper Follow-up", type: "health", status: "resolved", severity: "serious", description: "Historical pipe corrosion upgrades completed · Resolved" }
-      ];
-    }
-    if (isNewark) {
-      return [
-        { id: `${pwsid}-V24`, date: "2024-08-10", year: 2024, contaminant: "Chlorine Byproducts (TTHMs)", type: "monitoring", status: "resolved", severity: "minor", description: "Quarterly disinfection byproduct testing completed · Resolved" },
-        { id: `${pwsid}-V19`, date: "2019-07-01", year: 2019, contaminant: "Lead Pipe Replacement", type: "health", status: "resolved", severity: "serious", description: "Pequannock service area lead pipe & anti-corrosion upgrade completed · Resolved" }
-      ];
-    }
-    return [
-      { id: `${pwsid}-V25`, date: "2025-08-15", year: 2025, contaminant: "Chlorine Byproducts (TTHMs)", type: "monitoring", status: "resolved", severity: "minor", description: "Routine quarterly disinfection byproduct testing · Resolved" },
-      { id: `${pwsid}-V22`, date: "2022-04-10", year: 2022, contaminant: "Nitrate (Fertilizer Runoff)", type: "monitoring", status: "resolved", severity: "minor", description: "Annual source water nutrient check · Resolved" }
-    ];
+    });
+    parsed.sort((a, b) => (a.date < b.date ? 1 : (a.date > b.date ? -1 : 0)));
+    return parsed;
   }
 
-  function buildContaminantsDualBenchmark(pwsid, sourceType, lcrArr) {
-    const lcrLatest = {};
-    for (let i = 0; i < lcrArr.length; i++) {
-      const s = lcrArr[i];
-      if (!s) continue;
-      const code = String(s.contaminant_code || s.CONTAMINANT_CODE || "");
-      if (code !== "PB90" && code !== "CU90") continue;
-      const rawMeasure = parseFloat(s.sample_measure || s.SAMPLE_MEASURE || "");
-      if (Number.isNaN(rawMeasure)) continue;
-      const unit = String(s.unit_of_measure || s.UNIT_OF_MEASURE || "").toLowerCase();
-      let normalized = rawMeasure;
-      if (code === "PB90" && (unit === "mg/l" || unit === "ppm")) normalized = rawMeasure * 1000.0;
-      else if (code === "CU90" && (unit === "ug/l" || unit === "ppb")) normalized = rawMeasure / 1000.0;
-      if (lcrLatest[code] === undefined) {
-        lcrLatest[code] = normalized;
-      }
+  function parseEcho(object) {
+    const res = object && object.Results ? object.Results : null;
+    if (!res) return { ok: false, byId: {}, summary: null };
+    const byId = {};
+    const sources = res.ViolationsEnforcementActions && res.ViolationsEnforcementActions.Sources;
+    if (Array.isArray(sources)) {
+      sources.forEach((src) => {
+        const list = src && src.Violations;
+        if (!Array.isArray(list)) return;
+        list.forEach((item) => {
+          const id = item && item.ViolationID != null ? String(item.ViolationID) : "";
+          if (id && id !== "None") byId[id] = item;
+        });
+      });
     }
-
-    const isSurface = String(sourceType || "").toLowerCase().includes("surface");
-    const isFlint = pwsid === "MI0002310";
-    const isNewark = pwsid === "NJ0714001";
-    const isJackson = pwsid === "MS0250008";
-    const h = hashStr(pwsid);
-
-    const defaults = {
-      PB90: isFlint ? 5.8 : (isNewark ? 4.1 : (isJackson ? 6.4 : 1.8 + (h % 25) * 0.1)),
-      "2950": isSurface ? 44.0 + (h % 24) : 14.0 + (h % 12),
-      "2456": isSurface ? 29.0 + (h % 18) : 9.0 + (h % 9),
-      "2806": isSurface ? 1.9 + (h % 15) * 0.1 : 1.2 + (h % 12) * 0.1,
-      "2805": isSurface ? 1.6 + (h % 12) * 0.1 : 0.9 + (h % 10) * 0.1,
-      "1040": 1.3 + (h % 16) * 0.1,
-      CU90: isFlint ? 0.28 : (isJackson ? 0.42 : 0.19 + (h % 18) * 0.01),
-      "1005": 0.9 + (h % 14) * 0.1,
-      "1025": 0.68
+    const summaries = res.EnforcementComplianceSummaries && res.EnforcementComplianceSummaries.Summaries;
+    const sdwa = Array.isArray(summaries)
+      ? summaries.find((item) => String(item.Statute || "").toUpperCase() === "SDWA")
+      : null;
+    const compSrc = res.ComplianceSummary && res.ComplianceSummary.Source;
+    const comp = Array.isArray(compSrc)
+      ? compSrc.find((item) => String(item.Statute || "").toUpperCase() === "SDWA")
+      : null;
+    return {
+      ok: true,
+      byId,
+      summary: {
+        currentStatus: sdwa && sdwa.CurrentStatus ? String(sdwa.CurrentStatus) : "",
+        quartersNc: sdwa && sdwa.QtrsInNC != null ? String(sdwa.QtrsInNC) : "",
+        quartersSnc: sdwa && sdwa.QtrsInSNC != null ? String(sdwa.QtrsInSNC) : "",
+        informalActions: sdwa && sdwa.InformalActions != null ? String(sdwa.InformalActions) : "",
+        formalActions: sdwa && sdwa.FormalActions != null ? String(sdwa.FormalActions) : "",
+        currentSnc: comp && comp.CurrentSNC ? String(comp.CurrentSNC) : "",
+        registryId: res.RegistryID ? String(res.RegistryID) : ""
+      }
     };
+  }
 
-    const codesOrder = ["PB90", "2950", "2456", "2806", "2805", "1040", "CU90", "1005", "1025"];
-    return codesOrder.map((code) => {
-      const meta = CONTAMINANT_CATALOG[code];
-      const rawVal = lcrLatest[code] !== undefined ? lcrLatest[code] : (defaults[code] || 0);
-      const detected = Math.round(rawVal * 100) / 100;
+  function scoreFromRecords(violations, contaminants, violationFetchOk, lcrFetchOk) {
+    const formula = "H2Know score from EPA rows, not an EPA score. Start at 100. Subtract 15 for each open health-based violation (SDWIS is_health_based_ind Y, no return-to-compliance date, status not R). Subtract 8 once for lead and once for copper when any real result is over its action level (15 ppb lead, 1.3 ppm copper). Floor is 0. Unmeasured analytes are not scored.";
+    if (!violationFetchOk || !lcrFetchOk) {
       return {
-        ...meta,
-        detected,
-        exceedsHealthGoal: meta.phg !== null && detected > meta.phg,
-        exceedsMcl: meta.mcl !== null && detected > meta.mcl
+        score: null,
+        riskLevel: "unavailable",
+        complianceStatus: "unavailable",
+        formula,
+        openHealthCount: null,
+        actionLevelCount: null
       };
+    }
+    const openHealth = violations.filter((item) => item.status === "open" && item.isHealth);
+    const overCodes = {};
+    contaminants.forEach((item) => {
+      if ((item.code === "PB90" || item.code === "CU90") && item.exceedsMcl) overCodes[item.code] = true;
+    });
+    const actionLevelCount = Object.keys(overCodes).length;
+    const score = Math.max(0, 100 - openHealth.length * 15 - actionLevelCount * 8);
+    const openOther = violations.filter((item) => item.status === "open" && !item.isHealth);
+    let compliance = "in_compliance";
+    if (openHealth.length > 0 || actionLevelCount > 0) compliance = "under_enforcement";
+    else if (openOther.length > 0) compliance = "elevated_concern";
+    const risk = score < 45 ? "critical" : (score < 65 ? "high" : (score < 78 ? "moderate" : "low"));
+    return { score, riskLevel: risk, complianceStatus: compliance, formula, openHealthCount: openHealth.length, actionLevelCount };
+  }
+
+  function groupTreatment(rows) {
+    const groups = {};
+    (rows || []).forEach((row) => {
+      const comment = String(field(row, "comments_text") || "").trim() || "No comment text";
+      const objective = String(field(row, "treatment_objective_code") || "");
+      const process = String(field(row, "treatment_process_code") || "");
+      const key = `${comment}|${objective}|${process}`;
+      if (!groups[key]) {
+        groups[key] = { comment, objective, process, facilities: {} };
+      }
+      const facility = String(field(row, "facility_id") || "");
+      if (facility) groups[key].facilities[facility] = true;
+    });
+    return Object.keys(groups).map((key) => {
+      const item = groups[key];
+      return {
+        comment: item.comment,
+        objective: item.objective,
+        process: item.process,
+        facilityCount: Object.keys(item.facilities).length
+      };
+    }).sort((a, b) => b.facilityCount - a.facilityCount);
+  }
+
+  function periodLabel(reading) {
+    if (reading.start && reading.end) return `${reading.start} to ${reading.end}`;
+    return reading.end || reading.start || "Sample date not on the EPA sample row";
+  }
+
+  function measurementGraphSvg(item) {
+    const pts = item.readings || [];
+    if (!pts.length) return "";
+    const W = 320;
+    const H = 148;
+    const padL = 28;
+    const padR = 10;
+    const padT = 16;
+    const padB = 28;
+    const plotW = W - padL - padR;
+    const plotH = H - padT - padB;
+    const values = pts.map((pt) => pt.value);
+    let maxV = Math.max.apply(null, values.concat(item.mcl == null ? [] : [item.mcl]));
+    if (!Number.isFinite(maxV) || maxV <= 0) maxV = 1;
+    maxV *= 1.18;
+    const times = pts.map((pt) => Date.parse(pt.end || pt.start || "") || null);
+    const known = times.filter((t) => t != null);
+    const t0 = known.length ? Math.min.apply(null, known) : 0;
+    const t1 = known.length ? Math.max.apply(null, known) : 0;
+    const coords = pts.map((pt, i) => {
+      let x;
+      if (pts.length === 1) x = padL + plotW / 2;
+      else if (known.length === pts.length && t1 > t0 && times[i] != null) x = padL + ((times[i] - t0) / (t1 - t0)) * plotW;
+      else x = padL + (i / (pts.length - 1)) * plotW;
+      const y = padT + plotH * (1 - (pt.value / maxV));
+      return { x, y, pt };
+    });
+    const line = pts.length > 1
+      ? `<polyline fill="none" stroke="#d7d2c8" stroke-width="1.6" stroke-dasharray="4 3" points="${coords.map((c) => `${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(" ")}" />`
+      : "";
+    const limitY = item.mcl == null ? null : padT + plotH * (1 - (item.mcl / maxV));
+    const limit = limitY == null ? "" : `<line x1="${padL}" y1="${limitY.toFixed(1)}" x2="${W - padR}" y2="${limitY.toFixed(1)}" stroke="#ff6b6b" stroke-width="1.4" />`;
+    const markers = coords.map((c) => `
+      <circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="4.5" fill="#10261c" stroke="#8ee0b0" stroke-width="2" />
+      <text x="${c.x.toFixed(1)}" y="${Math.max(11, c.y - 8).toFixed(1)}" text-anchor="middle" fill="#f4f1ea" font-size="9" font-family="ui-monospace, monospace">${escHtml(fmtVal(c.pt.value))}</text>
+    `).join("");
+    const axis = coords.map((c) => `<text x="${c.x.toFixed(1)}" y="${H - 6}" text-anchor="middle" fill="#c8c2b6" font-size="8" font-family="ui-monospace, monospace">${escHtml((c.pt.end || c.pt.start || "").slice(0, 7))}</text>`).join("");
+    const caption = pts.length === 1
+      ? "One EPA sample period. No line is drawn, and nothing is filled in."
+      : "Each dot is one EPA sample period. The line only connects those dots. No periods were added.";
+    return `
+      <div class="epa-graph" data-points="${pts.length}">
+        <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Real EPA samples for ${escHtml(item.plainName)}">
+          <rect x="0" y="0" width="${W}" height="${H}" fill="#10141b" rx="10" />
+          ${limit}
+          ${line}
+          ${markers}
+          ${axis}
+        </svg>
+        <p class="epa-graph-note">${caption}</p>
+      </div>
+    `;
+  }
+
+  function readingListHtml(item) {
+    const newestFirst = item.readings.slice().reverse();
+    return newestFirst.map((pt) => `
+      <li>
+        <span class="epa-value">${escHtml(fmtVal(pt.value))} ${escHtml(pt.unit)}</span>
+        <span class="epa-meta">${escHtml(periodLabel(pt))}</span>
+        <span class="epa-meta">EPA sample ${escHtml(pt.sampleId || "—")} · sample_measure ${escHtml(String(pt.raw))} ${escHtml(pt.rawUnit)}</span>
+      </li>
+    `).join("");
+  }
+
+  function measurementCardHtml(item, selectedCode, sourceUrl) {
+    const selected = item.code === selectedCode;
+    if (!item.measured) {
+      return `
+        <article class="epa-card epa-missing" data-code="${escHtml(item.code)}">
+          <button type="button" class="why-contam-row epa-card-btn" data-code="${escHtml(item.code)}">
+            <span class="epa-name">${escHtml(item.plainName)}</span>
+            <span class="epa-badge epa-badge-missing">NOT MEASURED</span>
+          </button>
+          <p class="epa-phrase">${NOT_MEASURED}</p>
+        </article>
+      `;
+    }
+    const badge = item.exceedsMcl ? "MEASURED · OVER LIMIT" : (item.exceedsHealthGoal ? "MEASURED · ABOVE GOAL" : "MEASURED");
+    const badgeClass = item.exceedsMcl ? "epa-badge-over" : (item.exceedsHealthGoal ? "epa-badge-goal" : "epa-badge-measured");
+    return `
+      <article class="epa-card epa-measured ${selected ? "is-selected" : ""}" data-code="${escHtml(item.code)}" data-measured="1">
+        <button type="button" class="why-contam-row epa-card-btn" data-code="${escHtml(item.code)}">
+          <span class="epa-name">${escHtml(item.plainName)}</span>
+          <span class="epa-badge ${badgeClass}">${badge}</span>
+        </button>
+        <ul class="epa-readings">${readingListHtml(item)}</ul>
+        <p class="epa-limit">Limit: ${escHtml(limitPhrase(item))}</p>
+        ${measurementGraphSvg(item)}
+        <a class="epa-source" href="${escHtml(sourceUrl)}" target="_blank" rel="noopener noreferrer">EPA lead and copper results</a>
+      </article>
+    `;
+  }
+
+  function renderQualityList(r) {
+    const rows = filteredMeasurements(r);
+    const measured = rows.filter((item) => item.measured);
+    const missing = rows.filter((item) => !item.measured);
+    const groups = {};
+    missing.forEach((item) => {
+      if (!groups[item.group]) groups[item.group] = [];
+      groups[item.group].push(item);
+    });
+    const measuredGroups = {};
+    measured.forEach((item) => {
+      if (!measuredGroups[item.group]) measuredGroups[item.group] = [];
+      measuredGroups[item.group].push(item);
+    });
+    const groupOrder = [];
+    Object.keys(measuredGroups).forEach((name) => groupOrder.push(name));
+    Object.keys(groups).forEach((name) => {
+      if (groupOrder.indexOf(name) === -1) groupOrder.push(name);
+    });
+    let openedMissing = false;
+    const selected = rows.find((item) => item.code === state.selectedContamCode) || measured[0] || rows[0];
+    const lcrUrl = r.sources && r.sources.lcrResults;
+    const body = groupOrder.map((name) => {
+      const present = measuredGroups[name] || [];
+      const absent = groups[name] || [];
+      const cards = present.map((item) => measurementCardHtml(item, selected && selected.code, lcrUrl)).join("");
+      const ucmrNote = name.indexOf("UCMR") === 0
+        ? `<p class="epa-source-note">UCMR rows are not filled from a per-system browser feed. The national files are at <a href="${UCMR_NATIONAL_URL}" target="_blank" rel="noopener noreferrer">EPA UCMR occurrence data</a>.</p>`
+        : "";
+      const inlineMissing = present.length
+        ? absent.map((item) => measurementCardHtml(item, selected && selected.code, lcrUrl)).join("")
+        : "";
+      const openMissing = absent.length > 0 && present.length === 0 && !openedMissing;
+      if (openMissing) openedMissing = true;
+      const missingBlock = !present.length && absent.length
+        ? `<details class="epa-fold"${openMissing ? " open" : ""}>
+            <summary>${escHtml(name)} · ${absent.length} with no EPA record</summary>
+            ${ucmrNote}
+            <div class="epa-missing-list">
+              ${absent.map((item) => measurementCardHtml(item, selected && selected.code, lcrUrl)).join("")}
+            </div>
+          </details>`
+        : "";
+      if (!present.length) return missingBlock;
+      return `
+        <section class="epa-group">
+          <h4 class="epa-group-title">${escHtml(name)} · measured first</h4>
+          ${cards}
+          ${inlineMissing}
+        </section>
+      `;
+    }).join("");
+    const about = selected ? `
+      <div class="epa-about">
+        <div class="epa-about-kicker">ABOUT ${escHtml(selected.plainName.toUpperCase())}</div>
+        <p>${escHtml(selected.healthNote)}</p>
+        ${selected.measured ? "" : `<p class="epa-phrase">${NOT_MEASURED}</p>`}
+        <div class="flow-row" style="gap:8px">
+          <a href="${contaminantAmazonFilterUrl(selected)}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;border-radius:11px;background:var(--safe);color:#04120c;padding:6px 12px;font-family:var(--font-display);font-size:11px;font-weight:700">Shop NSF Filter on Amazon</a>
+          <a href="${contaminantAmazonTestKitUrl(selected)}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;border-radius:11px;border:1px solid var(--caution);color:var(--caution);padding:6px 11px;font-family:var(--font-display);font-size:11px;font-weight:700">Test kit</a>
+          <button type="button" id="flagContaminantIssueBtn" class="outlined-brand-btn" style="border-radius:11px;padding:6px 11px">${SVG.add}<span>Report</span></button>
+        </div>
+      </div>
+    ` : "";
+    return { html: body, about, selected, shown: rows.length, measured: measured.length };
+  }
+
+  function filteredMeasurements(r) {
+    return r.contaminants.filter((item) => {
+      if (state.whyFilter === "EXCEEDS_PHG") return item.measured && item.exceedsHealthGoal;
+      if (state.whyFilter === "PFAS") return item.pfas || item.group === "Regulated PFAS";
+      if (state.whyFilter === "METALS") return item.group === "Lead and copper";
+      if (state.whyFilter === "DBP") return item.group === "Disinfection byproducts";
+      return true;
     });
   }
 
-  function findPresetByPwsid(pwsid) {
-    for (const z of Object.keys(PRESET_SYSTEMS)) {
-      const found = PRESET_SYSTEMS[z].find((s) => s.pwsid === pwsid);
-      if (found) return found;
-    }
+  function stableScoreForPwsid() {
     return null;
   }
 
-  function stableScoreForPwsid(pwsid) {
-    const preset = findPresetByPwsid(pwsid);
-    if (preset) return preset.currentScore;
-    return 78 + (hashStr(pwsid) % 16);
-  }
-
-  function stableFiveYearDeltaForPwsid(pwsid) {
-    const preset = findPresetByPwsid(pwsid);
-    if (preset && preset.fiveYearDeltaPts !== undefined) return preset.fiveYearDeltaPts;
-    return (hashStr(pwsid) % 9) - 2;
-  }
-
-  function scoreSystem(pwsid, violations, contaminants) {
-    const baseScore = stableScoreForPwsid(pwsid);
-    const open = violations.filter((v) => v.status === "open");
-    const openHealth = open.filter((v) => v.type === "health" || v.severity === "serious");
-    const recentHealth = violations.filter((v) => v.type === "health" && v.year >= 2023);
-    const aboveLegal = contaminants.filter((c) => c.exceedsMcl).length;
-    const raw = aboveLegal > 0 ? Math.max(35, baseScore - aboveLegal * 8) : baseScore;
-    const score = Math.min(96, Math.max(25, raw));
-    let compliance = "in_compliance";
-    if (pwsid === "MS0250008" || openHealth.length > 0 || aboveLegal > 0) {
-      compliance = "under_enforcement";
-    } else if (pwsid === "MI0002310" || open.length > 0 || recentHealth.length > 1) {
-      compliance = "elevated_concern";
-    }
-    const risk = score < 45 ? "critical" : (score < 65 ? "high" : (score < 78 ? "moderate" : "low"));
-    return { score, riskLevel: risk, complianceStatus: compliance };
+  function stableFiveYearDeltaForPwsid() {
+    return null;
   }
 
   async function loadSystemReport(summary, place) {
     const pwsid = summary.pwsid;
     if (systemReportCache[pwsid]) return systemReportCache[pwsid];
 
-    const EPA_BASE = "https://data.epa.gov/efservice";
-    const droughtKey = (place && place.zip) || summary.zip || ((place && place.state) || summary.state);
+    const droughtKey = (place && place.zip) || summary.zip || "none";
     const droughtPromise = droughtCache[droughtKey]
       ? Promise.resolve(droughtCache[droughtKey])
-      : fetchDroughtSafe(place && place.lat, place && place.lon, (place && place.state) || summary.state).then((d) => {
+      : fetchDroughtSafe(place && place.lat, place && place.lon).then((d) => {
           droughtCache[droughtKey] = d;
           return d;
         });
 
-    const [sysArr, violArr, lcrArr, geoArr, drought] = await Promise.all([
-      fetchJsonArraySafe(`${EPA_BASE}/WATER_SYSTEM/PWSID/${pwsid}/JSON`),
-      fetchJsonArraySafe(`${EPA_BASE}/VIOLATION/PWSID/${pwsid}/rows/0:120/JSON`),
-      fetchJsonArraySafe(`${EPA_BASE}/LCR_SAMPLE_RESULT/PWSID/${pwsid}/rows/0:80/JSON`),
-      fetchJsonArraySafe(`${EPA_BASE}/GEOGRAPHIC_AREA/PWSID/${pwsid}/JSON`),
+    const echoUrl = `https://echodata.epa.gov/echo/dfr_rest_services.get_dfr?output=JSON&p_id=${encodeURIComponent(pwsid)}`;
+    const [sysRes, violRes, lcrRes, lcrSampleRes, geoRes, treatRes, enfRes, echoRes, drought] = await Promise.all([
+      fetchEpaJson(`${EPA_BASE}/WATER_SYSTEM/PWSID/${encodeURIComponent(pwsid)}/JSON`),
+      fetchEpaPages(`VIOLATION/PWSID/${encodeURIComponent(pwsid)}`),
+      fetchEpaPages(`LCR_SAMPLE_RESULT/PWSID/${encodeURIComponent(pwsid)}`),
+      fetchEpaPages(`LCR_SAMPLE/PWSID/${encodeURIComponent(pwsid)}`),
+      fetchEpaJson(`${EPA_BASE}/GEOGRAPHIC_AREA/PWSID/${encodeURIComponent(pwsid)}/JSON`),
+      fetchEpaPages(`TREATMENT/PWSID/${encodeURIComponent(pwsid)}`),
+      fetchEpaPages(`ENFORCEMENT_ACTION/PWSID/${encodeURIComponent(pwsid)}`),
+      fetchEpaJson(echoUrl),
       droughtPromise
     ]);
 
-    const sysObj = sysArr[0] || null;
-    const presetSummary = findPresetByPwsid(pwsid);
-
-    const name = String((sysObj && (sysObj.pws_name || sysObj.PWS_NAME)) || "").trim()
-      || (presetSummary && presetSummary.name)
-      || summary.name
-      || `${(place && place.city ? place.city.toUpperCase() : "LOCAL")} WATER SYSTEM`;
-
-    const city = String((sysObj && (sysObj.city_name || sysObj.CITY_NAME)) || "").trim()
-      || (presetSummary && presetSummary.city)
-      || summary.city
-      || (place && place.city)
-      || "Metro Area";
-
-    const st = String((sysObj && (sysObj.state_code || sysObj.STATE_CODE)) || "").trim()
-      || (presetSummary && presetSummary.state)
-      || summary.state
-      || (place && place.state)
-      || pwsid.slice(0, 2);
-
-    const zip = (place && place.zip)
-      || (presetSummary && presetSummary.zip)
-      || summary.zip
-      || String((sysObj && (sysObj.zip_code || sysObj.ZIP_CODE)) || "").slice(0, 5)
-      || "78701";
-
-    const popRaw = parseInt((sysObj && (sysObj.population_served_count || sysObj.POPULATION_SERVED_COUNT)) || "0", 10);
-    const population = (!Number.isNaN(popRaw) && popRaw > 0)
-      ? popRaw
-      : ((presetSummary && presetSummary.population) || summary.population || 75000);
-
-    const rawSrcCode = String((sysObj && (sysObj.primary_source_code || sysObj.PRIMARY_SOURCE_CODE)) || "").trim();
-    const sourceType = rawSrcCode
-      ? sourceLabel(rawSrcCode)
-      : ((presetSummary && presetSummary.sourceType) || summary.sourceType || "Surface water");
-
-    const rawOwnerCode = String((sysObj && (sysObj.owner_type_code || sysObj.OWNER_TYPE_CODE)) || "").trim();
-    const ownerType = rawOwnerCode ? ownerLabel(rawOwnerCode) : "Local government";
-
-    let county = summary.county || "";
-    for (let i = 0; i < geoArr.length; i++) {
-      const g = geoArr[i];
-      const c = g && String(g.county_served || g.COUNTY_SERVED || "").trim();
-      if (c) {
-        county = c;
-        break;
-      }
-    }
-
-    const violations = buildViolations10Y(pwsid, violArr);
-    const contaminants = buildContaminantsDualBenchmark(pwsid, sourceType, lcrArr);
-    const { score, riskLevel, complianceStatus } = scoreSystem(pwsid, violations, contaminants);
-
-    const isSurface = sourceType.toLowerCase().includes("surface");
-    const isFlint = pwsid === "MI0002310" || zip === "48502";
-    const isNewark = pwsid === "NJ0714001" || zip === "07102";
-    const isJackson = pwsid === "MS0250008" || zip === "39201";
-    const h = hashStr(pwsid);
-
-    const baseMap = {};
-    contaminants.forEach((c) => { baseMap[c.code] = c.detected; });
-    const pbNow = baseMap.PB90 ?? 2.4;
-    const cuNow = baseMap.CU90 ?? 0.22;
-    const tthmNow = baseMap["2950"] ?? (isSurface ? 46.0 : 18.0);
-    const haa5Now = baseMap["2456"] ?? (isSurface ? 31.0 : 11.0);
-    const no3Now = baseMap["1040"] ?? 1.4;
-    const asNow = baseMap["1005"] ?? 1.1;
-    const pfoaNow = baseMap["2806"] ?? 1.8;
-    const pfosNow = baseMap["2805"] ?? 1.4;
-
-    const qLabels = ["Q1 '26", "Q2 '26", "Q3 '26", "Q4 '26"];
-    const qMult = isSurface ? [0.78, 0.92, 1.18, 1.0] : [0.92, 0.98, 1.06, 1.0];
-    const qOff = isSurface ? [2, 1, -3, 0] : [1, 0, -1, 0];
-    const oneYearPts = qLabels.map((lbl, idx) => ({
-      periodLabel: lbl,
-      qualityScore: Math.min(98, Math.max(20, score + qOff[idx])),
-      violationCount: (idx === 2 && violations.some((v) => v.status === "open")) ? 1 : 0,
-      levels: {
-        PB90: Math.round(pbNow * (0.94 + idx * 0.02) * 100) / 100,
-        CU90: Math.round(cuNow * (0.96 + (idx % 2) * 0.04) * 100) / 100,
-        "2950": Math.round(tthmNow * qMult[idx] * 100) / 100,
-        "2456": Math.round(haa5Now * (0.82 + (qMult[idx] - 0.78) * 0.85) * 100) / 100,
-        "1040": Math.round(no3Now * (idx === 1 ? 1.22 : 0.96) * 100) / 100,
-        "1005": Math.round(asNow * (0.95 + idx * 0.02) * 100) / 100,
-        "2806": Math.round(pfoaNow * (0.95 + idx * 0.02) * 100) / 100,
-        "2805": pfosNow,
-        "1025": 0.68
-      },
-      milestoneNote: idx === 1 ? "Spring runoff & watershed nutrient monitoring" : (idx === 2 ? (isSurface ? "Warm-water peak chlorine demand & TTHM cycle" : "Summer aquifer demand peak") : null)
-    }));
-
-    const fiveYearLabels = ["2022", "2023", "2024", "2025", "2026"];
-    const fiveYearPts = fiveYearLabels.map((yr, idx) => {
-      const p = idx / 4.0;
-      const sc = isFlint ? Math.round(62 + (score - 62) * p) : (isNewark ? Math.round(63 + (score - 63) * p) : (isJackson ? Math.round(53 + (score - 53) * p) : Math.min(98, Math.max(25, score - 2 + (idx % 3) + (idx === 4 ? 1 : 0)))));
-      const lf = isFlint ? 2.1 - 1.1 * p : (isNewark ? 2.4 - 1.4 * p : 1.18 - 0.18 * p);
-      return {
-        periodLabel: yr,
-        qualityScore: sc,
-        violationCount: violations.filter((v) => String(v.year) === yr).length,
-        levels: {
-          PB90: Math.round(pbNow * lf * 100) / 100,
-          CU90: Math.round(cuNow * (1.12 - 0.12 * p) * 100) / 100,
-          "2950": Math.round(tthmNow * (0.90 + 0.10 * p + (idx % 2) * 0.05) * 100) / 100,
-          "2456": Math.round(haa5Now * (0.92 + 0.08 * p) * 100) / 100,
-          "1040": Math.round(no3Now * (0.88 + 0.12 * p) * 100) / 100,
-          "1005": Math.round(asNow * (0.90 + 0.10 * p) * 100) / 100,
-          "2806": Math.round(pfoaNow * (0.75 + 0.25 * p) * 100) / 100,
-          "2805": pfosNow,
-          "1025": 0.68
-        },
-        milestoneNote: yr === "2023" ? "Expanded UCMR5 / PFAS laboratory reporting" : (yr === "2025" ? "Updated EPA Lead & Copper Rule Improvements (LCRI) baseline" : null)
-      };
+    const sysObj = sysRes.ok ? (sysRes.rows[0] || null) : null;
+    const name = String(field(sysObj, "pws_name") || summary.name || "WATER SYSTEM");
+    const city = String(field(sysObj, "city_name") || summary.city || (place && place.city) || "");
+    const st = String(field(sysObj, "state_code") || summary.state || (place && place.state) || pwsid.slice(0, 2));
+    const zip = String(field(sysObj, "zip_code") || (place && place.zip) || summary.zip || "").slice(0, 5);
+    const popRaw = parseInt(field(sysObj, "population_served_count") || "0", 10);
+    const population = !Number.isNaN(popRaw) && popRaw > 0 ? popRaw : (summary.population || 0);
+    const connectionsRaw = parseInt(field(sysObj, "service_connections_count") || "0", 10);
+    const connections = Number.isNaN(connectionsRaw) ? null : connectionsRaw;
+    const rawSrcCode = String(field(sysObj, "primary_source_code") || "").trim();
+    const sourceType = rawSrcCode ? sourceLabel(rawSrcCode) : (summary.sourceType || "Source code not in the EPA row");
+    const rawOwnerCode = String(field(sysObj, "owner_type_code") || "").trim();
+    const ownerType = rawOwnerCode ? ownerLabel(rawOwnerCode) : "Owner code not in the EPA row";
+    const wholesaler = String(field(sysObj, "is_wholesaler_ind") || "");
+    let county = "";
+    let cityServed = "";
+    let zipServed = "";
+    const geoRows = geoRes.ok ? geoRes.rows : [];
+    geoRows.forEach((geo) => {
+      const c = String(field(geo, "county_served") || "").trim();
+      if (c && !county) county = c;
+      const cityName = String(field(geo, "city_served") || "").trim();
+      if (cityName && !cityServed) cityServed = cityName;
+      const served = field(geo, "zip_code_served");
+      if (!zipServed) zipServed = served == null || served === "" ? "" : String(served);
     });
 
-    const tenYearPts = Array.from({ length: 10 }, (_, idx) => {
-      const yr = String(2017 + idx);
-      const p = idx / 9.0;
-      const sc = isFlint ? Math.round(42 + (score - 42) * p) : (isNewark ? Math.round(48 + (score - 48) * p) : (isJackson ? Math.round(49 + (score - 49) * p) : Math.min(98, Math.max(22, score - 4 + Math.round(p * 4) + ((idx + h) % 3 - 1)))));
-      const lf = isFlint ? 4.2 - 3.2 * p : (isNewark ? 3.8 - 2.8 * p : 1.45 - 0.45 * p);
-      return {
-        periodLabel: "'" + yr.slice(-2),
-        qualityScore: sc,
-        violationCount: violations.filter((v) => String(v.year) === yr).length,
-        levels: {
-          PB90: Math.round(pbNow * lf * 100) / 100,
-          CU90: Math.round(cuNow * (1.28 - 0.28 * p) * 100) / 100,
-          "2950": Math.round(tthmNow * (0.85 + 0.15 * p + (idx % 2) * 0.06) * 100) / 100,
-          "2456": Math.round(haa5Now * (0.86 + 0.14 * p) * 100) / 100,
-          "1040": Math.round(no3Now * (0.82 + 0.18 * p) * 100) / 100,
-          "1005": Math.round(asNow * (0.88 + 0.12 * p) * 100) / 100,
-          "2806": Math.round(pfoaNow * (0.65 + 0.35 * p) * 100) / 100,
-          "2805": pfosNow,
-          "1025": 0.68
-        },
-        milestoneNote: yr === "2019" ? (isNewark || isFlint ? "Major service line replacement & orthophosphate upgrade" : "Routine distribution corrosion review") : (yr === "2024" ? "EPA finalized 4.0 ppt PFAS National Primary Drinking Water Regulation" : null)
-      };
-    });
+    const echo = echoRes.ok ? parseEcho(echoRes.object || (echoRes.rows && echoRes.rows[0])) : { ok: false, byId: {}, summary: null };
+    const violations = violRes.ok ? parseViolations(pwsid, violRes.rows, echo.byId || {}) : [];
+    const readingMap = (lcrRes.ok && lcrSampleRes.ok) ? buildLcrReadings(lcrRes.rows, lcrSampleRes.rows) : {};
+    const contaminants = assembleMeasurements(lcrRes.ok ? readingMap : {});
+    const scored = scoreFromRecords(violations, contaminants, violRes.ok, lcrRes.ok && lcrSampleRes.ok);
+    const treatment = treatRes.ok ? groupTreatment(treatRes.rows) : [];
+    const enforcement = enfRes.ok ? enfRes.rows.map((row) => ({
+      id: String(field(row, "enforcement_id") || ""),
+      date: String(field(row, "enforcement_date") || "").slice(0, 10),
+      typeCode: String(field(row, "enforcement_action_type_code") || ""),
+      comment: String(field(row, "enforcement_comment_text") || "").trim()
+    })).sort((a, b) => (a.date < b.date ? 1 : (a.date > b.date ? -1 : 0))) : [];
 
-    const treatmentSteps = sourceType.toLowerCase().includes("purchased")
-      ? [
-          { stepNumber: 1, title: "Wholesale Intake & Filtration", description: "Water is clarified and filtered at a regional wholesale treatment plant." },
-          { stepNumber: 2, title: "Corrosion & Residual Control", description: "Orthophosphate and chloramine/chlorine residual are maintained in transmission mains." },
-          { stepNumber: 3, title: "Storage & Pressurized Delivery", description: "Local tanks and pump stations maintain steady pressure to neighborhood taps." }
-        ]
-      : (sourceType.toLowerCase().includes("ground")
-        ? [
-            { stepNumber: 1, title: "Deep Aquifer Wells", description: "Water is pumped from protected underground bedrock or alluvial aquifers." },
-            { stepNumber: 2, title: "Mineral & Iron Conditioning", description: "Aeration, sequestration, or ion-exchange balances mineral hardness and trace metals." },
-            { stepNumber: 3, title: "Disinfection Residual", description: "Protective chlorine residual safeguards water quality across distribution pipes." }
-          ]
-        : [
-            { stepNumber: 1, title: "Surface Reservoir Intake", description: "Raw water drawn from rivers, lakes, or protected watershed reservoirs." },
-            { stepNumber: 2, title: "Coagulation & Flocculation", description: "Suspended organic matter and sediment are bound and settled in clarification basins." },
-            { stepNumber: 3, title: "Multi-Media Filtration", description: "Sand, anthracite, and granular carbon beds remove fine particulates and precursors." },
-            { stepNumber: 4, title: "Primary Disinfection & pH Control", description: "Pathogens are inactivated and corrosion inhibitors protect household plumbing." }
-          ]);
-
-    const cutMult = { D0: 0.90, D1: 0.80, D2: 0.65, D3: 0.50, D4: 0.40 }[drought.level] ?? 1.0;
-    const recommendedGpd = Math.round(90 * cutMult);
     const now = new Date();
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    const sources = {
+      system: `${EPA_BASE}/WATER_SYSTEM/PWSID/${pwsid}/JSON`,
+      violations: violRes.url,
+      lcrResults: lcrRes.url || `${EPA_BASE}/LCR_SAMPLE_RESULT/PWSID/${pwsid}/JSON`,
+      lcrSamples: lcrSampleRes.url || `${EPA_BASE}/LCR_SAMPLE/PWSID/${pwsid}/JSON`,
+      geo: `${EPA_BASE}/GEOGRAPHIC_AREA/PWSID/${pwsid}/JSON`,
+      treatment: treatRes.url,
+      enforcement: enfRes.url,
+      echo: echoUrl,
+      drought: drought.url || ""
+    };
+    const fetches = {
+      system: sysRes.ok,
+      violations: violRes.ok,
+      lcrResults: lcrRes.ok,
+      lcrSamples: lcrSampleRes.ok,
+      geo: geoRes.ok,
+      treatment: treatRes.ok,
+      enforcement: enfRes.ok,
+      echo: echo.ok,
+      drought: drought.ok
+    };
 
     const report = {
       pwsid,
       name,
       city,
       state: st,
-      zip,
+      zip: zip || (place && place.zip) || summary.zip || "",
       county,
+      cityServed,
+      zipServed,
       population,
+      connections,
       sourceType,
+      sourceCode: rawSrcCode,
       ownerType,
-      qualityScore: score,
-      fiveYearScoreDelta: (presetSummary && presetSummary.fiveYearDeltaPts !== undefined)
-        ? presetSummary.fiveYearDeltaPts
-        : (fiveYearPts[4].qualityScore - fiveYearPts[0].qualityScore),
-      tenYearScoreDelta: tenYearPts[9].qualityScore - tenYearPts[0].qualityScore,
-      riskLevel,
-      complianceStatus,
+      wholesaler,
+      address: String(field(sysObj, "address_line1") || ""),
+      phone: String(field(sysObj, "phone_number") || ""),
+      orgName: String(field(sysObj, "org_name") || ""),
+      profileLoaded: sysRes.ok,
+      qualityScore: scored.score,
+      fiveYearScoreDelta: null,
+      tenYearScoreDelta: null,
+      riskLevel: scored.riskLevel,
+      complianceStatus: scored.complianceStatus,
+      scoreFormula: scored.formula,
+      openHealthCount: scored.openHealthCount,
+      actionLevelCount: scored.actionLevelCount,
       droughtLevel: drought.level,
       droughtDescription: drought.desc,
+      droughtOk: drought.ok,
       contaminants,
       violations,
-      treatment: treatmentSteps,
-      usage: { normalGallonsPerDay: 90, recommendedGallonsPerDay: recommendedGpd },
+      violationsUnavailable: !violRes.ok,
+      violationsTruncated: Boolean(violRes.truncated),
+      enforcement,
+      enforcementUnavailable: !enfRes.ok,
+      treatment,
+      treatmentUnavailable: !treatRes.ok,
+      treatmentRowCount: treatRes.ok ? treatRes.rows.length : 0,
+      usage: { normalGallonsPerDay: null, recommendedGallonsPerDay: null },
       lastUpdated: todayStr,
-      sourceDescription: `${name} provides tap water to ${population.toLocaleString()} residents in ${city}, ${st}${county ? ` (${county} County)` : ""}. Primary water source: ${sourceType.toLowerCase()}. Operated by: ${ownerType.toLowerCase()}.`,
-      historicalSeries: {
-        ONE_YEAR: {
-          label: "1-Year Quarterly",
-          shortLabel: "1Y",
-          points: oneYearPts,
-          deltaPts: oneYearPts[3].qualityScore - oneYearPts[0].qualityScore,
-          supplyIndication: isSurface
-            ? "Warmer summer reservoir and river temperatures increase natural organic matter and chlorine demand, causing routine late-summer rises in Total Trihalomethanes (TTHMs) and Haloacetic Acids (HAA5)."
-            : "Deep aquifer supplies are thermally insulated from summer heat waves, keeping disinfection byproduct formation low year-round."
-        },
-        FIVE_YEAR: {
-          label: "5-Year Multi-Year",
-          shortLabel: "5Y",
-          points: fiveYearPts,
-          deltaPts: fiveYearPts[4].qualityScore - fiveYearPts[0].qualityScore,
-          supplyIndication: drought.level !== "none"
-            ? `Active drought conditions (${drought.level}) reduce reservoir dilution and concentrate dissolved minerals, bromide, and trace metals such as arsenic in source water.`
-            : "Consistent watershed storage over the 5-year window has prevented drought-driven mineral concentration spikes."
-        },
-        TEN_YEAR: {
-          label: "10-Year Decade",
-          shortLabel: "10Y",
-          points: tenYearPts,
-          deltaPts: tenYearPts[9].qualityScore - tenYearPts[0].qualityScore,
-          supplyIndication: "Decade-long declines in 90th-percentile lead and copper reflect utility orthophosphate corrosion-control optimization and progressive replacement of pre-1986 lead service lines."
-        }
-      }
+      sourceDescription: sysRes.ok
+        ? `${name} is EPA water system ${pwsid}. Population served ${population.toLocaleString()}. Primary source code ${rawSrcCode || "blank"} (${sourceType}). Owner code ${rawOwnerCode || "blank"} (${ownerType}). Wholesaler flag ${wholesaler || "blank"}. Service connections ${connections == null ? "blank" : connections.toLocaleString()}.`
+        : "The EPA water-system row did not load. No profile numbers were estimated.",
+      ccr: CITED_CCR[pwsid] || null,
+      echoSummary: echo.summary,
+      sources,
+      fetches,
+      historicalSeries: null
     };
 
     systemReportCache[pwsid] = report;
@@ -1773,49 +2270,49 @@ html.dark {
   }
 
   async function fetchEpaSystems(zip, city, stateCode) {
-    try {
-      const EPA_BASE = "https://data.epa.gov/efservice";
-      const byZip = await fetchJsonArraySafe(`${EPA_BASE}/WATER_SYSTEM/ZIP_CODE/BEGINNING/${zip}/PWS_ACTIVITY_CODE/A/rows/0:30/JSON`);
-      const encCity = encodeURIComponent(String(city || "").toUpperCase());
-      const encState = encodeURIComponent(String(stateCode || "").toUpperCase());
-      const byCity = byZip.length < 3
-        ? await fetchJsonArraySafe(`${EPA_BASE}/WATER_SYSTEM/CITY_NAME/${encCity}/STATE_CODE/${encState}/PWS_ACTIVITY_CODE/A/rows/0:30/JSON`)
-        : [];
+    const EPA_ROOT = "https://data.epa.gov/efservice";
+    const byZip = await fetchEpaJson(`${EPA_ROOT}/WATER_SYSTEM/ZIP_CODE/BEGINNING/${zip}/PWS_ACTIVITY_CODE/A/rows/0:30/JSON`);
+    if (!byZip.ok) {
+      return { ok: false, rows: [] };
+    }
+    const encCity = encodeURIComponent(String(city || "").toUpperCase());
+    const encState = encodeURIComponent(String(stateCode || "").toUpperCase());
+    const byCity = byZip.rows.length < 3
+      ? await fetchEpaJson(`${EPA_ROOT}/WATER_SYSTEM/CITY_NAME/${encCity}/STATE_CODE/${encState}/PWS_ACTIVITY_CODE/A/rows/0:30/JSON`)
+      : { ok: true, rows: [] };
+    if (!byCity.ok) return { ok: false, rows: [] };
 
-      const map = new Map();
-      function absorb(arr) {
-        for (let i = 0; i < arr.length; i++) {
-          const obj = arr[i];
-          if (!obj) continue;
-          const pwsid = String(obj.pwsid || obj.PWSID || "").trim();
-          if (!pwsid) continue;
-          const st = String(obj.state_code || obj.STATE_CODE || "").trim();
-          if (st.toUpperCase() !== stateCode.toUpperCase() && !pwsid.toUpperCase().startsWith(stateCode.toUpperCase())) continue;
-          const pop = parseInt(obj.population_served_count || obj.POPULATION_SERVED_COUNT || "0", 10) || 0;
-          const prev = map.get(pwsid);
-          const prevPop = prev ? (parseInt(prev.population_served_count || prev.POPULATION_SERVED_COUNT || "0", 10) || -1) : -1;
-          if (!prev || pop > prevPop) {
-            map.set(pwsid, obj);
-          }
-        }
+    const map = new Map();
+    function absorb(arr) {
+      for (let i = 0; i < arr.length; i++) {
+        const obj = arr[i];
+        if (!obj) continue;
+        const pwsid = String(obj.pwsid || obj.PWSID || "").trim();
+        if (!pwsid) continue;
+        const st = String(obj.state_code || obj.STATE_CODE || "").trim();
+        if (st.toUpperCase() !== String(stateCode || "").toUpperCase() && !pwsid.toUpperCase().startsWith(String(stateCode || "").toUpperCase())) continue;
+        const pop = parseInt(obj.population_served_count || obj.POPULATION_SERVED_COUNT || "0", 10) || 0;
+        const prev = map.get(pwsid);
+        const prevPop = prev ? (parseInt(prev.population_served_count || prev.POPULATION_SERVED_COUNT || "0", 10) || -1) : -1;
+        if (!prev || pop > prevPop) map.set(pwsid, obj);
       }
-      absorb(byZip);
-      absorb(byCity);
-
-      const all = Array.from(map.values());
-      const cws = all.filter((it) => {
-        const t = String(it.pws_type_code || it.PWS_TYPE_CODE || "").toUpperCase();
-        return t === "CWS" || t === "NTNCWS";
-      });
-      const filtered = cws.length > 0 ? cws : all;
-      return filtered.sort((a, b) => {
+    }
+    absorb(byZip.rows);
+    absorb(byCity.rows);
+    const all = Array.from(map.values());
+    const cws = all.filter((it) => {
+      const t = String(it.pws_type_code || it.PWS_TYPE_CODE || "").toUpperCase();
+      return t === "CWS" || t === "NTNCWS";
+    });
+    const filtered = cws.length > 0 ? cws : all;
+    return {
+      ok: true,
+      rows: filtered.sort((a, b) => {
         const pa = parseInt(a.population_served_count || a.POPULATION_SERVED_COUNT || "0", 10) || 0;
         const pb = parseInt(b.population_served_count || b.POPULATION_SERVED_COUNT || "0", 10) || 0;
         return pb - pa;
-      }).slice(0, 6);
-    } catch (_) {
-      return [];
-    }
+      }).slice(0, 6)
+    };
   }
 
   async function fetchProvidersByZip(zip) {
@@ -1823,83 +2320,43 @@ html.dark {
     if (!place) {
       throw new Error(`ZIP code ${zip} was not recognized. Try a nearby 5-digit U.S. ZIP.`);
     }
-
     const presetList = PRESET_SYSTEMS[zip] || null;
-    const liveRows = await fetchEpaSystems(zip, place.city, place.state);
-
-    if (liveRows.length === 0 && presetList) {
-      return { place, providers: presetList.map((p) => ({ ...p })) };
+    const live = await fetchEpaSystems(zip, place.city, place.state);
+    if (!live.ok) {
+      throw new Error("The EPA water-system lookup did not respond. No utility list was invented.");
     }
-
-    if (liveRows.length === 0) {
-      const st = place.state.toUpperCase();
-      const pws1 = `${st}${zip}01`;
-      const pws2 = `${st}${zip}02`;
+    const liveRows = live.rows;
+    if (liveRows.length === 0 && presetList) {
       return {
         place,
-        providers: [
-          {
-            pwsid: pws1,
-            name: `${place.city.toUpperCase()} MUNICIPAL WATER SYSTEM`,
-            city: place.city, state: place.state, zip, county: "",
-            population: 68400,
-            sourceType: "Surface water",
-            isPrimary: true,
-            currentScore: stableScoreForPwsid(pws1),
-            fiveYearDeltaPts: stableFiveYearDeltaForPwsid(pws1)
-          },
-          {
-            pwsid: pws2,
-            name: `${place.city.toUpperCase()} REGIONAL WATER AUTHORITY`,
-            city: place.city, state: place.state, zip, county: "",
-            population: 21900,
-            sourceType: "Groundwater",
-            isPrimary: false,
-            currentScore: stableScoreForPwsid(pws2),
-            fiveYearDeltaPts: stableFiveYearDeltaForPwsid(pws2)
-          }
-        ]
+        providers: presetList.map((p, idx) => ({ ...p, currentScore: null, fiveYearDeltaPts: null, isPrimary: idx === 0 }))
       };
     }
-
-    const rawSummaries = liveRows.map((obj) => {
+    if (liveRows.length === 0) {
+      throw new Error(`No active EPA water system was returned for ZIP ${zip}.`);
+    }
+    const providers = liveRows.map((obj, idx) => {
       const pwsid = String(obj.pwsid || obj.PWSID || "");
       const name = String(obj.pws_name || obj.PWS_NAME || pwsid).trim() || pwsid;
       const city = String(obj.city_name || obj.CITY_NAME || place.city).trim() || place.city;
       const st = String(obj.state_code || obj.STATE_CODE || place.state).trim() || place.state;
       const pop = parseInt(obj.population_served_count || obj.POPULATION_SERVED_COUNT || "0", 10) || 0;
-      const srcCode = String(obj.primary_source_code || obj.PRIMARY_SOURCE_CODE || "SW");
-      const presetMatch = presetList ? presetList.find((it) => it.pwsid === pwsid) : null;
+      const srcCode = String(obj.primary_source_code || obj.PRIMARY_SOURCE_CODE || "");
       return {
         pwsid,
         name,
         city,
         state: st,
         zip,
-        county: presetMatch ? (presetMatch.county || "") : "",
+        county: "",
         population: pop,
-        sourceType: sourceLabel(srcCode),
-        isPrimary: Boolean(presetMatch && presetMatch.isPrimary),
-        currentScore: stableScoreForPwsid(pwsid),
-        fiveYearDeltaPts: stableFiveYearDeltaForPwsid(pwsid)
+        sourceType: srcCode ? sourceLabel(srcCode) : "Source code not in the EPA row",
+        isPrimary: idx === 0,
+        currentScore: null,
+        fiveYearDeltaPts: null
       };
     });
-
-    const combined = [];
-    if (presetList) {
-      presetList.forEach((p) => combined.push({ ...p }));
-    }
-    rawSummaries.forEach((live) => {
-      if (!combined.some((x) => x.pwsid === live.pwsid)) {
-        combined.push(live);
-      }
-    });
-    combined.sort((a, b) => {
-      if (a.isPrimary !== b.isPrimary) return a.isPrimary ? -1 : 1;
-      return b.population - a.population;
-    });
-    const topProviders = combined.slice(0, 6).map((s, idx) => ({ ...s, isPrimary: idx === 0 }));
-    return { place, providers: topProviders };
+    return { place, providers };
   }
 
   /* ==========================================================================
@@ -1933,7 +2390,7 @@ html.dark {
 
     const primary = state.providers[0];
     const others = state.providers.slice(1);
-    const pColor = primary.currentScore >= 80 ? "var(--safe)" : (primary.currentScore >= 60 ? "var(--caution)" : "var(--danger)");
+    const pColor = scoreHue(primary.currentScore);
 
     zone.innerHTML = `
       <div class="stack-10">
@@ -1954,7 +2411,7 @@ html.dark {
             <div class="body-small">Serves ${primary.population.toLocaleString()} residents · Tap to view water report</div>
           </div>
           <div style="border-radius:12px;background:color-mix(in srgb, ${pColor} 16%, transparent);border:1px solid color-mix(in srgb, ${pColor} 40%, transparent);padding:7px 12px;text-align:center;flex-shrink:0">
-            <div class="mono" style="font-size:19px;font-weight:800;color:${pColor};line-height:1.1">${primary.currentScore}</div>
+            <div class="mono" style="font-size:19px;font-weight:800;color:${pColor};line-height:1.1">${scoreText(primary.currentScore)}</div>
             <div class="mono" style="font-size:9px;font-weight:700;color:${pColor};margin-top:2px">SCORE →</div>
           </div>
         </button>
@@ -1967,14 +2424,14 @@ html.dark {
           ${state.showOtherInline ? `
             <div style="border-radius:14px;background:var(--surface-0);border:1px solid var(--border);padding:8px;max-height:210px;overflow-y:auto" class="stack-8">
               ${others.map((prov, idx) => {
-                const sc = prov.currentScore >= 80 ? "var(--safe)" : (prov.currentScore >= 60 ? "var(--caution)" : "var(--danger)");
+                const sc = scoreHue(prov.currentScore);
                 return `
                   <button type="button" class="inline-secondary-prov-btn" data-idx="${idx + 1}" style="width:100%;text-align:left;border-radius:10px;background:var(--surface-2);border:1px solid var(--border);padding:9px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px">
                     <div style="flex:1;min-width:0">
                       <div class="title-small" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${prov.name}</div>
                       <div class="mono" style="font-size:10px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Serves ${prov.population.toLocaleString()} · ${prov.sourceType}</div>
                     </div>
-                    <span class="mono" style="font-size:12px;font-weight:800;color:${sc}">${prov.currentScore} →</span>
+                    <span class="mono" style="font-size:12px;font-weight:800;color:${sc}">${scoreText(prov.currentScore)} →</span>
                   </button>
                 `;
               }).join("")}
@@ -2033,36 +2490,25 @@ html.dark {
     const arsenic = r.contaminants.find((c) => c.code === "1005");
 
     const elevatedNames = r.contaminants
-      .filter((c) => c.exceedsHealthGoal)
+      .filter((c) => c.measured)
       .map((c) => {
-        if (c.code === "PB90") return `Lead (${fmtVal(c.detected)} ppb)`;
-        if (c.code === "2950") return `TTHMs (${fmtVal(c.detected)} ppb)`;
-        if (c.code === "2456") return `HAA5 (${fmtVal(c.detected)} ppb)`;
-        if (c.code === "2806") return `PFOA (${fmtVal(c.detected)} ppt)`;
-        if (c.code === "2805") return `PFOS (${fmtVal(c.detected)} ppt)`;
-        if (c.code === "1040") return `Nitrate (${fmtVal(c.detected)} ppm)`;
-        if (c.code === "1005") return `Arsenic (${fmtVal(c.detected)} ppb)`;
-        if (c.code === "CU90") return `Copper (${fmtVal(c.detected)} ppm)`;
-        return c.name.split(" (")[0];
+        const peak = Math.max.apply(null, c.readings.map((pt) => pt.value));
+        return `${c.plainName} highest ${fmtVal(peak)} ${c.detectedUnit || c.unit}`;
       });
 
     const roMatchText = elevatedNames.length > 0
-      ? `Matched to ${r.zip}: Targets ${elevatedNames.slice(0, 3).join(", ")}`
-      : "Complete barrier for Lead, PFAS, Arsenic, Nitrate & Chlorine Byproducts";
+      ? `EPA samples on file: ${elevatedNames.slice(0, 3).join("; ")}`
+      : "No EPA sample value was on file for the catalog rows";
 
-    const pitcherMatchText = (pb && pb.detected > 0 && tthm && tthm.detected > 0)
-      ? `Matched for Lead (${fmtVal(pb.detected)} ppb) & TTHMs (${fmtVal(tthm.detected)} ppb) in ${r.city}`
-      : ((pfoa && pfoa.detected > 0)
-        ? `Certified for PFOA/PFOS (${fmtVal(pfoa.detected)} ppt), Lead & Chlorine odor`
-        : "Renter-friendly pitcher for Lead, PFAS, Copper & Disinfection Byproducts");
+    const pitcherMatchText = (pb && pb.measured)
+      ? `Lead samples for ${r.city} are listed on the Quality tab`
+      : "Renter-friendly pitcher. Not an EPA sample result.";
 
-    const faucetMatchText = (pb && pb.detected > 0)
-      ? `1-Click kitchen tap barrier for ${fmtVal(pb.detected)} ppb 90th-percentile Lead & pipe scale`
-      : "Installs in 2 minutes on standard kitchen faucets with filter life indicator";
+    const faucetMatchText = (pb && pb.measured)
+      ? "Lead samples are listed on the Quality tab. This link is an Amazon search."
+      : "Installs on a kitchen faucet. Not an EPA sample result.";
 
-    const testKitMatchText = ((no3 && no3.detected > 1.0) || (arsenic && arsenic.detected > 0.5))
-      ? `Verify home tap Lead, Copper, Nitrate (${fmtVal(no3?.detected)} ppm) & Arsenic`
-      : `Test your home's internal plumbing after overnight stagnation (ZIP ${r.zip})`;
+    const testKitMatchText = `Home kits are separate from the EPA rows. ZIP ${r.zip}`;
 
     return [
       {
@@ -2121,10 +2567,10 @@ html.dark {
       {
         id: "amz-watersense-kit",
         title: "EPA WaterSense High-Efficiency Showerhead & Aerator Kit",
-        subtitle: `Helps meet ${r.city}'s ${r.usage.recommendedGallonsPerDay} GPD target (${droughtLabel}) while cutting hot-water energy use by 20%.`,
+        subtitle: `WaterSense fixtures for ${r.city}. ${droughtLabel}. Daily gallons are not an EPA measurement.`,
         certificationBadge: "EPA WaterSense · 1.5–1.8 GPM",
         priceTier: "$19–$39 · Amazon",
-        matchReason: `Matched for ZIP ${r.zip} conservation target (${r.usage.recommendedGallonsPerDay} GPD)`,
+        matchReason: `Amazon search for ZIP ${r.zip}. Not an EPA sample result.`,
         targetCodes: [],
         amazonUrl: "https://www.amazon.com/s?k=EPA+WaterSense+high+efficiency+showerhead+and+faucet+aerator+kit",
         secondaryLabel: "Smart Leak Sensors ↗",
@@ -2271,17 +2717,17 @@ html.dark {
       `;
     } else {
       histBox.innerHTML = `<div class="stack-8">` + state.cloudHistory.slice(0, 6).map((hist) => {
-        const syncedScore = hist.pwsid ? stableScoreForPwsid(hist.pwsid) : hist.qualityScore;
-        const sc = syncedScore >= 80 ? "var(--safe)" : (syncedScore >= 60 ? "var(--caution)" : "var(--danger)");
-        const d5 = hist.fiveYearDelta >= 0 ? `+${hist.fiveYearDelta}` : `${hist.fiveYearDelta}`;
+        const syncedScore = Number.isFinite(hist.qualityScore) ? hist.qualityScore : null;
+        const sc = scoreHue(syncedScore);
+        const d5 = Number.isFinite(hist.fiveYearDelta) ? (hist.fiveYearDelta >= 0 ? `+${hist.fiveYearDelta} pts` : `${hist.fiveYearDelta} pts`) : "no synthetic score trend";
         return `
           <div style="border-radius:16px;background:var(--surface-2);border:1px solid var(--border);padding:14px;display:flex;align-items:center;gap:10px">
             <button type="button" class="hist-item-open" data-zip="${hist.zip}" style="flex:1;text-align:left;min-width:0">
               <div class="title-small">${hist.systemName} · ZIP ${hist.zip}</div>
-              <div class="mono" style="font-size:11px;color:var(--brand);margin:3px 0">${hist.city}, ${hist.state} · 5Y Trend ${d5} pts</div>
+              <div class="mono" style="font-size:11px;color:var(--brand);margin:3px 0">${hist.city}, ${hist.state} · ${d5}</div>
               <div class="body-small" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${hist.primaryWhySummary}</div>
             </button>
-            <div class="mono" style="border-radius:10px;background:color-mix(in srgb, ${sc} 15%, transparent);padding:6px 10px;font-size:16px;font-weight:700;color:${sc}">${syncedScore}</div>
+            <div class="mono" style="border-radius:10px;background:color-mix(in srgb, ${sc} 15%, transparent);padding:6px 10px;font-size:16px;font-weight:700;color:${sc}">${scoreText(syncedScore)}</div>
             <button type="button" class="hist-item-del icon-circle-btn" data-id="${hist.id}" style="width:32px;height:32px;background:transparent;color:var(--ink-3)">${SVG.deleteOutline}</button>
           </div>
         `;
@@ -2374,8 +2820,8 @@ html.dark {
       }
       return;
     }
-    const topC = report.contaminants[0];
-    const summary = topC ? `${topC.plainName}: ${fmtVal(topC.detected)} ${topC.unit} (Health Goal ${fmtVal(topC.phg)} ${topC.unit})` : "Within EPA standards";
+    const topC = report.contaminants.find((c) => c.measured) || null;
+    const summary = topC ? `${topC.plainName}: ${topC.readings.length} EPA sample period${topC.readings.length === 1 ? "" : "s"}` : "No EPA sample rows in the catalog";
     const entry = {
       id: "HIST-" + Date.now(),
       pwsid: report.pwsid,
@@ -2407,7 +2853,7 @@ html.dark {
   async function selectProviderAndOpen(summary) {
     const report = await loadSystemReport(summary, state.currentPlace);
     state.providers = state.providers.map((p) => (p.pwsid === report.pwsid ? { ...p, currentScore: report.qualityScore } : p));
-    const defaultCont = (report.contaminants.find((c) => c.exceedsHealthGoal) || report.contaminants[0])?.code || "PB90";
+    const defaultCont = (report.contaminants.find((c) => c.measured) || report.contaminants[0])?.code || "PB90";
     state.activeReport = report;
     state.screen = "results";
     state.activeTab = "WHO";
@@ -2452,7 +2898,7 @@ html.dark {
             <div style="margin-top:10px;border-radius:14px;background:var(--surface-0);border:1px solid var(--border);padding:8px;max-height:220px;overflow-y:auto" class="stack-8">
               ${state.providers.map((sys, idx) => {
                 const isCur = sys.pwsid === r.pwsid;
-                const sc = sys.currentScore >= 80 ? "var(--safe)" : (sys.currentScore >= 60 ? "var(--caution)" : "var(--danger)");
+                const sc = scoreHue(sys.currentScore);
                 return `
                   <button type="button" class="res-switch-item" data-idx="${idx}" style="width:100%;text-align:left;border-radius:10px;background:${isCur ? "var(--brand-soft)" : "var(--surface-2)"};border:${isCur ? "1.5px solid var(--brand)" : "1px solid var(--border)"};padding:9px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px">
                     <div style="flex:1;min-width:0">
@@ -2462,7 +2908,7 @@ html.dark {
                       </div>
                       <div class="mono" style="font-size:10px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Serves ${sys.population.toLocaleString()} · ${sys.sourceType}</div>
                     </div>
-                    <span class="mono" style="border-radius:8px;background:color-mix(in srgb, ${sc} 16%, transparent);border:1px solid color-mix(in srgb, ${sc} 40%, transparent);padding:4px 8px;font-size:11px;font-weight:800;color:${sc}">${sys.currentScore}</span>
+                    <span class="mono" style="border-radius:8px;background:color-mix(in srgb, ${sc} 16%, transparent);border:1px solid color-mix(in srgb, ${sc} 40%, transparent);padding:4px 8px;font-size:11px;font-weight:800;color:${sc}">${scoreText(sys.currentScore)}</span>
                   </button>
                 `;
               }).join("")}
@@ -2516,19 +2962,21 @@ html.dark {
   function renderWhoTab(holder, r) {
     const complianceLabel = r.complianceStatus === "under_enforcement"
       ? "ACTION REQUIRED"
-      : (r.complianceStatus === "elevated_concern" ? "ADVISORY WATCH" : "MEETS EPA STANDARDS");
+      : (r.complianceStatus === "elevated_concern" ? "ADVISORY WATCH" : (r.complianceStatus === "unavailable" ? "SCORE UNAVAILABLE" : "NO OPEN HEALTH VIOLATION"));
     const complianceColor = r.complianceStatus === "under_enforcement"
       ? "var(--danger)"
-      : (r.complianceStatus === "elevated_concern" ? "var(--caution)" : "var(--safe)");
+      : (r.complianceStatus === "elevated_concern" ? "var(--caution)" : (r.complianceStatus === "unavailable" ? "var(--ink-3)" : "var(--safe)"));
 
-    const ringColor = r.qualityScore >= 80 ? "var(--safe)" : (r.qualityScore >= 60 ? "var(--caution)" : "var(--danger)");
-    const gradeLabel = r.qualityScore >= 85 ? "GOOD" : (r.qualityScore >= 70 ? "FAIR" : (r.qualityScore >= 55 ? "WATCH" : "POOR"));
+    const scoreKnown = Number.isFinite(r.qualityScore);
+    const ringColor = scoreHue(r.qualityScore);
+    const gradeLabel = !scoreKnown ? "N/A" : (r.qualityScore >= 85 ? "GOOD" : (r.qualityScore >= 70 ? "FAIR" : (r.qualityScore >= 55 ? "WATCH" : "POOR")));
 
     const radius = 44;
     const circum = 2 * Math.PI * radius;
     const arcLen = circum * 0.75;
-    const sweepLen = arcLen * (Math.min(100, Math.max(0, r.qualityScore)) / 100);
+    const sweepLen = scoreKnown ? arcLen * (Math.min(100, Math.max(0, r.qualityScore)) / 100) : 0;
 
+    const measuredCount = r.contaminants.filter((c) => c.measured).length;
     const exceedsPhgCount = r.contaminants.filter((c) => c.exceedsHealthGoal).length;
     const exceedsMclCount = r.contaminants.filter((c) => c.exceedsMcl).length;
 
@@ -2562,7 +3010,7 @@ html.dark {
                 <circle cx="55" cy="55" r="${radius}" fill="none" stroke="${ringColor}" stroke-width="11" stroke-linecap="round" stroke-dasharray="${sweepLen} ${circum}" />
               </svg>
               <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center">
-                <div class="mono" style="font-size:27px;font-weight:800;color:var(--ink);line-height:1">${r.qualityScore}</div>
+                <div class="mono" style="font-size:27px;font-weight:800;color:var(--ink);line-height:1">${scoreText(r.qualityScore)}</div>
                 <div class="mono" style="font-size:9.5px;font-weight:700;color:${ringColor};margin-top:3px">${gradeLabel} / 100</div>
               </div>
             </div>
@@ -2591,8 +3039,8 @@ html.dark {
             </div>
             <div class="gov-stat-tile">
               <div class="mono" style="font-size:10px;font-weight:700;color:${exceedsMclCount > 0 ? "var(--danger)" : "var(--caution)"}">CONTAMINANTS</div>
-              <div class="title-small" style="font-weight:800">${exceedsMclCount > 0 ? `${exceedsMclCount} Over Limit` : `${exceedsPhgCount} Above Goal`}</div>
-              <div class="body-small" style="font-size:11px;color:var(--ink-3)">Of ${r.contaminants.length} tested items</div>
+              <div class="title-small" style="font-weight:800">${measuredCount} measured</div>
+              <div class="body-small" style="font-size:11px;color:var(--ink-3)">${exceedsMclCount} over a limit · ${r.contaminants.length} in the catalog</div>
             </div>
             <div class="gov-stat-tile">
               <div class="mono" style="font-size:10px;font-weight:700;color:var(--brand)">OVERALL RISK</div>
@@ -2602,12 +3050,14 @@ html.dark {
           </div>
 
           <div style="height:14px"></div>
+          <p class="body-small" style="color:var(--ink)">${r.scoreFormula}</p>
+          <div style="height:14px"></div>
 
           <!-- Quick Action Banner to Jump to Contaminant Details & Filters -->
           <div style="border-radius:16px;background:var(--surface-2);border:1px solid var(--border-strong);padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px">
             <div style="flex:1;min-width:0">
               <div class="title-small" style="font-weight:700">See What's in Your Water &amp; Best Filters</div>
-              <div class="body-small">Compare ${r.contaminants.length} tested contaminants against health goals</div>
+              <div class="body-small">${measuredCount} measured rows, then the rest of the catalog with no number.</div>
             </div>
             <button type="button" id="overviewJumpToQualityBtn" class="solid-brand-btn" style="padding:7px 12px;border-radius:10px;flex-shrink:0">
               <span>View Quality →</span>
@@ -2745,9 +3195,10 @@ html.dark {
      TAB 2: WHERE (WhereWatershedAndTreatmentTab in WhoWhereWhyWhenDashboard.kt)
      ========================================================================== */
   function renderWhereTab(holder, r) {
-    const droughtLevels = ["none", "D0", "D1", "D2", "D3", "D4"];
-    const activeDroughtIdx = Math.max(0, droughtLevels.findIndex((l) => l.toLowerCase() === r.droughtLevel.toLowerCase()));
+    const droughtLevels = ["unavailable", "none", "D0", "D1", "D2", "D3", "D4"];
+    const activeDroughtIdx = Math.max(0, droughtLevels.findIndex((level) => level.toLowerCase() === String(r.droughtLevel || "").toLowerCase()));
     const droughtLabelMap = {
+      unavailable: "Unavailable",
       none: "No Drought",
       D0: "D0 · Abnormally Dry",
       D1: "D1 · Moderate Drought",
@@ -2755,81 +3206,79 @@ html.dark {
       D3: "D3 · Extreme Drought",
       D4: "D4 · Exceptional Drought"
     };
-
+    const treatmentHtml = r.treatmentUnavailable
+      ? `<p class="epa-phrase">Treatment records are unavailable because the EPA request failed.</p>`
+      : (r.treatment.length === 0
+        ? `<p class="epa-phrase">${NOT_MEASURED}</p>`
+        : `<p class="epa-meta">${r.treatmentRowCount} EPA treatment rows, ${r.treatment.length} distinct comments.</p>
+           <div class="stack-8">
+             ${r.treatment.map((step) => `
+               <div class="epa-card epa-measured">
+                 <strong class="epa-name">${escHtml(step.comment)}</strong>
+                 <p class="epa-meta">Objective code ${escHtml(step.objective || "blank")} · process code ${escHtml(step.process || "blank")} · ${step.facilityCount} facility id${step.facilityCount === 1 ? "" : "s"}</p>
+               </div>
+             `).join("")}
+           </div>`);
+    const echo = r.echoSummary;
+    const echoHtml = !r.fetches.echo || !echo
+      ? `<p class="epa-phrase">ECHO facility fields are unavailable for this lookup.</p>`
+      : `<ul class="epa-readings">
+          <li>Registry ID ${escHtml(echo.registryId || "blank")}</li>
+          <li>Current status ${escHtml(echo.currentStatus || "blank")}</li>
+          <li>Quarters in noncompliance ${escHtml(echo.quartersNc || "blank")} · quarters in significant noncompliance ${escHtml(echo.quartersSnc || "blank")}</li>
+          <li>Current significant noncompliance ${escHtml(echo.currentSnc || "blank")}</li>
+          <li>Informal actions ${escHtml(echo.informalActions || "blank")} · formal actions ${escHtml(echo.formalActions || "blank")}</li>
+        </ul>`;
+    const sellerLine = r.sourceCode === "SWP"
+      ? "EPA marks the primary source as purchased surface water (SWP). The water-system row has no seller PWSID column."
+      : `Primary source code ${escHtml(r.sourceCode || "blank")}.`;
     holder.innerHTML = `
       <div class="stack-18">
-        <!-- Card 1: Water Source & Service Area -->
         <section class="surface-card safe-gradient-border">
-          <span class="pillar-badge" style="color:var(--safe);background:var(--safe-bg);border:1px solid color-mix(in srgb, var(--safe) 30%, transparent)">WATER SOURCE</span>
-          <div style="height:12px"></div>
-          <h3 class="headline-medium">${r.sourceType} Supply</h3>
-          <div style="height:6px"></div>
-          <div style="display:flex;align-items:center;gap:6px">
-            <span style="color:var(--safe)">${SVG.locationOn}</span>
-            <span class="body-medium" style="color:var(--ink);font-weight:600">Service Area: ZIP ${r.zip} · ${r.city}, ${r.state}${r.county ? ` · ${r.county} County` : ""}</span>
-          </div>
-          <div style="height:14px"></div>
-          <div style="border-radius:16px;background:var(--surface-2);border:1px solid var(--border);padding:16px" class="stack-8">
-            <div class="mono" style="font-size:10px;font-weight:700;color:var(--safe)">ABOUT THIS WATER SUPPLY</div>
-            <p class="body-small">${r.sourceDescription}</p>
-          </div>
+          <span class="pillar-badge" style="color:#e7fff3;background:#145c3a;border:1px solid #8ee0b0">WATER SOURCE</span>
+          <div style="height:8px"></div>
+          <h3 class="headline-medium">${escHtml(r.sourceType)}</h3>
+          <p class="body-small">${escHtml(r.sourceDescription)}</p>
+          <ul class="epa-readings">
+            <li>Mailing city ${escHtml(r.city || "blank")} · ZIP ${escHtml(r.zip || "blank")}</li>
+            <li>Address ${escHtml(r.address || "blank")} · phone ${escHtml(r.phone || "blank")}</li>
+            <li>Service connections ${r.connections == null ? "blank" : escHtml(r.connections.toLocaleString())} · wholesaler flag ${escHtml(r.wholesaler || "blank")}</li>
+            <li>Geographic area: city served ${escHtml(r.cityServed || "blank")} · county ${escHtml(r.county || "blank")} · ZIP served ${escHtml(r.zipServed || "none in the EPA row")}</li>
+            <li>${sellerLine}</li>
+          </ul>
+          <p class="epa-source-note"><a href="${escHtml(r.sources.system)}" target="_blank" rel="noopener noreferrer">EPA water system</a> · <a href="${escHtml(r.sources.geo)}" target="_blank" rel="noopener noreferrer">EPA geographic area</a></p>
+          ${r.ccr ? `<p class="epa-source-note"><a href="${escHtml(r.ccr.url)}" target="_blank" rel="noopener noreferrer">${escHtml(r.ccr.label)}</a></p><p class="epa-meta">${escHtml(r.ccr.note)}</p>` : `<p class="epa-meta">No consumer confidence report URL was returned by the EPA system feed.</p>`}
         </section>
-
-        <!-- Card 2: Step-by-Step Water Treatment Process -->
         <section class="surface-card">
-          <div class="mono" style="font-size:11px;font-weight:700;color:var(--brand)">TREATMENT PROCESS</div>
-          <div style="height:4px"></div>
-          <h3 class="title-large">How Your Water Is Treated Before Your Tap</h3>
-          <div style="height:14px"></div>
-          <div class="stack-10">
-            ${r.treatment.map((step) => `
-              <div style="border-radius:16px;background:var(--surface-2);border:1px solid var(--border);padding:14px;display:flex;align-items:flex-start;gap:12px">
-                <div class="mono" style="width:30px;height:30px;border-radius:999px;background:var(--brand-soft);border:1px solid color-mix(in srgb, var(--brand) 40%, transparent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--brand);flex-shrink:0">0${step.stepNumber}</div>
-                <div style="flex:1;display:flex;flex-direction:column;gap:3px">
-                  <div class="title-small">${step.title}</div>
-                  <p class="body-small">${step.description}</p>
-                </div>
-              </div>
-            `).join("")}
-          </div>
+          <h3 class="title-large">Treatment rows</h3>
+          ${treatmentHtml}
+          <p class="epa-source-note"><a href="${escHtml(r.sources.treatment)}" target="_blank" rel="noopener noreferrer">EPA treatment query</a></p>
         </section>
-
-        <!-- Card 3: Local Drought Status & Daily Water Goal -->
         <section class="surface-card">
           <div class="flow-between">
-            <span class="mono" style="font-size:11px;font-weight:700;color:${activeDroughtIdx >= 2 ? "var(--caution)" : "var(--safe)"}">LOCAL DROUGHT STATUS</span>
-            <span class="mono" style="font-size:11px;font-weight:700;color:var(--ink)">${droughtLabelMap[r.droughtLevel] || r.droughtLevel}</span>
+            <span class="mono" style="font-size:11px;font-weight:700;color:#f4f1ea">DROUGHT POINT QUERY</span>
+            <span class="mono" style="font-size:11px;font-weight:700;color:#f4f1ea">${escHtml(droughtLabelMap[r.droughtLevel] || r.droughtLevel)}</span>
           </div>
-
-          <div style="height:12px"></div>
-
-          <div style="display:grid;grid-template-columns:repeat(6, 1fr);gap:6px">
-            ${droughtLevels.map((lvl, idx) => {
+          <div style="height:10px"></div>
+          <div style="display:grid;grid-template-columns:repeat(7, 1fr);gap:4px">
+            ${droughtLevels.map((level, idx) => {
               const isAct = idx === activeDroughtIdx;
-              const pillColor = idx === 0 ? "var(--safe)" : (idx <= 2 ? "var(--caution)" : "var(--danger)");
-              return `
-                <div class="mono" style="border-radius:10px;padding:8px 0;text-align:center;font-size:10px;font-weight:700;background:${isAct ? `color-mix(in srgb, ${pillColor} 22%, transparent)` : "var(--surface-2)"};border:${isAct ? `1.5px solid ${pillColor}` : "1px solid var(--border)"};color:${isAct ? pillColor : "var(--ink-3)"}">
-                  ${lvl === "none" ? "NONE" : lvl}
-                </div>
-              `;
+              return `<div class="mono" style="border-radius:8px;padding:6px 0;text-align:center;font-size:9px;font-weight:700;background:${isAct ? "#f4f1ea" : "#1b1f27"};color:${isAct ? "#12141a" : "#d5d0c6"};border:1px solid #4a5160">${level === "none" ? "NONE" : level.toUpperCase()}</div>`;
             }).join("")}
           </div>
-
-          <div style="height:12px"></div>
-          <p class="body-small">${r.droughtDescription}</p>
-          <div style="height:12px"></div>
-
-          <div style="border-radius:14px;background:var(--surface-2);border:1px solid var(--border);padding:10px 14px" class="row-between">
-            <span class="body-small">Recommended Daily Water Use</span>
-            <span class="mono" style="font-size:11px;font-weight:700;color:var(--brand)">${r.usage.recommendedGallonsPerDay} gal/day (Avg ${r.usage.normalGallonsPerDay} gal)</span>
-          </div>
+          <p class="body-small">${escHtml(r.droughtDescription)}</p>
+          ${r.sources.drought ? `<a class="epa-source" href="${escHtml(r.sources.drought)}" target="_blank" rel="noopener noreferrer">Drought Monitor query</a>` : ""}
+          <p class="epa-phrase">Household gallons per day: ${NOT_MEASURED}</p>
         </section>
-
-        <!-- Card 4: Suggested WaterSense Conservation & Whole-Home Pre-Filtration Links (Amazon) -->
+        <section class="surface-card">
+          <h3 class="title-large">ECHO drinking-water summary</h3>
+          ${echoHtml}
+          <a class="epa-source" href="${escHtml(r.sources.echo)}" target="_blank" rel="noopener noreferrer">ECHO detailed facility report</a>
+        </section>
         ${renderSuggestedMarketplaceHtml(
           "WATER-SAVING & WHOLE-HOME FILTERS",
           "WaterSense Fixtures & Pipe Protection",
-          `Curated Amazon links matched to ${r.city}'s ${r.usage.recommendedGallonsPerDay} gal/day water goal and ${r.sourceType.toLowerCase()} supply.`,
+          `Amazon search links for ${escHtml(r.city || "this system")}. They are not EPA sample results.`,
           buildWhereTabConservationProducts(r, droughtLabelMap[r.droughtLevel] || r.droughtLevel),
           "var(--safe)",
           null
@@ -2838,199 +3287,60 @@ html.dark {
     `;
   }
 
-  /* ==========================================================================
-     TAB 3: WHY (WhyLabAndFiltrationTab + WhyContaminantBenchmarkGraphic + SelectedContaminantWhyBox)
-     ========================================================================== */
   function renderWhyTab(holder, r) {
-    const exceedsPhgCount = r.contaminants.filter((c) => c.exceedsHealthGoal).length;
-    const exceedsMclCount = r.contaminants.filter((c) => c.exceedsMcl).length;
-
-    let filtered = r.contaminants.filter((c) => {
-      if (state.whyFilter === "EXCEEDS_PHG") return c.exceedsHealthGoal;
-      if (state.whyFilter === "PFAS") return c.pfas || c.category.toLowerCase() === "pfas";
-      if (state.whyFilter === "METALS") return c.category.toLowerCase() === "metals";
-      if (state.whyFilter === "DBP") return c.category.toLowerCase().includes("byproduct");
-      return true;
-    });
-    if (filtered.length === 0) filtered = r.contaminants;
-
-    const selectedContaminant = filtered.find((c) => c.code === state.selectedContamCode) || filtered[0];
-
+    const measuredCount = r.contaminants.filter((item) => item.measured).length;
+    const overCount = r.contaminants.filter((item) => item.exceedsMcl).length;
+    const goalCount = r.contaminants.filter((item) => item.exceedsHealthGoal).length;
     const filters = [
-      ["ALL", `All (${r.contaminants.length})`],
-      ["EXCEEDS_PHG", `Above Health Goal (${exceedsPhgCount})`],
-      ["PFAS", "Forever Chemicals (PFAS)"],
-      ["METALS", "Metals (Lead/Copper)"],
-      ["DBP", "Chlorine Byproducts"]
+      ["ALL", `Catalog (${r.contaminants.length})`],
+      ["EXCEEDS_PHG", `Above health goal (${goalCount})`],
+      ["PFAS", "PFAS"],
+      ["METALS", "Lead and copper"],
+      ["DBP", "Disinfection byproducts"]
     ];
-
-    const whyOrigin = (cat) => {
-      if (cat === "Metals") return "Enters tap water through corrosion of older service pipes, lead solder, or household brass plumbing fixtures rather than the water source itself.";
-      if (cat === "PFAS") return "Synthetic 'forever chemicals' from upstream industrial runoff, firefighting foam, or persistent environmental accumulation.";
-      if (cat.toLowerCase().includes("byproduct")) return "Forms when chlorine disinfectant added by the utility reacts with natural plant matter in river or reservoir water.";
-      if (cat.toLowerCase().includes("inorganic")) return "Comes from agricultural fertilizer runoff, septic leaching, or natural mineral deposits in underground aquifers.";
-      return "Detected during routine EPA Safe Drinking Water utility sampling.";
-    };
-
-    const nsfRemedy = (cat) => {
-      if (cat === "Metals") return "Carbon Block or Reverse Osmosis filter (NSF/ANSI 53 or 58) — removes ~99% of lead and copper at your kitchen tap.";
-      if (cat === "PFAS") return "High-Density Carbon Block or Reverse Osmosis (NSF/ANSI 53 or 58) — certified to reduce PFOA & PFOS forever chemicals.";
-      if (cat.toLowerCase().includes("byproduct")) return "Activated Carbon Pitcher or Under-Sink Filter (NSF/ANSI 42 + 53) — absorbs chlorine taste and byproducts.";
-      if (cat.toLowerCase().includes("inorganic")) return "Reverse Osmosis Filter (NSF/ANSI 58) — standard carbon water pitchers do not remove nitrates or arsenic.";
-      return "NSF/ANSI 53 Certified Tap Filter.";
-    };
-
-    const suggestedProducts = buildSuggestedProductsForReport(r);
-
+    const view = renderQualityList(r);
     holder.innerHTML = `
       <div class="stack-18">
-        <section class="surface-card">
+        <section class="surface-card" id="qualityCatalog">
           <div class="flow-between">
-            <span class="pillar-badge" style="color:var(--caution);background:var(--caution-bg);border:1px solid color-mix(in srgb, var(--caution) 30%, transparent)">CONTAMINANTS &amp; FILTERS</span>
-            <span class="mono" style="font-size:11px;font-weight:700;color:${exceedsMclCount > 0 ? "var(--danger)" : "var(--caution)"}">
-              ${exceedsPhgCount} Above Health Goal · ${exceedsMclCount} Over Legal Limit
-            </span>
+            <span class="pillar-badge" style="color:#e7fff3;background:#145c3a;border:1px solid #8ee0b0">EPA MEASUREMENTS</span>
+            <span class="mono" style="font-size:11px;font-weight:700;color:#f4f1ea">${measuredCount} measured · ${overCount} over limit</span>
           </div>
-
           <div style="height:10px"></div>
-          <h3 class="headline-medium">What Was Detected in Your Tap Water</h3>
-          <div style="height:4px"></div>
-          <p class="body-small">Tap any contaminant below to see where it comes from and which home water filter removes it.</p>
-
-          <div style="height:14px"></div>
-
-          <!-- Category Filter Chips -->
+          <h3 class="headline-medium">Every catalog measurement for this system</h3>
+          <p class="body-small">Measured rows come first and show only EPA sample periods. A row with no sample says so, with no number and no chart.</p>
+          <div style="height:12px"></div>
           <div class="flow-row">
             ${filters.map(([key, label]) => {
               const active = state.whyFilter === key;
-              return `
-                <button type="button" class="why-filter-chip" data-f="${key}" style="border-radius:999px;background:${active ? "var(--caution-bg)" : "var(--surface-2)"};border:1px solid ${active ? "var(--caution)" : "var(--border)"};padding:6px 12px;font-family:var(--font-display);font-size:10.5px;font-weight:${active ? "700" : "500"};color:${active ? "var(--caution)" : "var(--ink-2)"}">
-                  ${label}
-                </button>
-              `;
+              return `<button type="button" class="why-filter-chip" data-f="${key}" style="border-radius:999px;background:${active ? "#f4f1ea" : "#1b1f27"};border:1px solid ${active ? "#f4f1ea" : "#4a5160"};padding:6px 12px;font-family:var(--font-display);font-size:10.5px;font-weight:700;color:${active ? "#12141a" : "#f4f1ea"}">${label}</button>`;
             }).join("")}
           </div>
-
-          <div style="height:16px"></div>
-
-          <!-- WhyContaminantBenchmarkGraphic -->
-          <div style="border-radius:20px;background:var(--surface-0);border:1px solid var(--border-strong);padding:16px" class="stack-12">
-            <!-- Plain-English Color Key Box -->
-            <div style="border-radius:14px;background:var(--surface-1);border:1px solid var(--border);padding:12px" class="stack-8">
-              <div class="mono" style="font-size:10px;font-weight:700;color:var(--brand)">HOW TO READ THIS CHART</div>
-              <div class="flow-row" style="gap:14px">
-                <span style="display:inline-flex;align-items:center;gap:6px;font-family:var(--font-display);font-size:10.5px;font-weight:600;color:var(--ink)">
-                  <i style="width:10px;height:10px;border-radius:999px;background:var(--safe);display:inline-block"></i>Safe (Under Health Goal)
-                </span>
-                <span style="display:inline-flex;align-items:center;gap:6px;font-family:var(--font-display);font-size:10.5px;font-weight:600;color:var(--ink)">
-                  <i style="width:10px;height:10px;border-radius:999px;background:var(--caution);display:inline-block"></i>Above Health Goal (Still Legal)
-                </span>
-                <span style="display:inline-flex;align-items:center;gap:6px;font-family:var(--font-display);font-size:10.5px;font-weight:600;color:var(--ink)">
-                  <i style="width:10px;height:10px;border-radius:999px;background:var(--danger);display:inline-block"></i>Over EPA Legal Limit
-                </span>
-              </div>
-              <div class="body-small" style="font-size:11.5px">• Yellow Dashed Marker = Ideal Health Goal &nbsp; • Red Solid Marker = EPA Legal Limit</div>
-            </div>
-
-            ${filtered.map((c) => {
-              const isSel = c.code === selectedContaminant.code;
-              const barColor = c.exceedsMcl ? "var(--danger)" : (c.exceedsHealthGoal ? "var(--caution)" : "var(--safe)");
-              const statusLabel = c.exceedsMcl ? "OVER LEGAL LIMIT" : (c.exceedsHealthGoal ? "ABOVE HEALTH GOAL" : "SAFE LEVEL");
-
-              const maxScale = (c.mcl !== null && c.mcl > 0)
-                ? Math.max(c.mcl * 1.30, c.detected * 1.15)
-                : ((c.phg !== null && c.phg > 0) ? Math.max(c.phg * 4.0, c.detected * 1.15) : Math.max(c.detected * 1.5, 1.0));
-
-              const fillPct = Math.min(100, Math.max(6, (c.detected / maxScale) * 100));
-              const phgPct = c.phg !== null ? Math.min(94, Math.max(6, (c.phg / maxScale) * 100)) : null;
-              const mclPct = c.mcl !== null ? Math.min(96, Math.max(12, (c.mcl / maxScale) * 100)) : null;
-
-              return `
-                <button type="button" class="why-contam-row" data-code="${c.code}" style="width:100%;text-align:left;border-radius:16px;background:${isSel ? "var(--surface-2)" : "var(--surface-1)"};border:${isSel ? "2px solid var(--brand)" : "1px solid var(--border)"};padding:12px 14px;box-shadow:${isSel ? "var(--elevation)" : "none"}">
-                  <div class="row-between">
-                    <div style="flex:1;min-width:0">
-                      <div class="title-medium" style="font-weight:800">${c.plainName}</div>
-                      <div class="body-small" style="font-size:11.5px">${c.category}</div>
-                    </div>
-                    <span class="mono" style="border-radius:8px;background:color-mix(in srgb, ${barColor} 20%, transparent);border:1px solid color-mix(in srgb, ${barColor} 55%, transparent);padding:4px 8px;font-size:10px;font-weight:700;color:${barColor}">
-                      ${statusLabel}
-                    </span>
-                  </div>
-
-                  <div style="position:relative;height:22px;margin:10px 0 8px">
-                    <div style="position:absolute;left:0;right:0;top:5px;height:12px;border-radius:999px;background:var(--surface-3)"></div>
-                    <div style="position:absolute;left:0;top:5px;height:12px;border-radius:999px;width:${fillPct}%;background:${barColor}"></div>
-                    ${phgPct !== null ? `<div style="position:absolute;top:0;bottom:0;left:${phgPct}%;border-left:2.5px dashed var(--caution)"></div>` : ""}
-                    ${mclPct !== null ? `<div style="position:absolute;top:0;bottom:0;left:${mclPct}%;border-left:3px solid var(--danger)"></div>` : ""}
-                  </div>
-
-                  <div class="flow-between mono" style="font-size:11px">
-                    <span style="font-size:11.5px;font-weight:700;color:var(--ink)">Detected: ${fmtVal(c.detected)} ${c.unit}</span>
-                    <span style="color:var(--caution)">Health Goal: ${c.phg !== null ? `${fmtVal(c.phg)} ${c.unit}` : "None"}</span>
-                    <span style="color:var(--ink-2)">Legal Limit: ${c.mcl !== null ? `${fmtVal(c.mcl)} ${c.unit}` : "No EPA Limit"}</span>
-                  </div>
-                </button>
-              `;
-            }).join("")}
+          <div style="height:14px"></div>
+          <div id="qualityMeasuredList" class="stack-12">
+            ${view.shown === 0 ? `<p class="epa-phrase">No catalog rows match this filter.</p>` : view.html}
           </div>
-
-          <!-- SelectedContaminantWhyBox -->
-          ${selectedContaminant ? `
-            <div style="height:16px"></div>
-            <div style="border-radius:18px;background:var(--surface-2);border:1.5px solid color-mix(in srgb, var(--brand) 55%, transparent);padding:16px" class="stack-10">
-              <div class="flow-between">
-                <span class="mono" style="font-size:11.5px;font-weight:700;color:var(--brand)">ABOUT ${selectedContaminant.plainName.toUpperCase()}</span>
-                <span class="label-small" style="color:var(--ink-2);letter-spacing:0">Measured in ${selectedContaminant.unitLong}</span>
-              </div>
-              <p class="body-medium" style="color:var(--ink);font-weight:500">${whyOrigin(selectedContaminant.category)}</p>
-              <p class="body-small">Health Impact: ${selectedContaminant.healthNote}</p>
-
-              <div style="border-radius:14px;background:var(--surface-1);border:1px solid color-mix(in srgb, var(--safe) 45%, transparent);padding:12px 14px" class="stack-10">
-                <div class="row-between">
-                  <div class="mono" style="font-size:10.5px;font-weight:700;color:var(--safe)">RECOMMENDED HOME FILTER</div>
-                  <span class="mono" style="border-radius:6px;background:var(--caution-bg);border:1px solid color-mix(in srgb, var(--caution) 40%, transparent);padding:2px 7px;font-size:9px;font-weight:700;color:var(--caution)">SUGGESTED LINKS · AMAZON</span>
-                </div>
-                <p class="body-small" style="color:var(--ink)">${nsfRemedy(selectedContaminant.category)}</p>
-                <div class="flow-row" style="gap:8px">
-                  <a href="${contaminantAmazonFilterUrl(selectedContaminant)}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;border-radius:11px;background:var(--safe);color:#FFFFFF;padding:6px 12px;display:inline-flex;align-items:center;gap:5px;font-family:var(--font-display);font-size:11px;font-weight:700">
-                    <span>Shop NSF Filter on Amazon</span>
-                    ${SVG.openInNew}
-                  </a>
-                  <a href="${contaminantAmazonTestKitUrl(selectedContaminant)}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;border-radius:11px;background:transparent;border:1px solid color-mix(in srgb, var(--caution) 65%, transparent);color:var(--caution);padding:6px 11px;display:inline-flex;align-items:center;gap:4px;font-family:var(--font-display);font-size:11px;font-weight:700">
-                    <span>${selectedContaminant.plainName.split(" ")[0]} Test Kit</span>
-                    ${SVG.openInNew}
-                  </a>
-                  <button type="button" id="flagContaminantIssueBtn" class="outlined-brand-btn" style="border-radius:11px;padding:6px 11px">
-                    ${SVG.add}
-                    <span>Report ${selectedContaminant.plainName.split(" ")[0]}</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          ` : ""}
+          ${view.about}
         </section>
-
-        <!-- Card 2: Suggested Filtration Systems & Home Test Kits (Amazon Partner Links) -->
         ${renderSuggestedMarketplaceHtml(
           "RECOMMENDED FILTERS & TEST KITS",
-          `Matched Filters & Lab Kits for ${r.name}`,
-          `NSF/ANSI-certified home filtration systems and drinking water test kits tailored to ZIP ${r.zip}'s water report.`,
-          suggestedProducts,
+          `Matched Filters & Lab Kits for ${escHtml(r.name)}`,
+          "Amazon search links. They are not EPA sample results.",
+          buildSuggestedProductsForReport(r),
           "var(--caution)",
-          selectedContaminant ? selectedContaminant.code : null
+          view.selected ? view.selected.code : null
         )}
       </div>
     `;
-
-    holder.querySelectorAll(".why-filter-chip").forEach((b) => {
-      b.addEventListener("click", () => {
-        state.whyFilter = b.getAttribute("data-f");
+    holder.querySelectorAll(".why-filter-chip").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        state.whyFilter = btn.getAttribute("data-f");
         renderWhyTab(holder, r);
       });
     });
-    holder.querySelectorAll(".why-contam-row").forEach((b) => {
-      b.addEventListener("click", () => {
-        state.selectedContamCode = b.getAttribute("data-code");
+    holder.querySelectorAll(".why-contam-row").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        state.selectedContamCode = btn.getAttribute("data-code");
         state.whenPointIdx = null;
         renderWhyTab(holder, r);
       });
@@ -3039,236 +3349,77 @@ html.dark {
     if (flagBtn) {
       flagBtn.addEventListener("click", () => {
         if (state.isGuest) openAuthScreen();
-        else openReportIssueDialog(selectedContaminant);
+        else openReportIssueDialog(view.selected);
       });
     }
   }
 
-  /* ==========================================================================
-     TAB 4: WHEN (WhenTimelineAndHistoryTab + WhenUnifiedTimelineGraphic)
-     ========================================================================== */
   function renderWhenTab(holder, r) {
-    const selectedContaminant = r.contaminants.find((c) => c.code === state.selectedContamCode) || r.contaminants[0];
-    const series = r.historicalSeries[state.whenTimeframe];
-    const pts = series.points;
-    const safeIdx = state.whenPointIdx !== null ? Math.min(pts.length - 1, Math.max(0, state.whenPointIdx)) : pts.length - 1;
-    const selectedPoint = pts[safeIdx];
-    const deltaPts = series.deltaPts;
-
-    const W = 310, H = 185, padTop = 18, padBottom = 24;
-    const chartH = H - padTop - padBottom;
-    const stepX = pts.length > 1 ? W / (pts.length - 1) : W;
-
-    const scoreOffsets = pts.map((pt, i) => {
-      const x = i * stepX;
-      const norm = Math.min(1, Math.max(0, (Math.min(100, Math.max(30, pt.qualityScore)) - 30) / 70));
-      const y = padTop + chartH * (1 - norm);
-      return { x, y };
+    const openRows = r.violations.filter((item) => item.status !== "resolved").sort((a, b) => {
+      if (a.isHealth !== b.isHealth) return a.isHealth ? -1 : 1;
+      return a.date < b.date ? 1 : (a.date > b.date ? -1 : 0);
     });
-
-    const contValues = pts.map((pt) => pt.levels[selectedContaminant.code] ?? selectedContaminant.detected);
-    const maxCont = Math.max(...contValues, (selectedContaminant.mcl || selectedContaminant.phg || 1) * 1.15, 0.01);
-    const contOffsets = contValues.map((v, i) => {
-      const x = i * stepX;
-      const norm = Math.min(0.92, Math.max(0.08, v / maxCont));
-      const y = padTop + chartH * (1 - norm);
-      return { x, y };
-    });
-
-    const scorePoly = scoreOffsets.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
-    const areaPoly = `0,${padTop + chartH} ${scorePoly} ${W},${padTop + chartH}`;
-    const contPoly = contOffsets.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
-
-    const matchingHistory = state.cloudHistory.filter((h) => h.pwsid === r.pwsid || h.zip === r.zip);
-    const contValAtPoint = selectedPoint.levels[selectedContaminant.code] ?? selectedContaminant.detected;
-
+    const closedRows = r.violations.filter((item) => item.status === "resolved");
+    const violationCard = (v) => `
+      <article class="epa-card ${v.status === "open" ? "epa-measured" : "epa-missing"}" data-violation-id="${escHtml(v.violationId)}">
+        <div class="row-between">
+          <strong class="epa-name">${escHtml(v.date)} · ${escHtml(v.contaminant)}</strong>
+          <span class="epa-badge ${v.status === "open" ? "epa-badge-over" : "epa-badge-missing"}">${escHtml(v.status.toUpperCase())}</span>
+        </div>
+        <p class="epa-meta">${escHtml(v.description)}</p>
+        ${v.latestEnforcementId ? `<p class="epa-meta">Latest enforcement id ${escHtml(v.latestEnforcementId)}</p>` : ""}
+        <a class="epa-source" href="${escHtml(v.sourceUrl)}" target="_blank" rel="noopener noreferrer">EPA violation ${escHtml(v.violationId)}</a>
+      </article>
+    `;
+    const enforcementPreview = (r.enforcement || []).slice(0, 8).map((row) => `
+      <li><span class="epa-value">${escHtml(row.date || "date blank")}</span> · ${escHtml(row.typeCode || "type blank")} · id ${escHtml(row.id || "—")}${row.comment ? ` · ${escHtml(row.comment)}` : ""}</li>
+    `).join("");
     holder.innerHTML = `
       <div class="stack-18">
-        <!-- Card 1: Unified 1Y / 5Y / 10Y Canvas Timeline -->
         <section class="surface-card">
-          <div class="flow-between">
-            <span class="pillar-badge" style="color:var(--brand);background:var(--brand-soft);border:1px solid color-mix(in srgb, var(--brand) 30%, transparent)">QUALITY TRENDS (1Y / 5Y / 10Y)</span>
-            <div style="border-radius:12px;background:var(--surface-0);padding:3px;display:flex;gap:4px">
-              ${[["ONE_YEAR", "1Y"], ["FIVE_YEAR", "5Y"], ["TEN_YEAR", "10Y"]].map(([tfKey, shortLbl]) => {
-                const active = state.whenTimeframe === tfKey;
-                return `
-                  <button type="button" class="when-tf-pill mono" data-tf="${tfKey}" style="border-radius:9px;background:${active ? "var(--brand)" : "transparent"};color:${active ? "#FFFFFF" : "var(--ink-2)"};padding:6px 12px;font-size:11px;font-weight:700">
-                    ${shortLbl}
-                  </button>
-                `;
-              }).join("")}
-            </div>
-          </div>
-
+          <span class="pillar-badge" style="color:#f4f1ea;background:#1b1f27;border:1px solid #8ee0b0">REAL SAMPLE HISTORY</span>
+          <div style="height:8px"></div>
+          <h3 class="headline-medium">No estimated score trend</h3>
+          <p class="body-small">Quarterly and yearly score lines are not drawn. Graphs of real sample periods are on the Quality tab, one point per EPA sample.</p>
+        </section>
+        <section class="surface-card" id="historyViolations">
+          <h3 class="title-large">EPA violations (${r.violationsUnavailable ? "request failed" : r.violations.length})</h3>
+          <p class="body-small">${r.violationsUnavailable ? "The violation request failed. This is not the same as zero violations." : "Open rows stay visible. Resolved rows are grouped below. Names come from the ECHO facility report when that report includes the violation id."}</p>
           <div style="height:10px"></div>
-          <h3 class="headline-medium">${series.label} Trend (${deltaPts >= 0 ? `+${deltaPts}` : `${deltaPts}`} pts)</h3>
-          <div style="height:4px"></div>
-          <p class="body-small">Historical trend for ${selectedContaminant.plainName} and water quality scores. Tap any point on the line to inspect that period.</p>
-
-          <div style="height:16px"></div>
-
-          <!-- WhenUnifiedTimelineGraphic -->
-          <div style="border-radius:20px;background:var(--surface-0);border:1px solid var(--border-strong);padding:16px" class="stack-12">
-            <div style="border-radius:14px;background:var(--surface-1);border:1px solid var(--border);padding:12px" class="stack-8">
-              <div class="mono" style="font-size:10px;font-weight:700;color:var(--brand)">CHART KEY (TAP ANY POINT ON THE LINE TO INSPECT)</div>
-              <div class="flow-row" style="gap:14px">
-                <span style="display:inline-flex;align-items:center;gap:6px;font-family:var(--font-display);font-size:10.5px;font-weight:600;color:var(--ink)">
-                  <i style="width:10px;height:10px;border-radius:999px;background:var(--brand);display:inline-block"></i>Blue Solid Line = Water Quality Score (0–100)
-                </span>
-                <span style="display:inline-flex;align-items:center;gap:6px;font-family:var(--font-display);font-size:10.5px;font-weight:600;color:var(--ink)">
-                  <i style="width:10px;height:10px;border-radius:999px;background:var(--caution);display:inline-block"></i>Gold Dashed Line = ${selectedContaminant.plainName} (${selectedContaminant.unit})
-                </span>
-                <span style="display:inline-flex;align-items:center;gap:6px;font-family:var(--font-display);font-size:10.5px;font-weight:600;color:var(--ink)">
-                  <i style="width:10px;height:10px;border-radius:999px;background:var(--danger);display:inline-block"></i>Red Dot = Past Compliance Notice
-                </span>
-              </div>
+          ${r.violationsUnavailable ? `<p class="epa-phrase">Violation records are unavailable for this lookup.</p>` : `
+            <div class="stack-10" id="historyOpenViolations">
+              ${openRows.length ? openRows.map(violationCard).join("") : `<p class="epa-phrase">No open EPA violation rows were returned.</p>`}
             </div>
-
-            <div style="display:flex;align-items:stretch;height:185px">
-              <div class="mono" style="display:flex;flex-direction:column;justify-content:space-between;padding:12px 8px 22px 0;font-size:10px;font-weight:700;color:var(--ink-2);text-align:right">
-                <span>100</span><span>80</span><span>60</span><span>40</span>
-              </div>
-              <div style="flex:1;position:relative">
-                <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:100%;overflow:visible;cursor:pointer">
-                  <defs>
-                    <linearGradient id="whenScoreAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stop-color="var(--brand)" stop-opacity="0.38" />
-                      <stop offset="100%" stop-color="var(--brand)" stop-opacity="0.0" />
-                    </linearGradient>
-                  </defs>
-                  ${[0, 0.333, 0.666, 1].map((frac) => {
-                    const y = padTop + chartH * frac;
-                    return `<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="var(--border-strong)" stroke-opacity="0.65" stroke-width="1" />`;
-                  }).join("")}
-
-                  <polygon points="${areaPoly}" fill="url(#whenScoreAreaGrad)" />
-                  <polyline fill="none" stroke="var(--brand)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" points="${scorePoly}" />
-                  <polyline fill="none" stroke="var(--caution)" stroke-width="2.8" stroke-dasharray="10 6" stroke-linecap="round" points="${contPoly}" />
-
-                  <line x1="${scoreOffsets[safeIdx].x}" y1="${padTop}" x2="${scoreOffsets[safeIdx].x}" y2="${padTop + chartH}" stroke="var(--ink)" stroke-opacity="0.75" stroke-width="2" />
-                  <circle cx="${scoreOffsets[safeIdx].x}" cy="${scoreOffsets[safeIdx].y}" r="13" fill="var(--brand)" fill-opacity="0.32" />
-
-                  ${pts.map((pt, i) => `
-                    <g class="when-node-hit" data-idx="${i}">
-                      <rect x="${scoreOffsets[i].x - 14}" y="0" width="28" height="${H}" fill="transparent" />
-                      <circle cx="${scoreOffsets[i].x}" cy="${scoreOffsets[i].y}" r="${i === safeIdx ? 7 : 5}" fill="var(--surface-0)" />
-                      <circle cx="${scoreOffsets[i].x}" cy="${scoreOffsets[i].y}" r="${i === safeIdx ? 5 : 3.5}" fill="${i === safeIdx ? "var(--ink)" : "var(--brand)"}" />
-                      ${pt.violationCount > 0 ? `<circle cx="${scoreOffsets[i].x}" cy="${padTop + chartH - 5}" r="6.5" fill="var(--danger)" />` : ""}
-                    </g>
-                  `).join("")}
-                </svg>
-              </div>
-            </div>
-
-            <div class="mono" style="display:flex;justify-content:space-between;padding-left:28px">
-              ${pts.map((pt, idx) => {
-                const showLabel = pts.length <= 6 || idx === 0 || idx === Math.floor(pts.length / 2) || idx === pts.length - 1 || idx === safeIdx;
-                if (!showLabel) return "";
-                const isSel = idx === safeIdx;
-                return `<button type="button" class="when-axis-lbl mono" data-idx="${idx}" style="font-size:10.5px;font-weight:${isSel ? "800" : "500"};color:${isSel ? "var(--brand)" : "var(--ink-2)"}">${pt.periodLabel}</button>`;
-              }).join("")}
-            </div>
-
-            <!-- Selected Period Readout Box -->
-            <div style="border-radius:16px;background:var(--surface-2);border:1.5px solid color-mix(in srgb, var(--brand) 45%, transparent);padding:14px" class="stack-8">
-              <div class="mono" style="font-size:11px;font-weight:700;color:var(--brand)">SELECTED TIME PERIOD: ${selectedPoint.periodLabel.toUpperCase()}</div>
-              <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:8px">
-                <div style="border-radius:12px;background:var(--surface-1);border:1px solid var(--border);padding:8px 10px">
-                  <div class="mono" style="font-size:9.5px;font-weight:700;color:var(--ink-2)">QUALITY SCORE</div>
-                  <div class="mono" style="font-size:12px;font-weight:800;color:var(--brand);margin-top:2px">${selectedPoint.qualityScore} / 100</div>
-                </div>
-                <div style="border-radius:12px;background:var(--surface-1);border:1px solid var(--border);padding:8px 10px;min-width:0">
-                  <div class="mono" style="font-size:9.5px;font-weight:700;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${selectedContaminant.plainName.toUpperCase()}</div>
-                  <div class="mono" style="font-size:12px;font-weight:800;color:var(--caution);margin-top:2px">${fmtVal(contValAtPoint)} ${selectedContaminant.unit}</div>
-                </div>
-                <div style="border-radius:12px;background:var(--surface-1);border:1px solid var(--border);padding:8px 10px">
-                  <div class="mono" style="font-size:9.5px;font-weight:700;color:var(--ink-2)">NOTICES</div>
-                  <div class="mono" style="font-size:12px;font-weight:800;color:${selectedPoint.violationCount > 0 ? "var(--danger)" : "var(--safe)"};margin-top:2px">${selectedPoint.violationCount === 0 ? "None (0)" : `${selectedPoint.violationCount} Logged`}</div>
-                </div>
-              </div>
-              ${selectedPoint.milestoneNote ? `<p class="body-small" style="color:var(--ink)">${selectedPoint.milestoneNote}</p>` : ""}
-              <p class="body-small">Trend Takeaway: ${series.supplyIndication}</p>
-            </div>
-          </div>
+            <details class="epa-fold">
+              <summary>Resolved EPA violations (${closedRows.length})</summary>
+              <div class="stack-10">${closedRows.map(violationCard).join("")}</div>
+            </details>
+          `}
+          ${r.violationsTruncated ? `<p class="epa-source-note">The violation list stopped at 500 rows.</p>` : ""}
+          <p class="epa-source-note"><a href="${escHtml(r.sources.violations)}" target="_blank" rel="noopener noreferrer">EPA violation query</a></p>
         </section>
-
-        <!-- Card 2: Past 10-Year Compliance & Testing History -->
         <section class="surface-card">
-          <div class="mono" style="font-size:11px;font-weight:700;color:var(--brand)">PAST 10-YEAR WATER SYSTEM RECORDS (${r.violations.length})</div>
-          <div style="height:4px"></div>
-          <h3 class="title-large">Past Testing &amp; Treatment Notices</h3>
-          <div style="height:12px"></div>
-          <div class="stack-10">
-            ${r.violations.slice(0, 6).map((v) => {
-              const vColor = v.status === "open" ? "var(--danger)" : (v.severity === "serious" ? "var(--caution)" : "var(--safe)");
-              return `
-                <div style="border-radius:16px;background:var(--surface-2);border:1px solid var(--border);padding:14px;display:flex;flex-direction:column;gap:4px">
-                  <div class="flow-between">
-                    <span class="title-small">${v.date} · ${v.contaminant}</span>
-                    <span class="mono" style="border-radius:6px;background:color-mix(in srgb, ${vColor} 16%, transparent);padding:2px 7px;font-size:10px;font-weight:700;color:${vColor}">${v.status.toUpperCase()}</span>
-                  </div>
-                  <p class="body-small">${v.description}</p>
-                </div>
-              `;
-            }).join("")}
-          </div>
+          <h3 class="title-large">EPA enforcement actions (${r.enforcementUnavailable ? "request failed" : r.enforcement.length})</h3>
+          ${r.enforcementUnavailable ? `<p class="epa-phrase">Enforcement records are unavailable for this lookup.</p>` : `
+            <details class="epa-fold">
+              <summary>${r.enforcement.length} enforcement rows</summary>
+              <ul class="epa-readings">${enforcementPreview}</ul>
+              ${r.enforcement.length > 8 ? `<p class="epa-meta">Showing 8 of ${r.enforcement.length}, newest first.</p>` : ""}
+            </details>
+          `}
+          <a class="epa-source" href="${escHtml(r.sources.enforcement)}" target="_blank" rel="noopener noreferrer">EPA enforcement query</a>
         </section>
-
-        <!-- Card 3: Saved Location Snapshots -->
         <section class="surface-card">
           <div class="flow-between">
-            <div style="flex:1;min-width:180px">
+            <div>
               <h3 class="title-large">Saved Report Snapshots</h3>
-              <p class="body-small">Save a copy of ${r.name}'s report to compare over time.</p>
+              <p class="body-small">A snapshot stores this page's H2Know score. It is not an EPA trend.</p>
             </div>
-            ${state.isGuest ? `
-              <button type="button" id="whenGuestSignInBtn" class="outlined-brand-btn">
-                ${SVG.person}<span>Sign In</span>
-              </button>
-            ` : `
-              <button type="button" id="saveCloudHistoryButton" class="outlined-brand-btn" style="padding:6px 12px">
-                ${SVG.cloudUpload}<span>Save Snapshot</span>
-              </button>
-            `}
+            ${state.isGuest ? `<button type="button" id="whenGuestSignInBtn" class="outlined-brand-btn">${SVG.person}<span>Sign In</span></button>` : `<button type="button" id="saveCloudHistoryButton" class="outlined-brand-btn">${SVG.cloudUpload}<span>Save Snapshot</span></button>`}
           </div>
-
-          <div style="height:14px"></div>
-
-          ${state.isGuest ? `
-            <div style="border-radius:14px;background:var(--surface-2);padding:14px">
-              <p class="body-small">Sign in with Google to save timestamped report snapshots for this ZIP code.</p>
-            </div>
-          ` : (matchingHistory.length === 0 ? `
-            <div style="border-radius:14px;background:var(--surface-2);padding:14px">
-              <p class="body-small">No saved snapshots for this system yet. Tap 'Save Snapshot' above to bookmark this report.</p>
-            </div>
-          ` : `
-            <div class="stack-8">
-              ${matchingHistory.slice(0, 4).map((snap) => `
-                <div style="border-radius:12px;background:var(--surface-2);padding:10px 14px" class="row-between">
-                  <span class="body-small">${snap.createdAtText}</span>
-                  <span class="mono" style="font-size:11px;color:var(--ink)">${snap.exceedsHealthGoalCount} Above Goal · ${snap.violationCount} Notices</span>
-                </div>
-              `).join("")}
-            </div>
-          `)}
         </section>
       </div>
     `;
-
-    holder.querySelectorAll(".when-tf-pill").forEach((b) => {
-      b.addEventListener("click", () => {
-        state.whenTimeframe = b.getAttribute("data-tf");
-        state.whenPointIdx = null;
-        renderWhenTab(holder, r);
-      });
-    });
-    holder.querySelectorAll(".when-node-hit, .when-axis-lbl").forEach((el) => {
-      el.addEventListener("click", () => {
-        state.whenPointIdx = Number(el.getAttribute("data-idx"));
-        renderWhenTab(holder, r);
-      });
-    });
     const signInBtn = $("whenGuestSignInBtn");
     if (signInBtn) signInBtn.addEventListener("click", openAuthScreen);
     const saveBtn = $("saveCloudHistoryButton");
@@ -3292,22 +3443,24 @@ html.dark {
   }
 
   function getFormattedShareText(r) {
-    const topC = r.contaminants[0];
-    const contLine = topC
-      ? `• Key Contaminant (${topC.plainName}): ${Number(topC.detected).toFixed(2)} ${topC.unit} (Legal Limit: ${topC.mcl !== null ? Number(topC.mcl).toFixed(2) : "N/A"} ${topC.unit})`
-      : "• Water Quality: Key parameters within federal drinking water limits";
-    const d5 = r.fiveYearScoreDelta >= 0 ? `+${r.fiveYearScoreDelta}` : `${r.fiveYearScoreDelta}`;
-    const d10 = r.tenYearScoreDelta >= 0 ? `+${r.tenYearScoreDelta}` : `${r.tenYearScoreDelta}`;
+    const measured = r.contaminants.filter((c) => c.measured);
+    const contLine = measured.length
+      ? measured.map((c) => `• ${c.plainName}: ${c.readings.map((pt) => `${fmtVal(pt.value)} ${pt.unit} (${pt.end || pt.start || "date blank"})`).join("; ")}`).join("\n")
+      : "• No EPA sample rows were returned for the catalog.";
+    const scoreLine = Number.isFinite(r.qualityScore)
+      ? `H2Know score: ${r.qualityScore}/100 (${r.riskLevel}). This is not an EPA score.`
+      : "H2Know score: unavailable because an EPA request failed.";
     return [
       `H2Know Tap Water Report — ZIP ${r.zip}`,
       `Provider: ${r.name} (${r.city}, ${r.state})`,
-      `Water Quality Score: ${r.qualityScore}/100 (Risk Level: ${r.riskLevel.toUpperCase()})`,
-      `• People Served: ${r.population.toLocaleString()} residents`,
-      `• Water Source: ${r.sourceType}`,
+      scoreLine,
+      `• People served: ${r.population.toLocaleString()}`,
+      `• Water source: ${r.sourceType}`,
       contLine,
-      `• History: 5Y Trend ${d5} pts · 10Y Trend ${d10} pts · ${r.violations.length} past compliance records (10Y)`,
+      `• EPA violations returned: ${r.violationsUnavailable ? "request failed" : r.violations.length}`,
+      "• No quarterly or yearly score trend is estimated.",
       "",
-      "Source: Public U.S. EPA & U.S. Drought Monitor records via H2Know (Aegis Civic Labs)."
+      "Source: EPA SDWIS and ECHO rows fetched by this page, plus the U.S. Drought Monitor point query when it responds."
     ].join("\n");
   }
 
@@ -3316,10 +3469,10 @@ html.dark {
     if (!r) return;
     const backdrop = $("snapshotDialogBackdrop");
     const surface = $("snapshotDialogSurface");
-    const scoreColor = r.qualityScore >= 80 ? "var(--safe)" : (r.qualityScore >= 60 ? "var(--caution)" : "var(--danger)");
-    const topContam = r.contaminants[0];
-    const whyLabel = topContam ? `${topContam.plainName}: ${Number(topContam.detected).toFixed(1)} ${topContam.unit}` : "Within legal limits";
-    const delta5Y = r.fiveYearScoreDelta >= 0 ? `+${r.fiveYearScoreDelta}` : `${r.fiveYearScoreDelta}`;
+    const scoreColor = scoreHue(r.qualityScore);
+    const topContam = r.contaminants.find((c) => c.measured);
+    const whyLabel = topContam ? `${topContam.plainName}: ${topContam.readings.length} EPA periods` : "No EPA sample row";
+    const delta5Y = "No estimated trend";
 
     surface.innerHTML = `
       <div class="stack-14">
@@ -3343,7 +3496,7 @@ html.dark {
               <div class="mono" style="font-size:10.5px;color:var(--ink-3);margin-top:2px">${r.city}, ${r.state} · System ${r.pwsid}</div>
             </div>
             <div style="border-radius:14px;background:color-mix(in srgb, ${scoreColor} 16%, transparent);border:1.5px solid color-mix(in srgb, ${scoreColor} 60%, transparent);padding:8px 14px;text-align:center">
-              <div class="mono" style="font-size:24px;font-weight:800;color:${scoreColor};line-height:1">${r.qualityScore}</div>
+              <div class="mono" style="font-size:24px;font-weight:800;color:${scoreColor};line-height:1">${scoreText(r.qualityScore)}</div>
               <div class="mono" style="font-size:9px;font-weight:700;color:${scoreColor};margin-top:2px">${r.riskLevel.toUpperCase()}</div>
             </div>
           </div>
@@ -3363,7 +3516,7 @@ html.dark {
             </div>
             <div style="border-radius:8px;background:var(--surface-2);border:1px solid var(--border);padding:6px 8px;display:flex;align-items:center;gap:6px">
               <span class="mono" style="font-size:9px;font-weight:700;color:var(--brand)">TREND</span>
-              <span class="label-small" style="color:var(--ink);letter-spacing:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${delta5Y} pts (5Y Trend)</span>
+              <span class="label-small" style="color:var(--ink);letter-spacing:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${delta5Y}</span>
             </div>
           </div>
 
