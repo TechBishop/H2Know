@@ -367,10 +367,10 @@
       <svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Violation counts by year">
         ${[0, 0.5, 1].map((frac) => {
           const y = padTop + chartH * frac;
-          return `<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="rgba(232,230,226,0.1)" stroke-width="1"></line>`;
+          return `<line class="chart-grid" x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="var(--chart-line)" stroke-width="1"></line>`;
         }).join("")}
         <path d="${scoreD}" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"></path>
-        <line x1="${sel.x}" y1="${padTop}" x2="${sel.x}" y2="${padTop + chartH}" stroke="rgba(232,230,226,0.35)" stroke-width="1"></line>
+        <line x1="${sel.x}" y1="${padTop}" x2="${sel.x}" y2="${padTop + chartH}" stroke="var(--chart-line)" stroke-width="1"></line>
         <circle cx="${sel.x}" cy="${sel.y}" r="4" fill="currentColor"></circle>
       </svg>
     `;
@@ -1427,6 +1427,27 @@
     }
   }
 
+  function applyTheme(theme) {
+    const next = theme === "light" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    const btn = $("themeBtn");
+    if (btn) {
+      const showingDark = next === "dark";
+      btn.textContent = showingDark ? "Light" : "Dark";
+      btn.setAttribute("aria-pressed", showingDark ? "false" : "true");
+      btn.setAttribute("aria-label", showingDark ? "Switch to light theme" : "Switch to dark theme");
+    }
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", next === "light" ? "#f6f3ec" : "#0c0e11");
+    try { localStorage.setItem("h2know_reskin_theme_v1", next); } catch (_) {}
+  }
+
+  $("themeBtn").addEventListener("click", () => {
+    const current = document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
+    applyTheme(current === "light" ? "dark" : "light");
+  });
+
+  applyTheme(document.documentElement.getAttribute("data-theme"));
   renderPresets();
   render();
   if (window.H2KnowCloud) {

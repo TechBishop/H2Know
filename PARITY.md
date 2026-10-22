@@ -8,7 +8,7 @@ Reference is the restored Argon app on `main` (commit `830c7e3`), live at the si
 | Preset chips | Austin, Flint, Newark, Jackson, Beverly Hills | Same five chips | Matches |
 | Provider list and Switch | Inline cards, then Switch (n) on the report | Picker, then Switch (n) back to that list | Matches |
 | Birdseye IN 47513 | ZIP search, often a short list sorted by population | `IN5219001` BIRDSEYE WATER SYSTEM is listed for the city and opens | Matches |
-| Score printed before a record loads | Hash score on the provider card | No score until the EPA record loads | Removed by rule |
+| Score printed before a record loads | Hash score on the provider card | No score until the EPA record loads | Kept out. The hash is not a measurement |
 | Overview tab | Score gauge, people, source, risk, neighborhood reports | Score ring, the same facts, neighborhood reports, save address | Matches |
 | Water score 0–100 | Gauge from the page's own formula, including filled-in samples | Open violations and samples over a legal limit. A missing feed is not scored | Matches |
 | Source tab | Source, treatment steps, drought scale, daily gallons, product cards | Source, drought, planning gallons, EPA facility link | Matches |
@@ -23,7 +23,7 @@ Reference is the restored Argon app on `main` (commit `830c7e3`), live at the si
 | Violations | Past testing and treatment notices | EPA violation rows, open / addressed / resolved | Matches |
 | Share | Header Share opens a snapshot card | Share opens the score text, with copy and the system share sheet | Matches |
 | Support | Donate opens Buy Me a Coffee | Support opens the same page, `buymeacoffee.com/bishopsfolly` | Matches |
-| Sign in | "Sign in with Google" only clears the guest flag in this browser | Device save is separate. Google sign-in uses the Android Firebase project and says when this host is not authorized | Unavailable for Firebase on this host |
+| Sign in | The live button does not call Google or Firebase. It clears the guest flag and shows the fixed address civic.resident@gmail.com | Device save is separate. Google sign-in uses the Android Firebase project and says when this host is not authorized. The fake signed-in address is not copied | Unavailable. Checked on https://techbishop.github.io/H2Know/ on Oct 22, 2026. The only Google requests were font files. No account popup, no Firebase call |
 | Saved locations | Shown after the guest flag is cleared | Saved addresses on this device, reskin-only storage | Matches |
 | Saved snapshots | History tab, stored in this browser under a cloud name | History tab. Browser copies say "This browser." Firebase copies need a real sign-in | Matches |
 | Neighborhood reports | Overview, all / open / resolved | Overview, same filters, source labeled Firebase or this browser | Matches |
@@ -35,7 +35,7 @@ Reference is the restored Argon app on `main` (commit `830c7e3`), live at the si
 | Priced marketplace and home kits | Prices, reduction percents, and featured kits | Not shown. The card says those figures are unavailable | Unavailable |
 | WaterSense and whole-home cards | Source tab Amazon cards | Named unavailable. There is no utility catalog | Unavailable |
 | Premium and checkout | Not charged in this build | `PREMIUM_ENABLED` is false. No checkout and no paid-tier copy | Removed by rule |
-| Theme toggle | Light and dark | Fixed dark score-first skin | Removed by rule |
+| Theme toggle | Light and dark, default dark | Light and dark, default dark, remembered on this device. Both themes keep dark text on light surfaces or light text on dark surfaces | Matches |
 | Privacy | EPA and publisher notice | Same notice: independent publisher, public sources, not a lab test | Matches |
 | Download report | Share text | Plain-text file of the same public facts, without an invented trend | Matches |
 | Statewide utility search | Not on the main page | Name or PWSID search from the picker | Matches |

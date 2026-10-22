@@ -4,6 +4,16 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#0c0e11" />
+<script>
+(function () {
+  var theme = "dark";
+  try {
+    var saved = localStorage.getItem("h2know_reskin_theme_v1");
+    if (saved === "light" || saved === "dark") theme = saved;
+  } catch (e) {}
+  document.documentElement.setAttribute("data-theme", theme);
+})();
+</script>
 <meta name="description" content="H2Know gives any U.S. ZIP code a plain 0–100 tap water score from public EPA records." />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -28,7 +38,10 @@
 <div class="shell">
   <header class="top">
     <a class="mark" href="./">H2Know <span class="beta">Beta</span></a>
-    <button type="button" id="accountBtn" class="text-btn">Sign in</button>
+    <div class="top-actions">
+      <button type="button" id="themeBtn" class="text-btn" aria-pressed="false">Light</button>
+      <button type="button" id="accountBtn" class="text-btn">Sign in</button>
+    </div>
   </header>
 
   <main id="main">
