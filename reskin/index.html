@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0c0e11" />
+<meta name="description" content="H2Know gives any U.S. ZIP code a plain 0–100 tap water score from public EPA records." />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="h2know-build" content="__H2KNOW_BUILD__" />
+<title>H2Know Beta</title>
+<link rel="manifest" href="./manifest.json" />
+<link rel="icon" href="./icons/icon-192.png" />
+<link rel="apple-touch-icon" href="./icons/icon-192.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="./styles.css?v=__H2KNOW_BUILD__" />
+<link rel="preload" href="../counties.json?v=__H2KNOW_BUILD__" as="fetch" />
+</head>
+<body>
+<div class="stage">
+<aside class="stage-note">
+  <p class="stage-kicker">H2Know Beta</p>
+  <p>A phone-sized look at public water records. The same app fills the screen on a phone.</p>
+</aside>
+<div class="device">
+<div class="shell">
+  <header class="top">
+    <a class="mark" href="./">H2Know <span class="beta">Beta</span></a>
+    <button type="button" id="accountBtn" class="text-btn">Sign in</button>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">Public water records</p>
+        <h1>Your tap water, scored.</h1>
+        <p class="lede">A 0–100 score for any U.S. ZIP code, from public water records.</p>
+      </div>
+      <form id="zipForm" class="zip-form" autocomplete="off">
+        <label class="sr" for="zipInput">Five-digit ZIP code</label>
+        <input id="zipInput" type="text" inputmode="numeric" maxlength="5" pattern="[0-9]*" placeholder="ZIP code" autocomplete="postal-code" enterkeyhint="search" />
+        <button type="submit" id="zipButton">Look up</button>
+      </form>
+      <p id="formNote" class="form-note" role="status"></p>
+      <div class="download-row">
+        <a class="download" href="https://github.com/TechBishop/H2Know/releases/latest/download/H2Know.apk">Download for Android</a>
+        <p class="download-note">Beta APK. Android may ask you to allow installs from your browser and Play Protect may show a warning, since it's not on the Play Store yet.</p>
+      </div>
+      <div id="presets" class="presets"></div>
+      <div id="homeExtra"></div>
+    </section>
+    <div id="report"></div>
+  </main>
+
+  <footer class="site-footer">
+    <p>Published independently by Aegis Civic Labs.</p>
+    <p>H2Know is not affiliated with or endorsed by the U.S. Environmental Protection Agency, the U.S. Geological Survey, or any municipal water utility.</p>
+    <p>Scores use public EPA SDWIS lead, copper, and violation records, plus the U.S. Drought Monitor. They are civic context, not medical advice or a certified test of your tap. Saved lookups on the web stay in this browser.</p>
+    <p class="footer-links">
+      <button type="button" data-action="open-privacy">Privacy</button>
+      <button type="button" data-action="open-support">Support</button>
+      <button type="button" data-action="share-site">Share</button>
+      <a href="https://github.com/TechBishop/H2Know/releases/latest/download/H2Know.apk">Download for Android</a>
+    </p>
+  </footer>
+</div>
+
+<div id="accountDialog" class="backdrop" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="accountTitle">
+    <div class="dialog-head">
+      <h2 id="accountTitle">Sign in</h2>
+      <button type="button" class="text-btn" data-action="close-dialog" data-dialog="accountDialog">Close</button>
+    </div>
+    <p>Lookups work without an account. A browser save stays on this device and does not touch the main app. A Firebase report or snapshot needs Google sign-in, and only on a web address Firebase has authorized.</p>
+    <p id="accountStatus" class="form-note" role="status"></p>
+    <div class="dialog-actions">
+      <button type="button" class="text-btn" data-action="close-dialog" data-dialog="accountDialog">Not now</button>
+      <button type="button" class="text-btn" data-action="confirm-sign-in">Save on this device</button>
+      <button type="button" class="primary" data-action="firebase-sign-in">Sign in with Google</button>
+    </div>
+  </div>
+</div>
+
+<div id="privacyDialog" class="backdrop" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="privacyTitle">
+    <div class="dialog-head">
+      <h2 id="privacyTitle">Privacy and EPA notice</h2>
+      <button type="button" class="text-btn" data-action="close-dialog" data-dialog="privacyDialog">Close</button>
+    </div>
+    <div class="legal-block">
+      <h3>Not a government site</h3>
+      <p>H2Know is published independently by Aegis Civic Labs. It does not represent, and is not affiliated with or endorsed by, the U.S. Environmental Protection Agency, the U.S. Geological Survey, or any state or municipal water utility.</p>
+      <p>System IDs, violation history, lead and copper samples, and drought status come from public federal sources: the EPA SDWIS database and the U.S. Drought Monitor.</p>
+    </div>
+    <div class="legal-block">
+      <h3>What is stored</h3>
+      <p>ZIP lookups work without an account. A ZIP is sent only to public EPA Envirofacts and Zippopotam endpoints to find the local utility.</p>
+      <p>On the web, saved lookups and notes stay in this browser. You can delete them. The Android app can sync the same kind of note with Firebase when you sign in there. H2Know does not run ads and does not sell user data.</p>
+    </div>
+    <div class="legal-block">
+      <h3>Not a lab test</h3>
+      <p>Scores and filter notes are for civic context. They are not medical advice and they are not a certified test of the plumbing in your home. For a certified test, use an EPA-accredited drinking water laboratory.</p>
+    </div>
+    <div class="dialog-actions">
+      <button type="button" class="primary" data-action="close-dialog" data-dialog="privacyDialog">Done</button>
+    </div>
+  </div>
+</div>
+
+<div id="supportDialog" class="backdrop" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="supportTitle">
+    <div class="dialog-head">
+      <h2 id="supportTitle">Support H2Know</h2>
+      <button type="button" class="text-btn" data-action="close-dialog" data-dialog="supportDialog">Close</button>
+    </div>
+    <p>This opens the Buy Me a Coffee page in a new tab.</p>
+    <div class="dialog-actions">
+      <button type="button" class="text-btn" data-action="close-dialog" data-dialog="supportDialog">Stay here</button>
+      <a class="primary" style="display:inline-flex;align-items:center;text-decoration:none" href="https://buymeacoffee.com/bishopsfolly" target="_blank" rel="noopener noreferrer" data-action="close-dialog" data-dialog="supportDialog">Open page</a>
+    </div>
+  </div>
+</div>
+
+<div id="shareDialog" class="backdrop" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="shareTitle">
+    <div class="dialog-head">
+      <h2 id="shareTitle">Share this score</h2>
+      <button type="button" class="text-btn" data-action="close-dialog" data-dialog="shareDialog">Close</button>
+    </div>
+    <p id="shareText" class="share-text"></p>
+    <div class="dialog-actions">
+      <button type="button" class="text-btn" id="copyShareBtn">Copy</button>
+      <button type="button" class="primary" id="nativeShareBtn">Share</button>
+    </div>
+  </div>
+</div>
+
+<div id="issueDialog" class="backdrop" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="issueTitle">
+    <div class="dialog-head">
+      <h2 id="issueTitle">Report Water Quality Issue</h2>
+      <button type="button" class="text-btn" data-action="close-dialog" data-dialog="issueDialog">Close</button>
+    </div>
+    <p id="issueContext"></p>
+    <p id="issueCloudNote" class="form-note"></p>
+    <div class="seg" id="issueCategories" role="group" aria-label="Category"></div>
+    <label class="sr" for="issueTitleInput">Summary</label>
+    <input id="issueTitleInput" class="field" type="text" maxlength="140" placeholder="Short summary" />
+    <label class="sr" for="issueDescInput">What you noticed</label>
+    <textarea id="issueDescInput" class="area" maxlength="600" placeholder="What you noticed, and when it started"></textarea>
+    <div class="seg" id="issueSeverity" role="group" aria-label="Severity"></div>
+    <div class="dialog-actions">
+      <button type="button" class="text-btn" data-action="close-dialog" data-dialog="issueDialog">Cancel</button>
+      <button type="button" class="text-btn" id="submitIssueBtn">Save in this browser</button>
+      <button type="button" class="primary" id="submitFirebaseIssueBtn">Submit to Firebase</button>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+
+<script>
+(function () {
+  if (!("serviceWorker" in navigator)) return;
+  var hadController = !!navigator.serviceWorker.controller;
+  var buildMeta = document.querySelector('meta[name="h2know-build"]');
+  var build = (buildMeta && buildMeta.getAttribute("content")) || "";
+  var reloadKey = "h2know-sw-reloaded-" + build;
+  navigator.serviceWorker.addEventListener("controllerchange", function () {
+    if (!hadController) return;
+    var already = false;
+    try { already = sessionStorage.getItem(reloadKey) === "1"; } catch (e) {}
+    if (already) return;
+    try { sessionStorage.setItem(reloadKey, "1"); } catch (e) {}
+    window.location.reload();
+  });
+  var swUrl = "./sw.js" + (build ? "?v=" + encodeURIComponent(build) : "");
+  navigator.serviceWorker.register(swUrl, { scope: "./", updateViaCache: "none" }).catch(function () {});
+})();
+</script>
+<script src="./config.js?v=__H2KNOW_BUILD__"></script>
+<script src="./data.js?v=__H2KNOW_BUILD__"></script>
+<script src="./cloud.js?v=__H2KNOW_BUILD__"></script>
+<script src="./app.js?v=__H2KNOW_BUILD__"></script>
+</body>
+</html>

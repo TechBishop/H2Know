@@ -53,6 +53,12 @@ jobs:
           if [ -f "release/H2Know-latest.apk" ]; then
             cp release/H2Know-latest.apk _site/release/H2Know-latest.apk
           fi
+          # The reskin is a separate app. Publish it beside the root app.
+          if [ -d reskin ]; then
+            rm -rf _site/reskin
+            mkdir -p _site/reskin
+            cp -a reskin/. _site/reskin/
+          fi
 
           # Stamp shell URLs so a returning browser cannot reuse an older stylesheet or script.
           python3 - << 'PY'
