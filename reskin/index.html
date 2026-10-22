@@ -2489,6 +2489,32 @@ html.dark {
     }
   }
 
+  // EPA CITY_SERVED and ZIP_CODE_SERVED name a system's main area. Rural customers
+  // in the same ZIP can be on a different system. This table adds those systems.
+  // The note is a customer report. It is not an EPA field.
+  const SERVED_ZIP_OVERRIDES = {
+    "47513": [
+      {
+        pwsid: "IN5213007",
+        note: "Rural areas of this ZIP may be served by Patoka Water Co",
+        source: "customer-reported bill (Oct 2026)"
+      }
+    ]
+  };
+
+  function customerServiceNote(pwsid, zip) {
+    const key = String(zip || "").replace(/\D/g, "").slice(0, 5);
+    const rows = SERVED_ZIP_OVERRIDES[key] || [];
+    const id = String(pwsid || "").trim().toUpperCase();
+    return rows.find((row) => String(row.pwsid || "").trim().toUpperCase() === id) || null;
+  }
+
+  function plainCustomerNote(pwsid, zip) {
+    const note = customerServiceNote(pwsid, zip);
+    if (!note) return "";
+    return `${note.note}. This comes from a ${note.source}, not from an EPA listing.`;
+  }
+
   async function fetchEpaSystems(zip, city, stateCode) {
     const st = String(stateCode || "").toUpperCase();
     const placeCity = String(city || "").trim().toUpperCase();
@@ -2541,38 +2567,59 @@ html.dark {
       throw new Error("The EPA water-system lookup did not respond. No utility list was invented.");
     }
     const liveRows = live.rows;
-    if (liveRows.length === 0 && presetList) {
+    const providers = liveRows.map((obj) => waterSystemProvider(obj, place, zip));
+    const missingNotes = (SERVED_ZIP_OVERRIDES[zip] || []).filter((row) => {
+      const id = String(row.pwsid || "").trim().toUpperCase();
+      return id && !providers.some((p) => String(p.pwsid).toUpperCase() === id);
+    });
+    if (missingNotes.length) {
+      const extra = await fetchWaterSystemRows(missingNotes.map((row) => row.pwsid));
+      if (!extra.ok) {
+        throw new Error("The EPA water-system row for a customer-reported system did not load. No utility was invented.");
+      }
+      missingNotes.forEach((row) => {
+        const id = String(row.pwsid).trim().toUpperCase();
+        const obj = extra.rows.find((item) => String(item.pwsid || item.PWSID || "").trim().toUpperCase() === id);
+        if (!obj) {
+          throw new Error(`The EPA water-system row for ${id} did not load. No utility was invented.`);
+        }
+        providers.push(waterSystemProvider(obj, place, zip));
+      });
+    }
+    if (providers.length === 0 && presetList) {
       return {
         place,
         listKind: "nearby",
         providers: presetList.map((p, idx) => ({ ...p, currentScore: null, fiveYearDeltaPts: null, isPrimary: idx === 0 }))
       };
     }
-    if (liveRows.length === 0) {
+    if (providers.length === 0) {
       throw new Error(`No active EPA water system was returned for ZIP ${zip}.`);
     }
-    const providers = liveRows.map((obj, idx) => {
-      const pwsid = String(obj.pwsid || obj.PWSID || "");
-      const name = String(obj.pws_name || obj.PWS_NAME || pwsid).trim() || pwsid;
-      const cityName = String(obj.city_name || obj.CITY_NAME || place.city).trim() || place.city;
-      const st = String(obj.state_code || obj.STATE_CODE || place.state).trim() || place.state;
-      const pop = parseInt(obj.population_served_count || obj.POPULATION_SERVED_COUNT || "0", 10) || 0;
-      const srcCode = String(obj.primary_source_code || obj.PRIMARY_SOURCE_CODE || "");
-      return {
-        pwsid,
-        name,
-        city: cityName,
-        state: st,
-        zip,
-        county: "",
-        population: pop,
-        sourceType: srcCode ? sourceLabel(srcCode) : "Source code not in the EPA row",
-        isPrimary: idx === 0,
-        currentScore: null,
-        fiveYearDeltaPts: null
-      };
-    });
+    providers.forEach((p, idx) => { p.isPrimary = idx === 0; });
     return { place, providers, listKind: live.listKind || "service" };
+  }
+
+  function waterSystemProvider(obj, place, zip) {
+    const pwsid = String(obj.pwsid || obj.PWSID || "");
+    const name = String(obj.pws_name || obj.PWS_NAME || pwsid).trim() || pwsid;
+    const cityName = String(obj.city_name || obj.CITY_NAME || place.city).trim() || place.city;
+    const st = String(obj.state_code || obj.STATE_CODE || place.state).trim() || place.state;
+    const pop = parseInt(obj.population_served_count || obj.POPULATION_SERVED_COUNT || "0", 10) || 0;
+    const srcCode = String(obj.primary_source_code || obj.PRIMARY_SOURCE_CODE || "");
+    return {
+      pwsid,
+      name,
+      city: cityName,
+      state: st,
+      zip,
+      county: "",
+      population: pop,
+      sourceType: srcCode ? sourceLabel(srcCode) : "Source code not in the EPA row",
+      isPrimary: false,
+      currentScore: null,
+      fiveYearDeltaPts: null
+    };
   }
 
   /* ==========================================================================
@@ -2606,6 +2653,8 @@ html.dark {
 
     const primary = state.providers[0];
     const others = state.providers.slice(1);
+    const reported = others.filter((prov) => plainCustomerNote(prov.pwsid, state.currentPlace && state.currentPlace.zip));
+    const rest = others.filter((prov) => !plainCustomerNote(prov.pwsid, state.currentPlace && state.currentPlace.zip));
     const pColor = scoreHue(primary.currentScore);
 
     zone.innerHTML = `
@@ -2632,17 +2681,30 @@ html.dark {
           </div>
         </button>
 
-        ${others.length > 0 ? `
+        ${reported.map((prov) => {
+          const note = plainCustomerNote(prov.pwsid, state.currentPlace && state.currentPlace.zip);
+          const idx = state.providers.findIndex((p) => p.pwsid === prov.pwsid);
+          return `
+            <button type="button" class="inline-reported-prov-btn" data-idx="${idx}" data-pwsid="${escHtml(prov.pwsid)}" style="width:100%;text-align:left;background:var(--surface-2);border-radius:16px;border:1.5px solid var(--border-strong);padding:12px 14px" >
+              <div class="title-medium" style="font-weight:800">${escHtml(prov.name)}</div>
+              <div class="body-small" style="margin-top:4px">ZIP ${escHtml(prov.zip)}</div>
+              <div class="body-small" data-customer-note="1" style="margin-top:6px;white-space:normal;line-height:1.4">${escHtml(note)}</div>
+            </button>
+          `;
+        }).join("")}
+
+        ${rest.length > 0 ? `
           <button type="button" id="inlineOtherToggleBtn" style="width:100%;border-radius:14px;background:var(--surface-2);border:1px solid var(--border-strong);padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px">
-            <span class="title-small" style="font-weight:700">${state.providerListKind === "nearby" ? `Other systems with a mailing address in this ZIP (${others.length})` : `Other systems that serve ZIP ${state.currentPlace?.zip || primary.zip} (${others.length})`}</span>
+            <span class="title-small" style="font-weight:700">${state.providerListKind === "nearby" ? `Other systems with a mailing address in this ZIP (${rest.length})` : `Other systems that serve ZIP ${state.currentPlace?.zip || primary.zip} (${rest.length})`}</span>
             <span class="mono" style="font-size:11px;font-weight:700;color:var(--brand)">${state.showOtherInline ? "Hide ▲" : "Select ▾"}</span>
           </button>
           ${state.showOtherInline ? `
             <div style="border-radius:14px;background:var(--surface-0);border:1px solid var(--border);padding:8px;max-height:210px;overflow-y:auto" class="stack-8">
-              ${others.map((prov, idx) => {
+              ${rest.map((prov) => {
                 const sc = scoreHue(prov.currentScore);
+                const idx = state.providers.findIndex((p) => p.pwsid === prov.pwsid);
                 return `
-                  <button type="button" class="inline-secondary-prov-btn" data-idx="${idx + 1}" style="width:100%;text-align:left;border-radius:10px;background:var(--surface-2);border:1px solid var(--border);padding:9px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px">
+                  <button type="button" class="inline-secondary-prov-btn" data-idx="${idx}" style="width:100%;text-align:left;border-radius:10px;background:var(--surface-2);border:1px solid var(--border);padding:9px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px">
                     <div style="flex:1;min-width:0">
                       <div class="title-small" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${prov.name}</div>
                       <div class="mono" style="font-size:10px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Serves ${prov.population.toLocaleString()} · ${prov.sourceType}</div>
@@ -2657,7 +2719,14 @@ html.dark {
       </div>
     `;
 
+    $("inlinePrimaryCardBtn").setAttribute("data-pwsid", primary.pwsid);
     $("inlinePrimaryCardBtn").addEventListener("click", () => selectProviderAndOpen(primary));
+    zone.querySelectorAll(".inline-reported-prov-btn").forEach((b) => {
+      b.addEventListener("click", () => {
+        const prov = state.providers[Number(b.getAttribute("data-idx"))];
+        selectProviderAndOpen(prov);
+      });
+    });
     const tog = $("inlineOtherToggleBtn");
     if (tog) {
       tog.addEventListener("click", () => {
@@ -3248,6 +3317,7 @@ html.dark {
           <div class="stack-8" style="margin-top:12px">
             <div class="body-small" style="color:var(--ink-2)">Serves ${servedAreaText(r)} · ZIP ${r.searchedZip || r.zip}</div>
             <div class="body-small" style="color:var(--ink-2)">Mailing address: ${mailingAddressText(r) || "blank"}</div>
+            ${plainCustomerNote(r.pwsid, r.searchedZip || r.zip) ? `<div class="body-small" data-customer-note="1" style="color:var(--ink-2)">${escHtml(plainCustomerNote(r.pwsid, r.searchedZip || r.zip))}</div>` : ""}
             <div class="mono" style="font-size:10.5px;color:var(--ink-3)">Updated ${r.lastUpdated} · System ID ${r.pwsid}</div>
           </div>
 
@@ -3684,6 +3754,7 @@ html.dark {
       `Provider: ${r.name}`,
       `Served area: ${servedAreaText(r)}`,
       `Mailing address: ${mailingAddressText(r) || "blank"}`,
+      ...(plainCustomerNote(r.pwsid, r.searchedZip || r.zip) ? [plainCustomerNote(r.pwsid, r.searchedZip || r.zip)] : []),
       scoreLine,
       `• People served: ${r.population.toLocaleString()}`,
       `• Water source: ${r.sourceType}`,
