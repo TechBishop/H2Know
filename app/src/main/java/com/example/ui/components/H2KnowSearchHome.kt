@@ -779,7 +779,7 @@ fun H2KnowSearchAndCloudHome(
                                                 fontWeight = FontWeight.Bold
                                             )
                                             Text(
-                                                text = "${hist.city}, ${hist.state} · saved snapshot",
+                                                text = "${hist.city}, ${hist.state} · 5Y Trend ${if (hist.fiveYearDelta >= 0) "+${hist.fiveYearDelta}" else "${hist.fiveYearDelta}"} pts",
                                                 fontFamily = JetBrainsMonoFamily,
                                                 fontSize = 11.sp,
                                                 color = palette.brand

@@ -545,11 +545,7 @@ fun H2KnowMainWorkspace(
                                     notice = uiState.cloudStatusBanner,
                                     onToggleWatch = { viewModel.toggleWatchCurrent() },
                                     onDismissNotice = { viewModel.dismissCloudBanner() },
-                                    onChangeProvider = { viewModel.changeProvider() },
-                                    onReportIssue = {
-                                        if (currentUser == null) onRequestSignIn()
-                                        else viewModel.setReportIssueDialogOpen(true)
-                                    }
+                                    onChangeProvider = { viewModel.changeProvider() }
                                 )
                             }
                         }

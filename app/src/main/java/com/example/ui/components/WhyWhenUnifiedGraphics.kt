@@ -58,7 +58,6 @@ import androidx.compose.ui.unit.sp
 import com.example.data.model.Contaminant
 import com.example.data.model.HistoricalPoint
 import com.example.data.model.TrendDiagnostic
-import com.example.data.repository.MonetizationConfig
 import com.example.data.repository.ReferenceWaterData
 import com.example.ui.theme.H2KnowThemeTokens
 import com.example.ui.theme.JetBrainsMonoFamily
@@ -555,11 +554,6 @@ fun SelectedContaminantWhyBox(
                             )
                         }
                     }
-                    Text(
-                        text = MonetizationConfig.AFFILIATE_DISCLOSURE,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = palette.ink3
-                    )
                 }
             }
         }
