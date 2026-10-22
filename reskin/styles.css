@@ -338,7 +338,10 @@ body.has-report .hero {
 
 body.has-report .hero-copy,
 body.has-report .presets,
-body.has-report #homeExtra { display: none; }
+body.has-report #homeExtra,
+body.has-report .download-note { display: none; }
+
+body.has-report .download-row { margin-top: 8px; }
 
 body.has-report .zip-form {
   margin-top: 0;
@@ -353,8 +356,10 @@ body.has-report .top {
 
 .score-block {
   display: grid;
-  gap: 6px 40px;
-  padding-bottom: 8px;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 4px 14px;
+  align-items: center;
+  padding-bottom: 4px;
 }
 
 .score-row {
@@ -365,14 +370,14 @@ body.has-report .top {
 
 .score-ring {
   position: relative;
-  width: 168px;
-  height: 168px;
-  margin: 8px 0 4px;
+  width: 120px;
+  height: 120px;
+  margin: 0;
 }
 
 .score-ring svg {
-  width: 168px;
-  height: 168px;
+  width: 120px;
+  height: 120px;
   transform: rotate(-90deg);
 }
 
@@ -404,7 +409,7 @@ body.has-report .top {
   margin: 0;
   font-family: var(--display);
   font-weight: 500;
-  font-size: 52px;
+  font-size: 40px;
   letter-spacing: -0.05em;
   line-height: 0.9;
 }
@@ -417,7 +422,7 @@ body.has-report .top {
 }
 
 .place-line {
-  margin: 14px 0 0;
+  margin: 0;
   color: var(--muted);
   font-size: 14px;
   letter-spacing: 0.04em;
@@ -450,10 +455,50 @@ body.has-report .top {
   font-size: 14px;
 }
 
+.tab-row {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin: 14px 0 0;
+  padding: 8px 0;
+  background: var(--bg);
+}
+
+.tab-row button {
+  min-height: 40px;
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  background: var(--bg-raised);
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.tab-row button[aria-selected="true"] {
+  border-color: var(--accent);
+  background: #243140;
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.section-label {
+  margin: 16px 0 6px;
+  font-family: var(--display);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
 .stack {
   display: grid;
   gap: 14px;
-  margin-top: 36px;
+  margin-top: 8px;
 }
 
 .pair {

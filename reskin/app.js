@@ -11,9 +11,16 @@
   const ISSUES_KEY = "h2know_reskin_issues_v1";
   const WATCH_KEY = "h2know_reskin_watch_v1";
   const CHOICE_KEY = "h2know_reskin_provider_choice_v1";
+  const DEVICE_KEY = "h2know_reskin_device_save_v1";
+
+  function deviceSaved() {
+    try { return localStorage.getItem(DEVICE_KEY) === "1"; }
+    catch (_) { return false; }
+  }
 
   const state = {
-    isGuest: true,
+    isGuest: !deviceSaved(),
+    tab: "overview",
     mode: "home",
     place: null,
     providers: [],
@@ -199,7 +206,7 @@
 
   function renderAccount() {
     const user = state.cloudUser;
-    $("accountBtn").textContent = user ? "Signed in" : "Sign in";
+    $("accountBtn").textContent = user ? "Signed in" : (state.isGuest ? "Sign in" : "On this device");
     const status = $("accountStatus");
     if (status) status.textContent = state.cloudNote || (user ? (user.email || "Signed in with Google.") : "");
     const fbBtn = document.querySelector("[data-action='firebase-sign-in']");
@@ -456,7 +463,6 @@
     }
 
     const ranked = byConcern(r.contaminants);
-    const top = ranked.slice(0, 4);
     const focus = (state.chartCode && r.contaminants.find((c) => c.code === state.chartCode)) || priorityContaminant(r.contaminants);
     const seriesKey = state.timeframe;
     const series = r.historicalSeries[seriesKey];
@@ -469,7 +475,6 @@
     const countyName = displayName(r.county);
     const county = countyName ? (/county/i.test(countyName) ? countyName : `${countyName} County`) : "";
     const droughtName = D.droughtLabel(r.droughtLevel);
-    const others = state.providers.filter((p) => p.pwsid !== r.pwsid);
     const systemIssues = state.issues.concat(state.cloudIssues).filter((issue) => {
       const mine = issue.pwsid === r.pwsid || issue.zip === r.zip;
       if (!mine) return false;
@@ -477,7 +482,8 @@
       if (state.issueFilter === "resolved") return issue.status === "resolved";
       return true;
     });
-    const snapshots = state.history.filter((h) => h.pwsid === r.pwsid || h.zip === r.zip);
+    const snapshots = state.history.filter((h) => h.pwsid === r.pwsid || h.zip === r.zip)
+      .concat(state.cloudHistory.filter((h) => h.pwsid === r.pwsid || h.zip === r.zip));
     const allReadings = filteredReadings(r);
     const filters = [
       ["ALL", "All"],
@@ -491,16 +497,240 @@
       ["FIVE_YEAR", "5 years"],
       ["TEN_YEAR", "10 years"]
     ];
+    const tabs = [
+      ["overview", "Overview"],
+      ["source", "Source"],
+      ["quality", "Quality"],
+      ["history", "History"]
+    ];
+    const tab = tabs.some(([key]) => key === state.tab) ? state.tab : "overview";
     const droughtLevels = ["none", "D0", "D1", "D2", "D3", "D4"];
     const useCut = r.usage.recommendedGallonsPerDay < r.usage.normalGallonsPerDay;
     const watches = readStore(WATCH_KEY);
     const watched = watches.some((w) => w.pwsid === r.pwsid);
-
     const scoreValue = r.qualityScore < 0 ? 0 : r.qualityScore;
     const lead = r.contaminants.find((c) => c.code === "PB90");
     const copper = r.contaminants.find((c) => c.code === "CU90");
+    const overLimit = r.contaminants.filter((c) => c.exceedsMcl).length;
+    const aboveGoal = r.contaminants.filter((c) => c.exceedsHealthGoal).length;
+    const measuredLine = r.contaminants.length
+      ? `${overLimit} over a legal limit · ${aboveGoal} above a health goal, of ${r.contaminants.length} lead or copper ${r.contaminants.length === 1 ? "sample" : "samples"}`
+      : "No lead or copper sample in this record";
+    const switchLabel = state.providers.length > 1 ? `Switch (${state.providers.length})` : "Switch";
+
+    const overview = `
+      <section class="card" aria-labelledby="overviewHeading">
+        <h2 id="overviewHeading">${ICONS.drop} Overview</h2>
+        <p class="card-lead">${esc(measuredLine)}</p>
+        <ul class="facts">
+          <li><span>Serves</span><span>${r.population > 0 ? esc(r.population.toLocaleString()) : "Not listed"}</span></li>
+          <li><span>Source</span><span>${esc(r.sourceType)}</span></li>
+          <li><span>Owner</span><span>${esc(r.ownerType || "Not listed")}</span></li>
+          <li><span>Compliance</span><span>${esc(complianceLine(r))}</span></li>
+          <li><span>Risk</span><span>${r.qualityScore < 0 ? "Not scored" : esc(r.riskLevel)}</span></li>
+          <li><span>Open records</span><span>${openViolations}</span></li>
+        </ul>
+        <p class="more unavailable-line">Trihalomethanes, haloacetic acids, nitrate, arsenic, PFAS, and fluoride are unavailable in this feed. No number is invented for them.</p>
+        <div class="inline-actions">
+          <button type="button" class="linkish" data-action="show-tab" data-tab="quality">View Quality</button>
+          <button type="button" class="linkish" data-action="toggle-watch">${watched ? "Remove address" : "Save address"}</button>
+        </div>
+        <p class="prose">${watched ? "This address is saved on this device." : "Save this address to check it again later."}</p>
+      </section>
+      <section class="card" aria-labelledby="notesHeading">
+        <h2 id="notesHeading">Neighborhood reports</h2>
+        <p class="card-lead">Taste, color, pressure, and other notes for ${esc(displayName(r.name))}.</p>
+        <div class="inline-actions">
+          <button type="button" class="linkish" data-action="open-issue">Report Water Quality Issue</button>
+        </div>
+        <div class="seg" role="group" aria-label="Note status">
+          ${[["all", "All"], ["open", "Open"], ["resolved", "Resolved"]].map(([key, label]) => `
+            <button type="button" data-action="issue-filter" data-filter="${key}" aria-pressed="${state.issueFilter === key}">${label}</button>
+          `).join("")}
+        </div>
+        ${systemIssues.length === 0 ? `<p class="prose">No reports for this system yet.</p>` : `
+          <ul class="log">
+            ${systemIssues.map((issue) => `
+              <li>
+                <div class="log-top">
+                  <h3>${esc(issue.title)}</h3>
+                  <span class="v-status ${issue.status === "resolved" ? "v-resolved" : "v-open"}">${esc(issue.status === "resolved" ? "Resolved" : "Open")}</span>
+                </div>
+                <p class="prose">${esc(issue.category)} · ${esc(issue.affectedCount)} affected · ${issue.source === "firebase" ? "Firebase" : "This browser"}</p>
+                <p class="prose">${esc(issue.description)}</p>
+                <div class="inline-actions">
+                  ${issue.status !== "resolved" ? `
+                    <button type="button" class="linkish" data-action="upvote-issue" data-id="${esc(issue.id)}" data-source="${esc(issue.source || "browser")}">Add affected</button>
+                    <button type="button" class="linkish" data-action="resolve-issue" data-id="${esc(issue.id)}" data-source="${esc(issue.source || "browser")}">Resolve</button>
+                  ` : ""}
+                  <button type="button" class="linkish" data-action="delete-issue" data-id="${esc(issue.id)}" data-source="${esc(issue.source || "browser")}">Remove</button>
+                </div>
+              </li>
+            `).join("")}
+          </ul>
+        `}
+      </section>
+    `;
+
+    const source = `
+      <section class="card" aria-labelledby="sourceHeading">
+        <h2 id="sourceHeading">${ICONS.pin} Source</h2>
+        <p class="utility-name">${esc(displayName(r.name))}</p>
+        <p class="utility-sub">${esc(r.sourceType)} · ${esc(r.ownerType)}</p>
+        <p class="prose">Service area: ZIP ${esc(r.zip)} · ${esc(displayName(r.city))}, ${esc(r.state)}${county ? ` · ${esc(county)}` : ""}</p>
+        <ul class="facts">
+          <li><span>EPA ID</span><span>${esc(r.pwsid)}</span></li>
+          <li><span>Phone</span><span>${esc(r.phone || "Not listed")}</span></li>
+          <li><span>Address</span><span>${esc(r.address || "Not listed")}</span></li>
+          <li><span>Admin</span><span>${esc(r.admin || "Not listed")}</span></li>
+          <li><span>Connections</span><span>${r.connections > 0 ? esc(r.connections.toLocaleString("en-US")) : "Not listed"}</span></li>
+        </ul>
+        <p class="prose">${esc(r.sourceDescription)}</p>
+        <h3 class="section-label">How water is typically treated</h3>
+        <p class="badge-note">General information, not this plant's data</p>
+        <p class="prose">${esc((r.treatment && r.treatment.note) || "General information for this kind of source. Not a record from this plant.")}</p>
+        <ol class="steps">
+          ${((r.treatment && r.treatment.steps) || []).map((step) => `
+            <li>
+              <div class="n">0${esc(step.stepNumber)}</div>
+              <h3>${esc(step.title)}</h3>
+              <p class="prose">${esc(step.description)}</p>
+            </li>
+          `).join("")}
+        </ol>
+        <h3 class="section-label">Drought</h3>
+        <div class="drought" aria-label="Drought scale">
+          ${droughtLevels.map((lvl) => `
+            <span class="${String(r.droughtLevel).toLowerCase() === lvl.toLowerCase() ? "is-on" : ""}">${lvl === "none" ? "None" : esc(lvl)}</span>
+          `).join("")}
+        </div>
+        <p class="prose">${esc(droughtName)}. ${esc(r.droughtDescription)}</p>
+        <p class="prose">${esc(r.droughtTrend && r.droughtTrend.note ? r.droughtTrend.note : "County drought trend is unavailable.")}</p>
+        <p class="prose">${useCut
+          ? `Planning figure, not a utility meter reading: ${esc(r.usage.recommendedGallonsPerDay)} gallons per person, down from ${esc(r.usage.normalGallonsPerDay)} while this drought category holds.`
+          : `Planning figure, not a utility meter reading: ${esc(r.usage.recommendedGallonsPerDay)} gallons per person.`}</p>
+        <p class="more unavailable-line">WaterSense fixtures and whole-home product picks are unavailable. There is no catalog from this utility.</p>
+        <p class="prose">${esc(r.ccrNote || "A consumer confidence report link is not in this feed.")}</p>
+        <p><a class="linkish" href="${esc(r.echoUrl)}" target="_blank" rel="noopener noreferrer">EPA facility record</a></p>
+      </section>
+    `;
+
+    const emptyFilter = state.readingFilter === "PFAS" || state.readingFilter === "DBP"
+      ? "Those results are not in the lead-and-copper table, so nothing is shown."
+      : "Nothing in this group.";
+    const quality = `
+      <section class="card" aria-labelledby="qualityHeading">
+        <h2 id="qualityHeading">${ICONS.drop} Quality</h2>
+        <p class="card-lead">Lab value beside the health goal. Bar length is the lab value against the legal limit.</p>
+        <div class="seg" role="group" aria-label="Filter readings">
+          ${filters.map(([key, label]) => `
+            <button type="button" data-action="reading-filter" data-filter="${key}" aria-pressed="${state.readingFilter === key}">${label}</button>
+          `).join("")}
+        </div>
+        ${allReadings.map((c) => readingRow(c)).join("") || `<p class="more unavailable-line">${emptyFilter}</p>`}
+        ${(r.unmeasured || []).length ? `
+          <p class="more unavailable-line">Unavailable in this feed: ${(r.unmeasured || []).map((item) => esc(item.plainName)).join(", ")}. No number is invented for them.</p>
+        ` : ""}
+        <h3 class="section-label">Lead and copper by year</h3>
+        ${sampleHistory(lead, "Lead")}
+        ${sampleHistory(copper, "Copper")}
+        <p class="more">Each year uses the latest lead or copper sample in the public table. Years with no sample are left out. Other contaminants are not estimated.</p>
+      </section>
+      <section class="card" aria-labelledby="filterHeading">
+        <h2 id="filterHeading">${ICONS.filter} Filter</h2>
+        ${r.product ? `
+          <p class="card-lead">${esc(r.product.title)}${r.product.optional ? " · optional" : ""}</p>
+          <p class="filter-line">${esc(r.product.matchReason)}</p>
+          <p class="prose">${esc(r.product.certification)}</p>
+          <p class="disclosure">${esc(r.product.disclosure)}</p>
+          <p><a class="linkish" href="${esc(r.product.url)}" target="_blank" rel="noopener noreferrer">See filters · affiliate</a></p>
+          <p><a class="linkish" href="${esc(r.product.testKitUrl)}" target="_blank" rel="noopener noreferrer">${esc(r.product.testKitLabel)} · affiliate</a></p>
+        ` : `
+          <p class="card-lead">No filter is indicated by the samples in this record.</p>
+          <p class="prose">Nothing reported here is over a legal limit, and lead was not detected. A filter is not suggested from a contaminant this record does not contain.</p>
+        `}
+        <ul class="steps">
+          ${(r.filterGuide || []).map((item) => `
+            <li>
+              <h3>${esc(item.name)}</h3>
+              <p class="prose">${esc(item.note)}</p>
+            </li>
+          `).join("")}
+        </ul>
+        ${(r.guidance || []).map((line) => `<p class="prose">${esc(line)}</p>`).join("")}
+        <p class="more unavailable-line">Prices, reduction percents, and extra products are not invented. Priced marketplace cards are unavailable.</p>
+      </section>
+    `;
+
+    const history = `
+      <section class="card" aria-labelledby="historyHeading">
+        <h2 id="historyHeading">${ICONS.alert} History</h2>
+        <p class="card-lead">${openViolations ? `${openViolations} open compliance ${openViolations === 1 ? "item" : "items"}.` : "No open compliance items in this record."} The line counts compliance records, not a score.</p>
+        <div class="seg" role="group" aria-label="Time span">
+          ${frames.map(([key, label]) => `
+            <button type="button" data-action="timeframe" data-frame="${key}" aria-pressed="${seriesKey === key}">${label}</button>
+          `).join("")}
+        </div>
+        ${sparkline(ten)}
+        <p class="trend-line unavailable-line">${esc(deltaPhrase())}</p>
+        <div class="chart-wrap">
+          ${detailChart(points, focus, safeIdx)}
+          <div class="axis" style="grid-template-columns: repeat(${points.length}, minmax(0, 1fr))">
+            ${points.map((pt, idx) => {
+              const show = points.length <= 6 || idx === 0 || idx === points.length - 1 || idx === safeIdx || idx === Math.floor(points.length / 2);
+              if (!show) return "<span></span>";
+              return `<button type="button" data-action="chart-point" data-idx="${idx}" aria-pressed="${idx === safeIdx}">${esc(pt.periodLabel)}</button>`;
+            }).join("")}
+          </div>
+        </div>
+        <div class="readout">
+          <div><span class="k">Score trend</span><span class="v unavailable-line">Unavailable</span></div>
+          <div><span class="k">${esc(yearsLabel)}</span><span class="v">${selectedPoint.violationCount === 0 ? "No violations" : esc(selectedPoint.violationCount) + " violations"}</span></div>
+        </div>
+        <p class="more">A past water score is not in the public feed, so the line counts compliance records.</p>
+        ${selectedPoint.milestoneNote ? `<p class="more">${esc(selectedPoint.milestoneNote)}</p>` : ""}
+        <p class="more">${esc(series.supplyIndication || "")}</p>
+        <h3 class="section-label">Past testing and treatment notices</h3>
+        <ol class="log">
+          ${r.violations.length ? r.violations.map((v) => `
+            <li>
+              <div class="log-top">
+                <h3>${esc(formatDay(v.date))}</h3>
+                <span class="v-status v-${esc(v.status)}">${esc(v.status === "addressed" ? "Addressed" : v.status === "open" ? "Open" : "Resolved")}</span>
+              </div>
+              <p class="prose">${esc(v.contaminant)} · rule ${esc(v.rule || "Not listed")}</p>
+              <p class="prose">${esc(v.description)}</p>
+            </li>
+          `).join("") : `<li><p class="prose">No violation rows were returned for this system.</p></li>`}
+        </ol>
+      </section>
+      <section class="card" aria-labelledby="savedHeading">
+        <h2 id="savedHeading">Saved snapshots</h2>
+        <p class="card-lead">A copy of this lookup stays in this browser. Firebase copies are separate and need Google sign-in on an authorized web address.</p>
+        <div class="inline-actions">
+          ${state.isGuest
+            ? `<button type="button" class="linkish" data-action="ask-sign-in">Save on this device</button>`
+            : `<button type="button" class="linkish" data-action="save-snapshot">Save lookup</button>`}
+          <button type="button" class="linkish" data-action="download-report">Download report</button>
+        </div>
+        ${snapshots.length === 0 ? `<p class="prose">No saved copies yet.</p>` : `
+          <ul class="saved">
+            ${snapshots.slice(0, 6).map((snap) => `
+              <li class="row-between">
+                <span>${esc(snap.createdAtText || "Saved")} · ${snap.qualityScore < 0 ? "—" : esc(snap.qualityScore)} · ${snap.source === "firebase" ? "Firebase" : "This browser"}</span>
+                ${snap.source === "firebase"
+                  ? `<button type="button" class="text-btn" data-action="delete-cloud-history" data-id="${esc(snap.id)}">Remove</button>`
+                  : `<button type="button" class="text-btn" data-action="delete-history" data-id="${esc(snap.id)}">Remove</button>`}
+              </li>
+            `).join("")}
+          </ul>
+        `}
+      </section>
+    `;
+
+    const panels = { overview, source, quality, history };
     host.innerHTML = `
-      <article class="report" id="reportTop">
+      <article class="report" id="reportTop" data-active-tab="${esc(tab)}">
         <header class="score-block">
           <div class="score-ring" style="--score:${scoreValue}">
             <svg viewBox="0 0 120 120" aria-hidden="true">
@@ -517,7 +747,7 @@
             <p class="verdict">${esc(verdict(r))}</p>
             <p class="meta-line">${esc(displayName(r.name))} · ${esc(formatDay(r.lastUpdated))}</p>
             <div class="score-actions">
-              <button type="button" class="linkish" data-action="change-provider">Change provider</button>
+              <button type="button" class="linkish" data-action="change-provider">${esc(switchLabel)}</button>
               <button type="button" class="linkish" data-action="share-report">Share</button>
               <button type="button" class="linkish" data-action="download-report">Download</button>
               ${state.isGuest
@@ -527,265 +757,13 @@
             ${state.note ? `<p class="note">${esc(state.note)}</p>` : ""}
           </div>
         </header>
-
-        <div class="stack">
-          <section class="card" aria-labelledby="readingsHeading">
-            <h2 id="readingsHeading">${ICONS.drop} Contaminants</h2>
-            <p class="card-lead">Lab value beside the health goal. Bar length is the lab value against the legal limit.</p>
-            ${top.length ? top.map((c) => readingRow(c)).join("") : `<p class="prose">No lead or copper sample was in the public record.</p>`}
-            ${(r.unmeasured || []).length ? `
-              <p class="more unavailable-line">Unavailable in this feed: ${(r.unmeasured || []).map((item) => esc(item.plainName)).join(", ")}. No number is invented for them.</p>
-            ` : ""}
-            <details class="fold" data-panel="readings"${openAttr("readings")}>
-              <summary>All readings</summary>
-              <div class="fold-body">
-                <div class="seg" role="group" aria-label="Filter readings">
-                  ${filters.map(([key, label]) => `
-                    <button type="button" data-action="reading-filter" data-filter="${key}" aria-pressed="${state.readingFilter === key}">${label}</button>
-                  `).join("")}
-                </div>
-                ${allReadings.map((c) => readingRow(c)).join("") || `<p class="more">${state.readingFilter === "PFAS" || state.readingFilter === "DBP" ? "Those results are not in the lead-and-copper table, so nothing is shown." : "Nothing in this group."}</p>`}
-              </div>
-            </details>
-            <details class="fold" data-panel="history-samples"${openAttr("history-samples")}>
-              <summary>Lead and copper by year</summary>
-              <div class="fold-body">
-                ${sampleHistory(lead, "Lead")}
-                ${sampleHistory(copper, "Copper")}
-                <p class="more">Each year uses the latest lead or copper sample in the public table. Years with no sample are left out. Other contaminants are not estimated.</p>
-              </div>
-            </details>
-            <details class="fold" data-panel="explainers"${openAttr("explainers")}>
-              <summary>What these names mean</summary>
-              <div class="fold-body">
-                ${(r.explainers || []).map((item) => `
-                  <div class="reading">
-                    <div class="reading-hit">
-                      <span class="name">${esc(item.plainName)}</span>
-                      <span class="value">${item.measured ? esc(D.fmtVal(item.detected) + " " + item.unit) : "Not in this record"}</span>
-                      <span class="cat">${esc(item.category)}</span>
-                      <span class="goal">limit ${esc(D.fmtVal(item.mcl))} ${esc(item.unit)}</span>
-                    </div>
-                    <p class="expand">${esc(item.healthNote)}</p>
-                  </div>
-                `).join("")}
-              </div>
-            </details>
-          </section>
-
-          <div class="pair">
-            <section class="card" aria-labelledby="sourceHeading">
-              <h2 id="sourceHeading">${ICONS.pin} Source and utility</h2>
-              <p class="utility-name">${esc(displayName(r.name))}</p>
-              <p class="utility-sub">${esc(r.sourceType)} · ${esc(r.ownerType)}</p>
-              <ul class="facts">
-                <li><span>Serves</span><span>${r.population > 0 ? esc(r.population.toLocaleString()) : "Not listed"}</span></li>
-                <li><span>Area</span><span>${esc([displayName(r.city), r.state, county].filter(Boolean).join(", "))}</span></li>
-                <li><span>EPA ID</span><span>${esc(r.pwsid)}</span></li>
-                <li><span>Phone</span><span>${esc(r.phone || "Not listed")}</span></li>
-                <li><span>Drought</span><span>${esc(droughtName)}</span></li>
-                <li><span>Compliance</span><span>${esc(complianceLine(r))}</span></li>
-              </ul>
-              <div class="drought" aria-label="Drought scale">
-                ${droughtLevels.map((lvl) => `
-                  <span class="${String(r.droughtLevel).toLowerCase() === lvl.toLowerCase() ? "is-on" : ""}">${lvl === "none" ? "None" : esc(lvl)}</span>
-                `).join("")}
-              </div>
-              <p class="prose">${esc(r.droughtDescription)}</p>
-              <details class="fold" data-panel="source"${openAttr("source")}>
-                <summary>How water is typically treated</summary>
-                <div class="fold-body">
-                  <p class="badge-note">General information, not this plant's data</p>
-                  <p class="prose">${esc((r.treatment && r.treatment.note) || "General information for this kind of source. Not a record from this plant.")}</p>
-                  <p class="prose">${esc(r.sourceDescription)}</p>
-                  <ol class="steps">
-                    ${((r.treatment && r.treatment.steps) || []).map((step) => `
-                      <li>
-                        <div class="n">0${esc(step.stepNumber)}</div>
-                        <h3>${esc(step.title)}</h3>
-                        <p class="prose">${esc(step.description)}</p>
-                      </li>
-                    `).join("")}
-                  </ol>
-                  <p class="more">WaterSense fixtures and whole-home product picks are unavailable. There is no catalog from this utility.</p>
-                  <p class="prose">The scale above is the point on the map, not the countywide statistic.</p>
-                  <p class="prose">${esc(r.droughtTrend && r.droughtTrend.note ? r.droughtTrend.note : "County drought trend is unavailable.")}</p>
-                  <p class="prose">Contact ${esc(r.admin || "Not listed")}${r.org && r.org !== "Not listed" ? `, ${esc(r.org)}` : ""}. Address: ${esc(r.address || "Not listed")}. Service connections: ${r.connections > 0 ? esc(r.connections.toLocaleString("en-US")) : "Not listed"}.</p>
-                  <p class="prose">${esc(r.ccrNote || "A consumer confidence report link is not in this feed.")}</p>
-                  <p><a class="linkish" href="${esc(r.echoUrl)}" target="_blank" rel="noopener noreferrer">EPA facility record</a></p>
-                  <p class="prose">${useCut
-                    ? `Planning figure, not a utility meter reading: ${esc(r.usage.recommendedGallonsPerDay)} gallons per person, down from ${esc(r.usage.normalGallonsPerDay)} while this drought category holds.`
-                    : `Planning figure, not a utility meter reading: ${esc(r.usage.recommendedGallonsPerDay)} gallons per person.`}</p>
-                </div>
-              </details>
-            </section>
-
-            <section class="card" aria-labelledby="filterHeading">
-              <h2 id="filterHeading">${ICONS.filter} Filter</h2>
-              ${r.product ? `
-                <p class="card-lead">${esc(r.product.title)}${r.product.optional ? " · optional" : ""}</p>
-                <p class="filter-line">${esc(r.product.matchReason)}</p>
-                <p class="prose">${esc(r.product.certification)}</p>
-                <p class="disclosure">${esc(r.product.disclosure)}</p>
-                <p><a class="linkish" href="${esc(r.product.url)}" target="_blank" rel="noopener noreferrer">See filters · affiliate</a></p>
-                <p><a class="linkish" href="${esc(r.product.testKitUrl)}" target="_blank" rel="noopener noreferrer">${esc(r.product.testKitLabel)} · affiliate</a></p>
-              ` : `
-                <p class="card-lead">No filter is indicated by the samples in this record.</p>
-                <p class="prose">Nothing reported here is over a legal limit, and lead was not detected. A filter is not suggested from a contaminant this record does not contain.</p>
-              `}
-              <details class="fold" data-panel="guide"${openAttr("guide")}>
-                <summary>Filter guide</summary>
-                <div class="fold-body">
-                  <ul class="steps">
-                    ${(r.filterGuide || []).map((item) => `
-                      <li>
-                        <h3>${esc(item.name)}</h3>
-                        <p class="prose">${esc(item.note)}</p>
-                      </li>
-                    `).join("")}
-                  </ul>
-                  ${(r.guidance || []).map((line) => `<p class="prose">${esc(line)}</p>`).join("")}
-                  <p class="more">A link appears only when a reported sample calls for it. Prices, reduction percents, and extra products are not invented. Priced marketplace cards are unavailable.</p>
-                </div>
-              </details>
-            </section>
-          </div>
-
-          <section class="card" aria-labelledby="trendHeading">
-            <h2 id="trendHeading">${ICONS.alert} Record</h2>
-            <p class="card-lead">${openViolations ? `${openViolations} open compliance ${openViolations === 1 ? "item" : "items"}.` : "No open compliance items in this record."} The line is a count of records, not a score.</p>
-            ${sparkline(ten)}
-            <p class="trend-line">${esc(deltaPhrase(ten, "ten years"))}</p>
-            <details class="fold" data-panel="trend"${openAttr("trend")}>
-              <summary>Trend and violations</summary>
-              <div class="fold-body">
-                <div class="seg" role="group" aria-label="Time span">
-                  ${frames.map(([key, label]) => `
-                    <button type="button" data-action="timeframe" data-frame="${key}" aria-pressed="${seriesKey === key}">${label}</button>
-                  `).join("")}
-                </div>
-                <div class="chart-wrap">
-                  ${detailChart(points, focus, safeIdx)}
-                  <div class="axis" style="grid-template-columns: repeat(${points.length}, minmax(0, 1fr))">
-                    ${points.map((pt, idx) => {
-                      const show = points.length <= 6 || idx === 0 || idx === points.length - 1 || idx === safeIdx || idx === Math.floor(points.length / 2);
-                      if (!show) return "<span></span>";
-                      return `<button type="button" data-action="chart-point" data-idx="${idx}" aria-pressed="${idx === safeIdx}">${esc(pt.periodLabel)}</button>`;
-                    }).join("")}
-                  </div>
-                </div>
-                <div class="readout">
-                  <div><span class="k">Score trend</span><span class="v unavailable-line">Unavailable</span></div>
-                  <p class="more">A past water score is not in the public feed, so the line counts compliance records instead.</p>
-                  <div><span class="k">Violations</span><span class="v">${selectedPoint.violationCount === 0 ? "None" : esc(selectedPoint.violationCount)}</span></div>
-                </div>
-                ${selectedPoint.milestoneNote ? `<p class="more">${esc(selectedPoint.milestoneNote)}</p>` : ""}
-                <p class="more">${esc(series.supplyIndication)}</p>
-                <p class="more">${esc(deltaPhrase(points, yearsLabel))}</p>
-                <ol class="log">
-                  ${r.violations.map((v) => `
-                    <li>
-                      <div class="log-top">
-                        <h3>${esc(formatDay(v.date))}</h3>
-                        <span class="v-status v-${esc(v.status)}">${esc(v.status === "addressed" ? "Addressed" : v.status === "open" ? "Open" : "Resolved")}</span>
-                      </div>
-                      <p class="prose">${esc(v.contaminant)} · rule ${esc(v.rule || "Not listed")}</p>
-                      <p class="prose">${esc(v.description)}</p>
-                      <p class="prose">${esc(v.healthText || "")}</p>
-                    </li>
-                  `).join("")}
-                </ol>
-                <div class="more">
-                  ${state.isGuest
-                    ? `<p>Save a copy of this lookup in this browser.</p><button type="button" class="linkish" data-action="ask-sign-in">Save on this device</button>`
-                    : `
-                      <p>Saved copies of this system.</p>
-                      <button type="button" class="linkish" data-action="save-snapshot">Save lookup</button>
-                      ${snapshots.length === 0 ? `<p>No saved copies yet.</p>` : `
-                        <ul class="saved">
-                          ${snapshots.slice(0, 6).map((snap) => `
-                            <li class="row-between">
-                              <span>${esc(snap.createdAtText)} · ${esc(snap.qualityScore)}</span>
-                              <button type="button" class="text-btn" data-action="delete-history" data-id="${esc(snap.id)}">Remove</button>
-                            </li>
-                          `).join("")}
-                        </ul>
-                      `}
-                    `}
-                </div>
-              </div>
-            </details>
-          </section>
-
-          ${others.length ? `
-            <details class="card fold" data-panel="utilities"${openAttr("utilities")}>
-              <summary>Other utilities in ${esc(r.zip)}</summary>
-              <ul class="providers">
-                ${state.providers.map((p, idx) => `
-                  <li class="row-between">
-                    <button type="button" class="linkish" data-action="open-provider" data-pwsid="${esc(p.pwsid)}">
-                      ${esc(displayName(p.name))}${p.pwsid === r.pwsid ? " · showing" : ""}
-                    </button>
-                    <span class="prose">${esc(p.pwsid)} · ${esc(peopleCount(p.population))}</span>
-                  </li>
-                `).join("")}
-              </ul>
-            </details>
-          ` : ""}
-
-          <section class="card" aria-labelledby="savedHeading">
-            <h2 id="savedHeading">Saved addresses</h2>
-            <p class="card-lead">${premiumOn()
-              ? (String(window.H2KnowConfig.STRIPE_PAYMENT_LINK || "").trim()
-                ? `Checkout is connected. You can save up to ${savedAddressLimit()} addresses on this device.`
-                : "One address is included. The next time you open it on this device, H2Know compares the score and the number of open violations.")
-              : "Save an address on this device. The next time you open it, H2Know compares the score and the number of open violations."}</p>
-            <p class="prose">${watched ? "This address is saved on this device." : "Save this address to check it again later."}</p>
-            <div class="inline-actions">
-              <button type="button" class="linkish" data-action="toggle-watch">${watched ? "Remove address" : "Save address"}</button>
-              <button type="button" class="linkish" data-action="download-report">Download report</button>
-            </div>
-            ${premiumOn() ? `
-              <p class="more">Downloading this report is free. Extra saved addresses are the paid tier.</p>
-              ${String(window.H2KnowConfig.STRIPE_PAYMENT_LINK || "").trim()
-                ? `<p><a class="linkish" href="${esc(window.H2KnowConfig.STRIPE_PAYMENT_LINK)}" target="_blank" rel="noopener noreferrer">Open checkout</a></p>`
-                : `<p class="more">Payments are not connected. Set STRIPE_PAYMENT_LINK in config.js when you have a Stripe Payment Link. Nothing is charged from this build.</p>`}
-            ` : ""}
-          </section>
-
-          <section class="card" aria-labelledby="notesHeading">
-            <h2 id="notesHeading">Neighborhood reports</h2>
-            <p class="card-lead">Taste, color, pressure, and other notes for ${esc(displayName(r.name))}.</p>
-            <div class="inline-actions">
-              <button type="button" class="linkish" data-action="open-issue">Report Water Quality Issue</button>
-            </div>
-            <div class="seg" role="group" aria-label="Note status">
-              ${[["all", "All"], ["open", "Open"], ["resolved", "Resolved"]].map(([key, label]) => `
-                <button type="button" data-action="issue-filter" data-filter="${key}" aria-pressed="${state.issueFilter === key}">${label}</button>
-              `).join("")}
-            </div>
-            ${systemIssues.length === 0 ? `<p class="prose">No reports for this system yet.</p>` : `
-              <ul class="log">
-                ${systemIssues.map((issue) => `
-                  <li>
-                    <div class="log-top">
-                      <h3>${esc(issue.title)}</h3>
-                      <span class="v-status ${issue.status === "resolved" ? "v-resolved" : "v-open"}">${esc(issue.status === "resolved" ? "Resolved" : "Open")}</span>
-                    </div>
-                    <p class="prose">${esc(issue.category)} · ${esc(issue.affectedCount)} affected · ${issue.source === "firebase" ? "Firebase" : "This browser"}</p>
-                    <p class="prose">${esc(issue.description)}</p>
-                    <div class="inline-actions">
-                      ${issue.status !== "resolved" ? `
-                        <button type="button" class="linkish" data-action="upvote-issue" data-id="${esc(issue.id)}" data-source="${esc(issue.source || "browser")}">Add affected</button>
-                        <button type="button" class="linkish" data-action="resolve-issue" data-id="${esc(issue.id)}" data-source="${esc(issue.source || "browser")}">Resolve</button>
-                      ` : ""}
-                      <button type="button" class="linkish" data-action="delete-issue" data-id="${esc(issue.id)}" data-source="${esc(issue.source || "browser")}">Remove</button>
-                    </div>
-                  </li>
-                `).join("")}
-              </ul>
-            `}
-          </section>
+        <div class="tab-row" id="tabBar" role="tablist" aria-label="Report sections">
+          ${tabs.map(([key, label]) => `
+            <button type="button" role="tab" data-action="show-tab" data-tab="${key}" aria-selected="${tab === key}" id="tab-${key}">${label}</button>
+          `).join("")}
+        </div>
+        <div class="stack tab-panel" id="tabPanel" role="tabpanel" aria-labelledby="tab-${tab}">
+          ${panels[tab]}
         </div>
       </article>
     `;
@@ -862,9 +840,7 @@
       return;
     }
     if (watches.length >= savedAddressLimit()) {
-      state.note = String(window.H2KnowConfig.STRIPE_PAYMENT_LINK || "").trim()
-        ? `Saved addresses are full (${savedAddressLimit()}). Remove one to add another.`
-        : "One saved address is included. Set STRIPE_PAYMENT_LINK in config.js to unlock more.";
+      state.note = "Saved addresses are full. Remove one to add another.";
       return;
     }
     watches.unshift({
@@ -930,6 +906,12 @@
     }
   }
 
+  function scrollShell(top) {
+    const shell = document.querySelector(".shell");
+    if (!shell) return;
+    shell.scrollTo({ top, behavior: reducedMotion ? "auto" : "smooth" });
+  }
+
   async function openProvider(summary, requestId) {
     const report = await D.loadSystemReport(summary, state.place);
     if (requestId !== state.requestId) return;
@@ -937,6 +919,7 @@
       p.pwsid === report.pwsid ? { ...p, currentScore: report.qualityScore } : p
     ));
     state.report = report;
+    state.tab = "overview";
     state.timeframe = "TEN_YEAR";
     state.pointIdx = null;
     state.readingFilter = "ALL";
@@ -951,7 +934,7 @@
     if (!state.isGuest || state.cloudUser) saveSnapshot(report, false);
     $("zipInput").value = report.zip;
     render();
-    window.scrollTo({ top: 0, behavior: reducedMotion ? "auto" : "smooth" });
+    scrollShell(0);
   }
 
   async function lookup(raw) {
@@ -1107,6 +1090,7 @@
       return;
     }
     if (action === "confirm-sign-in") {
+      try { localStorage.setItem(DEVICE_KEY, "1"); } catch (_) {}
       state.isGuest = false;
       closeDialog("accountDialog");
       if (state.report) saveSnapshot(state.report, true);
@@ -1164,6 +1148,17 @@
       setNote("Checking public water records.", false);
       render();
       openProvider(picked, state.requestId);
+      return;
+    }
+    if (action === "show-tab") {
+      state.tab = el.getAttribute("data-tab") || "overview";
+      render();
+      const bar = document.getElementById("tabBar");
+      const shell = document.querySelector(".shell");
+      if (bar && shell) {
+        const top = shell.scrollTop + bar.getBoundingClientRect().top - shell.getBoundingClientRect().top - 8;
+        scrollShell(Math.max(0, top));
+      }
       return;
     }
     if (action === "change-provider") {

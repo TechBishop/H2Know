@@ -3,7 +3,7 @@
    __H2KNOW_BUILD__ is replaced with the deploy SHA. */
 const BUILD = "__H2KNOW_BUILD__";
 const CACHE = "h2know-reskin-shell-" + BUILD;
-const VERSIONED = ["styles.css", "app.js", "data.js", "config.js", "cloud.js"];
+const VERSIONED = ["styles.css", "app.js", "data.js", "config.js", "cloud.js", "counties.json"];
 
 function withVersion(path) {
   const name = path.replace(/^\.\//, "");

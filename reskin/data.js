@@ -20,7 +20,8 @@
     "48502": { city: "Flint", state: "MI", stateFull: "Michigan", lat: 43.0125, lon: -83.6875 },
     "07102": { city: "Newark", state: "NJ", stateFull: "New Jersey", lat: 40.7357, lon: -74.1724 },
     "39201": { city: "Jackson", state: "MS", stateFull: "Mississippi", lat: 32.2988, lon: -90.1848 },
-    "90210": { city: "Beverly Hills", state: "CA", stateFull: "California", lat: 34.0901, lon: -118.4065 }
+    "90210": { city: "Beverly Hills", state: "CA", stateFull: "California", lat: 34.0901, lon: -118.4065 },
+    "47513": { city: "Birdseye", state: "IN", stateFull: "Indiana", lat: 38.315, lon: -86.696 }
   };
 
   const CATALOG = {
@@ -467,7 +468,7 @@
     if (!adjacencyPromise) {
       const buildMeta = document.querySelector('meta[name="h2know-build"]');
       const build = buildMeta && buildMeta.getAttribute("content");
-      const countiesUrl = "../counties.json" + (build ? "?v=" + encodeURIComponent(build) : "");
+      const countiesUrl = "./counties.json" + (build ? "?v=" + encodeURIComponent(build) : "");
       adjacencyPromise = fetch(countiesUrl, { cache: "reload", signal: AbortSignal.timeout(20000) })
         .then((resp) => {
           if (!resp.ok) throw new Error("adjacency");
