@@ -236,11 +236,13 @@
 
   function renderAccount() {
     const user = state.cloudUser;
-    $("accountBtn").textContent = user ? "Signed in" : (state.isGuest ? "Sign in" : "On this device");
+    $("accountBtn").textContent = user ? "Signed in" : "Sign in";
     const status = $("accountStatus");
-    if (status) status.textContent = state.cloudNote || (user ? (user.email || "Signed in with Google.") : "");
-    const fbBtn = document.querySelector("[data-action='firebase-sign-in']");
-    if (fbBtn) fbBtn.textContent = user ? "Sign out" : "Sign in with Google";
+    if (status && !user) {
+      status.textContent = "Google sign-in isn't available on this site yet. No account is created.";
+    } else if (status) {
+      status.textContent = user.email || "Signed in with Google.";
+    }
   }
 
   function renderPresets() {
@@ -804,22 +806,39 @@
     `;
   }
 
+  function motionReduced() {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }
+
+  function settleScore(el, value) {
+    if (value !== null) el.textContent = String(value);
+    el.setAttribute("data-settled", "true");
+  }
+
   function animateScore() {
-    if (reducedMotion || state.mode !== "report") return;
     const el = document.querySelector(".score-num");
-    if (!el) return;
+    if (!el || state.mode !== "report") return;
     const raw = el.getAttribute("data-count");
-    if (!raw) return;
-    const target = Number(raw);
-    if (!Number.isFinite(target) || target < 0) return;
+    const target = raw === null || raw === "" ? null : Number(raw);
+    const finalValue = Number.isFinite(target) && target >= 0 ? target : null;
+    if (motionReduced() || finalValue === null) {
+      settleScore(el, finalValue);
+      return;
+    }
+    el.removeAttribute("data-settled");
     const start = performance.now();
+    el.textContent = "0";
     function tick(now) {
+      if (!el.isConnected) return;
       const t = Math.min(1, (now - start) / 700);
       const eased = 1 - Math.pow(1 - t, 3);
-      el.textContent = String(Math.round(target * eased));
-      if (t < 1) requestAnimationFrame(tick);
+      if (t < 1) {
+        el.textContent = String(Math.round(finalValue * eased));
+        requestAnimationFrame(tick);
+        return;
+      }
+      settleScore(el, finalValue);
     }
-    el.textContent = "0";
     requestAnimationFrame(tick);
   }
 

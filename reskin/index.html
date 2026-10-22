@@ -86,15 +86,15 @@
 <div id="accountDialog" class="backdrop" hidden>
   <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="accountTitle">
     <div class="dialog-head">
-      <h2 id="accountTitle">Sign in</h2>
+      <h2 id="accountTitle">Sign in isn't available yet</h2>
       <button type="button" class="text-btn" data-action="close-dialog" data-dialog="accountDialog">Close</button>
     </div>
-    <p>Lookups work without an account. A browser save stays on this device and does not touch the main app. A Firebase report or snapshot needs Google sign-in, and only on a web address Firebase has authorized.</p>
-    <p id="accountStatus" class="form-note" role="status"></p>
+    <p>Google sign-in does not run on this site. This address is not an authorized Firebase domain, so tapping Sign in does not open an account and does not mark you as signed in.</p>
+    <p id="accountStatus" class="form-note" role="status">Google sign-in isn't available on this site yet. No account is created.</p>
+    <p>Save on this device keeps a lookup in this browser only. It is not a sign-in.</p>
     <div class="dialog-actions">
-      <button type="button" class="text-btn" data-action="close-dialog" data-dialog="accountDialog">Not now</button>
+      <button type="button" class="text-btn" data-action="close-dialog" data-dialog="accountDialog">Close</button>
       <button type="button" class="text-btn" data-action="confirm-sign-in">Save on this device</button>
-      <button type="button" class="primary" data-action="firebase-sign-in">Sign in with Google</button>
     </div>
   </div>
 </div>
