@@ -1158,7 +1158,7 @@ html.dark {
           <!-- Section 2 -->
           <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:16px;padding:14px" class="stack-8">
             <h4 class="title-small">2. Privacy Policy &amp; Data Deletion</h4>
-            <p class="body-small">• Anonymous ZIP Searches: You can search any U.S. ZIP code and inspect all 4W water reports without signing in. Entered ZIP codes are only sent to public EPA Envirofacts &amp; Zippopotam.us endpoints to resolve local utilities.</p>
+            <p class="body-small">• Anonymous ZIP Searches: You can search any U.S. ZIP code and inspect all 4W water reports without signing in. Entered ZIP codes are sent to public EPA Envirofacts, Zippopotam.us, Census ZCTA, and EPA service-area boundary endpoints to resolve local utilities.</p>
             <p class="body-small">• Optional Google Sign-In &amp; Cloud Sync: If you choose to sign in with Google, H2Know stores your saved ZIP history snapshots and community-reported water issues in Google Firebase Firestore.</p>
             <p class="body-small">• Instant Data Deletion &amp; Zero Ad Tracking: H2Know contains zero third-party ad networks and never sells user data. Signed-in users can permanently delete any saved ZIP history snapshot or reported issue at any time using the trash icon next to the item.</p>
           </div>
@@ -1299,7 +1299,8 @@ html.dark {
     isGuest: true, // Matches phone simulator default (user == null)
     userEmail: "civic.resident@gmail.com",
     cloudIssues: JSON.parse(localStorage.getItem("h2know_cloud_issues_v3") || "[]"),
-    cloudHistory: JSON.parse(localStorage.getItem("h2know_cloud_history_v3") || "[]")
+    cloudHistory: JSON.parse(localStorage.getItem("h2know_cloud_history_v3") || "[]"),
+    providerListKind: "service"
   };
 
   const $ = (id) => document.getElementById(id);
@@ -2269,19 +2270,89 @@ html.dark {
     return PLACE_FALLBACKS[zip] || null;
   }
 
-  async function fetchEpaSystems(zip, city, stateCode) {
-    const EPA_ROOT = "https://data.epa.gov/efservice";
-    const byZip = await fetchEpaJson(`${EPA_ROOT}/WATER_SYSTEM/ZIP_CODE/BEGINNING/${zip}/PWS_ACTIVITY_CODE/A/rows/0:30/JSON`);
-    if (!byZip.ok) {
-      return { ok: false, rows: [] };
+  function areaRowMatchesState(row, stateCode) {
+    const id = String(row.pwsid || row.PWSID || "").trim().toUpperCase();
+    if (!id) return false;
+    const served = String(row.state_served || row.STATE_SERVED || "").trim().toUpperCase();
+    if (served) return served === stateCode;
+    return id.startsWith(stateCode);
+  }
+
+  function ringHasPoint(ring, x, y) {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const xi = ring[i][0], yi = ring[i][1];
+      const xj = ring[j][0], yj = ring[j][1];
+      const cross = ((yi > y) !== (yj > y)) && (x < ((xj - xi) * (y - yi)) / (yj - yi) + xi);
+      if (cross) inside = !inside;
     }
+    return inside;
+  }
+
+  function ringsHavePoint(rings, x, y) {
+    let inside = false;
+    for (let r = 0; r < rings.length; r++) if (ringHasPoint(rings[r], x, y)) inside = !inside;
+    return inside;
+  }
+
+  async function fetchWaterSystemRows(ids) {
+    const unique = [];
+    const seen = new Set();
+    for (let i = 0; i < ids.length; i++) {
+      const id = String(ids[i] || "").trim().toUpperCase();
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      unique.push(id);
+      if (unique.length >= 24) break;
+    }
+    if (!unique.length) return { ok: true, rows: [] };
+    const fetched = await Promise.all(unique.map((id) => fetchEpaJson(`${EPA_BASE}/WATER_SYSTEM/PWSID/${encodeURIComponent(id)}/JSON`)));
+    const rows = [];
+    let anyOk = false;
+    for (let i = 0; i < fetched.length; i++) {
+      if (!fetched[i].ok) continue;
+      anyOk = true;
+      if (fetched[i].rows[0]) rows.push(fetched[i].rows[0]);
+    }
+    return anyOk ? { ok: true, rows } : { ok: false, rows: [] };
+  }
+
+  function rankActiveSystems(rows, limit) {
+    const map = new Map();
+    for (let i = 0; i < rows.length; i++) {
+      const obj = rows[i];
+      if (!obj) continue;
+      const pwsid = String(obj.pwsid || obj.PWSID || "").trim();
+      if (!pwsid) continue;
+      const active = String(obj.pws_activity_code || obj.PWS_ACTIVITY_CODE || "A").trim().toUpperCase();
+      if (active !== "A") continue;
+      const pop = parseInt(obj.population_served_count || obj.POPULATION_SERVED_COUNT || "0", 10) || 0;
+      const prev = map.get(pwsid);
+      const prevPop = prev ? (parseInt(prev.population_served_count || prev.POPULATION_SERVED_COUNT || "0", 10) || -1) : -1;
+      if (!prev || pop > prevPop) map.set(pwsid, obj);
+    }
+    const all = Array.from(map.values());
+    const cws = all.filter((it) => {
+      const t = String(it.pws_type_code || it.PWS_TYPE_CODE || "").toUpperCase();
+      return t === "CWS" || t === "NTNCWS";
+    });
+    const filtered = (cws.length > 0 ? cws : all).sort((a, b) => {
+      const pa = parseInt(a.population_served_count || a.POPULATION_SERVED_COUNT || "0", 10) || 0;
+      const pb = parseInt(b.population_served_count || b.POPULATION_SERVED_COUNT || "0", 10) || 0;
+      return pb - pa;
+    });
+    return filtered.slice(0, limit);
+  }
+
+  async function fetchMailingSystems(zip, city, stateCode) {
+    const byZip = await fetchEpaJson(`${EPA_BASE}/WATER_SYSTEM/ZIP_CODE/BEGINNING/${zip}/PWS_ACTIVITY_CODE/A/rows/0:30/JSON`);
+    if (!byZip.ok) return { ok: false, rows: [] };
     const encCity = encodeURIComponent(String(city || "").toUpperCase());
     const encState = encodeURIComponent(String(stateCode || "").toUpperCase());
     const byCity = byZip.rows.length < 3
-      ? await fetchEpaJson(`${EPA_ROOT}/WATER_SYSTEM/CITY_NAME/${encCity}/STATE_CODE/${encState}/PWS_ACTIVITY_CODE/A/rows/0:30/JSON`)
+      ? await fetchEpaJson(`${EPA_BASE}/WATER_SYSTEM/CITY_NAME/${encCity}/STATE_CODE/${encState}/PWS_ACTIVITY_CODE/A/rows/0:30/JSON`)
       : { ok: true, rows: [] };
     if (!byCity.ok) return { ok: false, rows: [] };
-
     const map = new Map();
     function absorb(arr) {
       for (let i = 0; i < arr.length; i++) {
@@ -2299,20 +2370,101 @@ html.dark {
     }
     absorb(byZip.rows);
     absorb(byCity.rows);
-    const all = Array.from(map.values());
-    const cws = all.filter((it) => {
-      const t = String(it.pws_type_code || it.PWS_TYPE_CODE || "").toUpperCase();
-      return t === "CWS" || t === "NTNCWS";
-    });
-    const filtered = cws.length > 0 ? cws : all;
-    return {
-      ok: true,
-      rows: filtered.sort((a, b) => {
-        const pa = parseInt(a.population_served_count || a.POPULATION_SERVED_COUNT || "0", 10) || 0;
-        const pb = parseInt(b.population_served_count || b.POPULATION_SERVED_COUNT || "0", 10) || 0;
-        return pb - pa;
-      }).slice(0, 6)
-    };
+    return { ok: true, rows: rankActiveSystems(Array.from(map.values()), 6) };
+  }
+
+  async function fetchBoundaryServiceIds(zip, stateCode) {
+    const zctaUrl = "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/tigerWMS_Current/MapServer/2/query";
+    const boundaryUrl = "https://services.arcgis.com/cJ9YHowT8TU7DUyn/arcgis/rest/services/Water_System_Boundaries/FeatureServer/0/query";
+    try {
+      const zResp = await fetch(zctaUrl, {
+        method: "POST",
+        headers: { Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          where: `ZCTA5='${zip}'`,
+          outFields: "ZCTA5",
+          returnGeometry: "true",
+          outSR: "4326",
+          geometryPrecision: "5",
+          f: "json"
+        })
+      });
+      if (!zResp.ok) return { ok: false, ids: [] };
+      const zcta = await zResp.json();
+      const rings = zcta && zcta.features && zcta.features[0] && zcta.features[0].geometry && zcta.features[0].geometry.rings;
+      if (!rings || !rings.length) return { ok: true, ids: [] };
+      const bResp = await fetch(boundaryUrl, {
+        method: "POST",
+        headers: { Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          geometry: JSON.stringify({ rings }),
+          geometryType: "esriGeometryPolygon",
+          inSR: "4326",
+          spatialRel: "esriSpatialRelIntersects",
+          where: `Primacy_Agency='${stateCode}'`,
+          outFields: "PWSID",
+          returnGeometry: "false",
+          returnCentroid: "true",
+          f: "json"
+        })
+      });
+      if (!bResp.ok) return { ok: false, ids: [] };
+      const data = await bResp.json();
+      if (!data || data.error) return { ok: false, ids: [] };
+      const ids = [];
+      const features = data.features || [];
+      for (let i = 0; i < features.length; i++) {
+        const feat = features[i];
+        const id = feat.attributes && feat.attributes.PWSID;
+        const c = feat.centroid;
+        if (!id || !c || !ringsHavePoint(rings, c.x, c.y)) continue;
+        ids.push(id);
+      }
+      return { ok: true, ids };
+    } catch (_) {
+      return { ok: false, ids: [] };
+    }
+  }
+
+  async function fetchEpaSystems(zip, city, stateCode) {
+    const st = String(stateCode || "").toUpperCase();
+    const placeCity = String(city || "").trim().toUpperCase();
+    const zipServed = await fetchEpaJson(`${EPA_BASE}/GEOGRAPHIC_AREA/ZIP_CODE_SERVED/${zip}/JSON`);
+    const zipIds = zipServed.ok
+      ? zipServed.rows.filter((row) => areaRowMatchesState(row, st)).map((row) => row.pwsid || row.PWSID)
+      : [];
+    let cityIds = [];
+    let cityOk = true;
+    let cityTooBroad = false;
+    if (!zipIds.length) {
+      const cityServed = await fetchEpaJson(`${EPA_BASE}/GEOGRAPHIC_AREA/CITY_SERVED/${encodeURIComponent(placeCity)}/JSON`);
+      cityOk = cityServed.ok;
+      if (cityServed.ok) {
+        const matched = cityServed.rows.filter((row) => {
+          const name = String(row.city_served || row.CITY_SERVED || "").trim().toUpperCase();
+          return name === placeCity && areaRowMatchesState(row, st);
+        });
+        const uniq = Array.from(new Set(matched.map((row) => String(row.pwsid || row.PWSID || "").trim()).filter(Boolean)));
+        // A long city-served list is the whole city, not this ZIP. Use the ZCTA boundary instead.
+        if (uniq.length > 12) cityTooBroad = true;
+        else cityIds = uniq;
+      }
+    }
+    let serviceIds = zipIds.length ? zipIds : cityIds;
+    if (!serviceIds.length) {
+      const boundary = await fetchBoundaryServiceIds(zip, st);
+      if (boundary.ok) serviceIds = boundary.ids;
+      else if ((!zipServed.ok && !cityOk) || cityTooBroad) return { ok: false, rows: [], listKind: "service" };
+    }
+    if (serviceIds.length) {
+      const hydrated = await fetchWaterSystemRows(serviceIds);
+      if (!hydrated.ok) return { ok: false, rows: [], listKind: "service" };
+      const ranked = rankActiveSystems(hydrated.rows, 12);
+      if (ranked.length) return { ok: true, rows: ranked, listKind: "service" };
+    }
+    const nearby = await fetchMailingSystems(zip, placeCity, st);
+    if (!nearby.ok) return { ok: false, rows: [], listKind: "nearby" };
+    return { ok: true, rows: nearby.rows, listKind: "nearby" };
   }
 
   async function fetchProvidersByZip(zip) {
@@ -2329,6 +2481,7 @@ html.dark {
     if (liveRows.length === 0 && presetList) {
       return {
         place,
+        listKind: "nearby",
         providers: presetList.map((p, idx) => ({ ...p, currentScore: null, fiveYearDeltaPts: null, isPrimary: idx === 0 }))
       };
     }
@@ -2338,14 +2491,14 @@ html.dark {
     const providers = liveRows.map((obj, idx) => {
       const pwsid = String(obj.pwsid || obj.PWSID || "");
       const name = String(obj.pws_name || obj.PWS_NAME || pwsid).trim() || pwsid;
-      const city = String(obj.city_name || obj.CITY_NAME || place.city).trim() || place.city;
+      const cityName = String(obj.city_name || obj.CITY_NAME || place.city).trim() || place.city;
       const st = String(obj.state_code || obj.STATE_CODE || place.state).trim() || place.state;
       const pop = parseInt(obj.population_served_count || obj.POPULATION_SERVED_COUNT || "0", 10) || 0;
       const srcCode = String(obj.primary_source_code || obj.PRIMARY_SOURCE_CODE || "");
       return {
         pwsid,
         name,
-        city,
+        city: cityName,
         state: st,
         zip,
         county: "",
@@ -2356,7 +2509,7 @@ html.dark {
         fiveYearDeltaPts: null
       };
     });
-    return { place, providers };
+    return { place, providers, listKind: live.listKind || "service" };
   }
 
   /* ==========================================================================
@@ -2396,7 +2549,7 @@ html.dark {
       <div class="stack-10">
         <div class="row-between">
           <span class="mono" style="font-size:11px;font-weight:700;color:var(--safe);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-            WATER PROVIDERS IN ZIP ${state.currentPlace?.zip || primary.zip}
+            ${state.providerListKind === "nearby" ? "Nearby systems" : `Serves ZIP ${state.currentPlace?.zip || primary.zip}`}
           </span>
           <span class="label-small" style="color:var(--ink-2);letter-spacing:0">${state.currentPlace?.city || primary.city}, ${state.currentPlace?.state || primary.state}</span>
         </div>
@@ -2418,7 +2571,7 @@ html.dark {
 
         ${others.length > 0 ? `
           <button type="button" id="inlineOtherToggleBtn" style="width:100%;border-radius:14px;background:var(--surface-2);border:1px solid var(--border-strong);padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px">
-            <span class="title-small" style="font-weight:700">Other Local Providers in ZIP ${primary.zip} (${others.length})</span>
+            <span class="title-small" style="font-weight:700">${state.providerListKind === "nearby" ? `Other nearby systems (${others.length})` : `Other systems that serve ZIP ${primary.zip} (${others.length})`}</span>
             <span class="mono" style="font-size:11px;font-weight:700;color:var(--brand)">${state.showOtherInline ? "Hide ▲" : "Select ▾"}</span>
           </button>
           ${state.showOtherInline ? `
@@ -2801,6 +2954,7 @@ html.dark {
       const res = await fetchProvidersByZip(clean);
       state.currentPlace = res.place;
       state.providers = res.providers;
+      state.providerListKind = res.listKind || "service";
       state.showOtherInline = false;
       renderInlineProviders();
       if (autoSelectPrimary && res.providers.length > 0) {
@@ -2886,7 +3040,7 @@ html.dark {
         <div style="border-radius:18px;background:color-mix(in srgb, var(--surface-1) 96%, transparent);border:1px solid var(--border-strong);padding:10px 14px;box-shadow:var(--elevation)">
           <button type="button" id="resultsSwitchToggleBtn" style="width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;gap:10px">
             <div style="flex:1;min-width:0">
-              <div class="mono" style="font-size:10px;font-weight:700;color:var(--brand)">LOCAL PROVIDER (${activeIdx} OF ${state.providers.length} IN ZIP ${r.zip})</div>
+              <div class="mono" style="font-size:10px;font-weight:700;color:var(--brand)">${state.providerListKind === "nearby" ? `NEARBY SYSTEMS (${activeIdx} OF ${state.providers.length})` : `SERVES ZIP ${r.zip} (${activeIdx} OF ${state.providers.length})`}</div>
               <div class="title-small" style="font-weight:800;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.name}</div>
             </div>
             <span class="mono" style="border-radius:999px;padding:7px 12px;font-size:11px;font-weight:700;background:${state.showResultsDropdown ? "var(--brand)" : "var(--surface-2)"};color:${state.showResultsDropdown ? "#FFFFFF" : "var(--brand)"};border:1px solid color-mix(in srgb, var(--brand) 55%, transparent)">
