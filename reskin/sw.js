@@ -1,9 +1,10 @@
-/* Reskin shell only. Scope is the /reskin/ directory that contains this file.
-   Cache names are prefixed so this worker never deletes the main app's caches.
+/* Reskin shell only. This file is registered as ./sw.js from /reskin/, so the
+   default scope is /reskin/. Cache names stay on their own prefix so this
+   worker never deletes the main app's caches.
    __H2KNOW_BUILD__ is replaced with the deploy SHA. */
 const BUILD = "__H2KNOW_BUILD__";
 const CACHE = "h2know-reskin-shell-" + BUILD;
-const VERSIONED = ["styles.css", "app.js", "data.js", "config.js", "cloud.js", "counties.json"];
+const VERSIONED = ["manifest.json"];
 
 function withVersion(path) {
   const name = path.replace(/^\.\//, "");
@@ -14,14 +15,7 @@ function withVersion(path) {
 const SHELL = [
   "./",
   "./index.html",
-  withVersion("./styles.css"),
-  withVersion("./app.js"),
-  withVersion("./data.js"),
-  withVersion("./config.js"),
-  withVersion("./cloud.js"),
-  "./manifest.json",
-  "./icons/icon-192.png",
-  "./icons/icon-512.png"
+  withVersion("./manifest.json")
 ];
 
 function isVersionedPath(pathname) {
