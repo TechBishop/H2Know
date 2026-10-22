@@ -3210,7 +3210,7 @@ html.dark {
       ? `<p class="epa-phrase">Treatment records are unavailable because the EPA request failed.</p>`
       : (r.treatment.length === 0
         ? `<p class="epa-phrase">${NOT_MEASURED}</p>`
-        : `<p class="epa-meta">${r.treatmentRowCount} EPA treatment rows, ${r.treatment.length} distinct comments.</p>
+        : `<p class="epa-meta">${r.treatmentRowCount} EPA treatment rows, grouped into ${r.treatment.length} process lines.</p>
            <div class="stack-8">
              ${r.treatment.map((step) => `
                <div class="epa-card epa-measured">
