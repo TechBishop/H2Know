@@ -619,24 +619,34 @@ object ReferenceWaterData {
         return String.format("%.2f", v).trimEnd('0').trimEnd('.')
     }
 
-    fun contaminantAmazonFilterUrl(contaminant: Contaminant): String = when (contaminant.code) {
-        "PB90" -> "https://www.amazon.com/s?k=NSF+53+lead+water+filter+pitcher+faucet+under+sink"
-        "CU90" -> "https://www.amazon.com/s?k=NSF+53+copper+and+lead+drinking+water+filter"
-        "2950", "2456" -> "https://www.amazon.com/s?k=NSF+53+42+activated+carbon+water+filter+TTHM+chlorine+byproducts"
-        "2806", "2805" -> "https://www.amazon.com/s?k=NSF+53+58+P473+PFAS+PFOA+PFOS+water+filter"
-        "1040" -> "https://www.amazon.com/s?k=NSF+58+reverse+osmosis+nitrate+water+filter+system"
-        "1005" -> "https://www.amazon.com/s?k=NSF+58+reverse+osmosis+arsenic+water+filter+system"
-        "1025" -> "https://www.amazon.com/s?k=NSF+58+reverse+osmosis+fluoride+water+filter"
-        else -> "https://www.amazon.com/s?k=NSF+53+58+certified+drinking+water+filter"
-    }
+    fun contaminantAmazonFilterUrl(contaminant: Contaminant): String = taggedAmazon(
+        when (contaminant.code) {
+            "PB90" -> "https://www.amazon.com/s?k=NSF+53+lead+water+filter+pitcher+faucet+under+sink"
+            "CU90" -> "https://www.amazon.com/s?k=NSF+53+copper+and+lead+drinking+water+filter"
+            "2950", "2456" -> "https://www.amazon.com/s?k=NSF+53+42+activated+carbon+water+filter+TTHM+chlorine+byproducts"
+            "2806", "2805" -> "https://www.amazon.com/s?k=NSF+53+58+P473+PFAS+PFOA+PFOS+water+filter"
+            "1040" -> "https://www.amazon.com/s?k=NSF+58+reverse+osmosis+nitrate+water+filter+system"
+            "1005" -> "https://www.amazon.com/s?k=NSF+58+reverse+osmosis+arsenic+water+filter+system"
+            "1025" -> "https://www.amazon.com/s?k=NSF+58+reverse+osmosis+fluoride+water+filter"
+            else -> "https://www.amazon.com/s?k=NSF+53+58+certified+drinking+water+filter"
+        }
+    )
 
-    fun contaminantAmazonTestKitUrl(contaminant: Contaminant): String = when (contaminant.code) {
-        "PB90", "CU90" -> "https://www.amazon.com/s?k=EPA+lead+and+copper+in+drinking+water+home+test+kit"
-        "2806", "2805" -> "https://www.amazon.com/s?k=PFAS+forever+chemicals+mail+in+water+test+kit"
-        "1040" -> "https://www.amazon.com/s?k=nitrate+nitrite+drinking+water+test+kit+strips"
-        "1005" -> "https://www.amazon.com/s?k=arsenic+in+drinking+water+test+kit"
-        "2950", "2456" -> "https://www.amazon.com/s?k=complete+home+drinking+water+test+kit+chlorine+VOC"
-        else -> "https://www.amazon.com/s?k=16+in+1+drinking+water+test+kit+lead+copper+nitrate"
+    fun contaminantAmazonTestKitUrl(contaminant: Contaminant): String = taggedAmazon(
+        when (contaminant.code) {
+            "PB90", "CU90" -> "https://www.amazon.com/s?k=EPA+lead+and+copper+in+drinking+water+home+test+kit"
+            "2806", "2805" -> "https://www.amazon.com/s?k=PFAS+forever+chemicals+mail+in+water+test+kit"
+            "1040" -> "https://www.amazon.com/s?k=nitrate+nitrite+drinking+water+test+kit+strips"
+            "1005" -> "https://www.amazon.com/s?k=arsenic+in+drinking+water+test+kit"
+            "2950", "2456" -> "https://www.amazon.com/s?k=complete+home+drinking+water+test+kit+chlorine+VOC"
+            else -> "https://www.amazon.com/s?k=16+in+1+drinking+water+test+kit+lead+copper+nitrate"
+        }
+    )
+
+    private fun taggedAmazon(url: String): String {
+        if (url.contains("tag=")) return url
+        val tag = MonetizationConfig.AMAZON_ASSOCIATE_TAG.trim().ifEmpty { "bishopsfolly-20" }
+        return MonetizationConfig.amazonUrl(url, tag)
     }
 
     fun buildSuggestedProductsForReport(report: WaterSystemReport): List<SuggestedProductLink> {
