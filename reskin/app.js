@@ -181,9 +181,39 @@
   }
 
   function complianceLine(r) {
+    if (r.complianceStatus === "unavailable" || r.qualityScore < 0) return "Unavailable";
+    if (r.complianceStatus === "insufficient_data") return "Not enough data";
     if (r.complianceStatus === "under_enforcement") return "Under enforcement";
     if (r.complianceStatus === "elevated_concern") return "Elevated monitoring";
     return "In compliance";
+  }
+
+  function gradeWord(r) {
+    if (r.qualityScore < 0) return "Unavailable";
+    if (r.qualityScore >= 85) return "Good";
+    if (r.qualityScore >= 70) return "Fair";
+    if (r.qualityScore >= 55) return "Watch";
+    return "Poor";
+  }
+
+  function titleWord(value) {
+    const text = String(value || "");
+    return text ? text.charAt(0).toUpperCase() + text.slice(1) : "";
+  }
+
+  function quietNote(kicker, text) {
+    return `<aside class="quiet-note"><p class="quiet-kicker">${esc(kicker)}</p><p>${text}</p></aside>`;
+  }
+
+  function statTile(label, value) {
+    return `<div class="tile"><span class="k">${esc(label)}</span><span class="v">${value}</span></div>`;
+  }
+
+  function setDock(html) {
+    const dock = $("dock");
+    if (!dock) return;
+    dock.hidden = !html;
+    dock.innerHTML = html || "";
   }
 
   function barModel(c) {
@@ -414,6 +444,7 @@
   }
 
   function renderPicker() {
+    setDock("");
     const host = $("report");
     const place = state.place;
     const rows = visibleProviders();
@@ -459,6 +490,7 @@
     const host = $("report");
     if (!r) {
       host.innerHTML = "";
+      setDock("");
       return;
     }
 
@@ -508,7 +540,6 @@
     const useCut = r.usage.recommendedGallonsPerDay < r.usage.normalGallonsPerDay;
     const watches = readStore(WATCH_KEY);
     const watched = watches.some((w) => w.pwsid === r.pwsid);
-    const scoreValue = r.qualityScore < 0 ? 0 : r.qualityScore;
     const lead = r.contaminants.find((c) => c.code === "PB90");
     const copper = r.contaminants.find((c) => c.code === "CU90");
     const overLimit = r.contaminants.filter((c) => c.exceedsMcl).length;
@@ -518,30 +549,55 @@
       : "No lead or copper sample in this record";
     const switchLabel = state.providers.length > 1 ? `Switch (${state.providers.length})` : "Switch";
 
+    const scored = r.qualityScore >= 0;
+    const scoreText = scored ? String(r.qualityScore) : "—";
+    const grade = gradeWord(r);
+    const ringScore = scored ? r.qualityScore : 0;
+    const pillKind = r.complianceStatus === "under_enforcement" ? "bad" : (r.complianceStatus === "elevated_concern" ? "warn" : (scored ? "good" : "quiet"));
+    const missingNames = (r.unmeasured || []).map((item) => item.plainName);
+    const saveLabel = state.isGuest ? "Save on this device" : "Save lookup";
+    const saveAction = state.isGuest ? "ask-sign-in" : "save-snapshot";
     const overview = `
-      <section class="card" aria-labelledby="overviewHeading">
-        <h2 id="overviewHeading">${ICONS.drop} Overview</h2>
-        <p class="card-lead">${esc(measuredLine)}</p>
-        <ul class="facts">
-          <li><span>Serves</span><span>${r.population > 0 ? esc(r.population.toLocaleString()) : "Not listed"}</span></li>
-          <li><span>Source</span><span>${esc(r.sourceType)}</span></li>
-          <li><span>Owner</span><span>${esc(r.ownerType || "Not listed")}</span></li>
-          <li><span>Compliance</span><span>${esc(complianceLine(r))}</span></li>
-          <li><span>Risk</span><span>${r.qualityScore < 0 ? "Not scored" : esc(r.riskLevel)}</span></li>
-          <li><span>Open records</span><span>${openViolations}</span></li>
-        </ul>
-        <p class="more unavailable-line">Trihalomethanes, haloacetic acids, nitrate, arsenic, PFAS, and fluoride are unavailable in this feed. No number is invented for them.</p>
-        <div class="inline-actions">
-          <button type="button" class="linkish" data-action="show-tab" data-tab="quality">View Quality</button>
-          <button type="button" class="linkish" data-action="toggle-watch">${watched ? "Remove address" : "Save address"}</button>
+      <section class="score-hero" aria-labelledby="overviewHeading">
+        <h2 id="overviewHeading" class="sr">Overview</h2>
+        <div class="gauge" style="--score:${ringScore}">
+          <svg viewBox="0 0 200 200" aria-hidden="true">
+            <circle class="gauge-track" cx="100" cy="100" r="78"></circle>
+            <circle class="gauge-value" cx="100" cy="100" r="78"></circle>
+          </svg>
+          <div class="gauge-readout">
+            <p class="gauge-kicker">Water score</p>
+            <p class="gauge-num"><span class="sr">Water score </span><span class="score-num" data-count="${scored ? esc(r.qualityScore) : ""}">${esc(scoreText)}</span></p>
+            <p class="gauge-grade">${scored ? `${esc(grade)} <span>/ 100</span>` : "Unavailable"}</p>
+          </div>
         </div>
-        <p class="prose">${watched ? "This address is saved on this device." : "Save this address to check it again later."}</p>
+        <p class="pill pill-${pillKind}">${esc(complianceLine(r))}</p>
+        <div class="btn-row">
+          <button type="button" class="btn btn-solid" data-action="download-report">Download</button>
+          <button type="button" class="btn btn-solid" data-action="${saveAction}">${esc(saveLabel)}</button>
+        </div>
+        <div class="stat-grid">
+          ${statTile("Serves", r.population > 0 ? esc(r.population.toLocaleString("en-US")) : "Not listed")}
+          ${statTile("Source", esc(r.sourceType))}
+          ${statTile("Owner", esc(r.ownerType || "Not listed"))}
+          ${statTile("Compliance", esc(complianceLine(r)))}
+          ${statTile("Risk", r.qualityScore < 0 ? "Not scored" : esc(titleWord(r.riskLevel)))}
+          ${statTile("Open records", esc(openViolations))}
+        </div>
+        <p class="hero-verdict">${esc(verdict(r))}</p>
+        <p class="hero-measure">${esc(measuredLine)}</p>
+        ${missingNames.length ? quietNote("Not in this feed", `${esc(missingNames.join(", "))}. No number is invented for them.`) : ""}
+        <div class="btn-row">
+          <button type="button" class="btn btn-ghost" data-action="show-tab" data-tab="quality">View Quality</button>
+          <button type="button" class="btn btn-ghost" data-action="toggle-watch">${watched ? "Remove address" : "Save address"}</button>
+        </div>
+        <p class="prose hero-save-note">${watched ? "This address is saved on this device." : "Save this address to check it again later."}</p>
       </section>
       <section class="card" aria-labelledby="notesHeading">
         <h2 id="notesHeading">Neighborhood reports</h2>
         <p class="card-lead">Taste, color, pressure, and other notes for ${esc(displayName(r.name))}.</p>
-        <div class="inline-actions">
-          <button type="button" class="linkish" data-action="open-issue">Report Water Quality Issue</button>
+        <div class="btn-row">
+          <button type="button" class="btn btn-solid" data-action="open-issue">Report Water Quality Issue</button>
         </div>
         <div class="seg" role="group" aria-label="Note status">
           ${[["all", "All"], ["open", "Open"], ["resolved", "Resolved"]].map(([key, label]) => `
@@ -609,9 +665,9 @@
         <p class="prose">${useCut
           ? `Planning figure, not a utility meter reading: ${esc(r.usage.recommendedGallonsPerDay)} gallons per person, down from ${esc(r.usage.normalGallonsPerDay)} while this drought category holds.`
           : `Planning figure, not a utility meter reading: ${esc(r.usage.recommendedGallonsPerDay)} gallons per person.`}</p>
-        <p class="more unavailable-line">WaterSense fixtures and whole-home product picks are unavailable. There is no catalog from this utility.</p>
+        ${quietNote("Not in this feed", "WaterSense fixtures and whole-home product picks. There is no catalog from this utility.")}
         <p class="prose">${esc(r.ccrNote || "A consumer confidence report link is not in this feed.")}</p>
-        <p><a class="linkish" href="${esc(r.echoUrl)}" target="_blank" rel="noopener noreferrer">EPA facility record</a></p>
+        <p class="btn-row"><a class="btn btn-ghost" href="${esc(r.echoUrl)}" target="_blank" rel="noopener noreferrer">EPA facility record</a></p>
       </section>
     `;
 
@@ -627,10 +683,7 @@
             <button type="button" data-action="reading-filter" data-filter="${key}" aria-pressed="${state.readingFilter === key}">${label}</button>
           `).join("")}
         </div>
-        ${allReadings.map((c) => readingRow(c)).join("") || `<p class="more unavailable-line">${emptyFilter}</p>`}
-        ${(r.unmeasured || []).length ? `
-          <p class="more unavailable-line">Unavailable in this feed: ${(r.unmeasured || []).map((item) => esc(item.plainName)).join(", ")}. No number is invented for them.</p>
-        ` : ""}
+        ${allReadings.map((c) => readingRow(c)).join("") || quietNote("Nothing to show", emptyFilter)}
         <h3 class="section-label">Lead and copper by year</h3>
         ${sampleHistory(lead, "Lead")}
         ${sampleHistory(copper, "Copper")}
@@ -643,8 +696,8 @@
           <p class="filter-line">${esc(r.product.matchReason)}</p>
           <p class="prose">${esc(r.product.certification)}</p>
           <p class="disclosure">${esc(r.product.disclosure)}</p>
-          <p><a class="linkish" href="${esc(r.product.url)}" target="_blank" rel="noopener noreferrer">See filters · affiliate</a></p>
-          <p><a class="linkish" href="${esc(r.product.testKitUrl)}" target="_blank" rel="noopener noreferrer">${esc(r.product.testKitLabel)} · affiliate</a></p>
+          <p class="btn-row"><a class="btn btn-ghost" href="${esc(r.product.url)}" target="_blank" rel="noopener noreferrer">See filters · affiliate</a></p>
+          <p class="btn-row"><a class="btn btn-ghost" href="${esc(r.product.testKitUrl)}" target="_blank" rel="noopener noreferrer">${esc(r.product.testKitLabel)} · affiliate</a></p>
         ` : `
           <p class="card-lead">No filter is indicated by the samples in this record.</p>
           <p class="prose">Nothing reported here is over a legal limit, and lead was not detected. A filter is not suggested from a contaminant this record does not contain.</p>
@@ -658,21 +711,20 @@
           `).join("")}
         </ul>
         ${(r.guidance || []).map((line) => `<p class="prose">${esc(line)}</p>`).join("")}
-        <p class="more unavailable-line">Prices, reduction percents, and extra products are not invented. Priced marketplace cards are unavailable.</p>
+        ${quietNote("Not in this feed", "Prices, reduction percents, and extra products. Nothing is invented for them.")}
       </section>
     `;
 
     const history = `
       <section class="card" aria-labelledby="historyHeading">
         <h2 id="historyHeading">${ICONS.alert} History</h2>
-        <p class="card-lead">${openViolations ? `${openViolations} open compliance ${openViolations === 1 ? "item" : "items"}.` : "No open compliance items in this record."} The line counts compliance records, not a score.</p>
+        <p class="card-lead">${openViolations ? `${openViolations} open compliance ${openViolations === 1 ? "item" : "items"}.` : "No open compliance items in this record."}</p>
         <div class="seg" role="group" aria-label="Time span">
           ${frames.map(([key, label]) => `
             <button type="button" data-action="timeframe" data-frame="${key}" aria-pressed="${seriesKey === key}">${label}</button>
           `).join("")}
         </div>
         ${sparkline(ten)}
-        <p class="trend-line unavailable-line">${esc(deltaPhrase())}</p>
         <div class="chart-wrap">
           ${detailChart(points, focus, safeIdx)}
           <div class="axis" style="grid-template-columns: repeat(${points.length}, minmax(0, 1fr))">
@@ -683,13 +735,12 @@
             }).join("")}
           </div>
         </div>
-        <div class="readout">
-          <div><span class="k">Score trend</span><span class="v unavailable-line">Unavailable</span></div>
-          <div><span class="k">${esc(yearsLabel)}</span><span class="v">${selectedPoint.violationCount === 0 ? "No violations" : esc(selectedPoint.violationCount) + " violations"}</span></div>
+        <div class="stat-grid">
+          ${statTile("Score trend", "Unavailable")}
+          ${statTile(yearsLabel, selectedPoint.violationCount === 0 ? "No violations" : esc(selectedPoint.violationCount) + " violations")}
         </div>
-        <p class="more">A past water score is not in the public feed, so the line counts compliance records.</p>
+        ${quietNote("Not in this feed", "A past water score. The line counts compliance records. No trend number is invented.")}
         ${selectedPoint.milestoneNote ? `<p class="more">${esc(selectedPoint.milestoneNote)}</p>` : ""}
-        <p class="more">${esc(series.supplyIndication || "")}</p>
         <h3 class="section-label">Past testing and treatment notices</h3>
         <ol class="log">
           ${r.violations.length ? r.violations.map((v) => `
@@ -707,11 +758,9 @@
       <section class="card" aria-labelledby="savedHeading">
         <h2 id="savedHeading">Saved snapshots</h2>
         <p class="card-lead">A copy of this lookup stays in this browser. Firebase copies are separate and need Google sign-in on an authorized web address.</p>
-        <div class="inline-actions">
-          ${state.isGuest
-            ? `<button type="button" class="linkish" data-action="ask-sign-in">Save on this device</button>`
-            : `<button type="button" class="linkish" data-action="save-snapshot">Save lookup</button>`}
-          <button type="button" class="linkish" data-action="download-report">Download report</button>
+        <div class="btn-row">
+          <button type="button" class="btn btn-solid" data-action="${saveAction}">${esc(saveLabel)}</button>
+          <button type="button" class="btn btn-solid" data-action="download-report">Download report</button>
         </div>
         ${snapshots.length === 0 ? `<p class="prose">No saved copies yet.</p>` : `
           <ul class="saved">
@@ -729,39 +778,25 @@
     `;
 
     const panels = { overview, source, quality, history };
+    const tabButtons = tabs.map(([key, label]) => `
+      <button type="button" role="tab" data-action="show-tab" data-tab="${key}" aria-selected="${tab === key}" id="tab-${key}">${label}</button>
+    `).join("");
+    setDock(tabButtons);
     host.innerHTML = `
       <article class="report" id="reportTop" data-active-tab="${esc(tab)}">
-        <header class="score-block">
-          <div class="score-ring" style="--score:${scoreValue}">
-            <svg viewBox="0 0 120 120" aria-hidden="true">
-              <circle class="ring-track" cx="60" cy="60" r="52"></circle>
-              <circle class="ring-value" cx="60" cy="60" r="52"></circle>
-            </svg>
-            <div class="score-center">
-              <p class="score"><span class="sr">Water score </span><span class="score-num" data-count="${r.qualityScore < 0 ? "" : esc(r.qualityScore)}">${r.qualityScore < 0 ? "—" : esc(r.qualityScore)}</span></p>
-              <span class="score-denom" aria-hidden="true">/ 100</span>
-            </div>
+        <header class="report-mast">
+          <p class="mast-kicker">Provider</p>
+          <h1 class="mast-name">${esc(displayName(r.name))}</h1>
+          <p class="mast-place">${esc(displayName(r.city))}, ${esc(r.state)} · ZIP ${esc(r.zip)}</p>
+          <p class="mast-meta">Updated ${esc(formatDay(r.lastUpdated))} · ${esc(r.pwsid)}</p>
+          <div class="btn-row mast-actions">
+            <button type="button" class="btn btn-ghost" data-action="change-provider">${esc(switchLabel)}</button>
+            <button type="button" class="btn btn-ghost" data-action="share-report">Share</button>
+            <button type="button" class="btn btn-ghost" data-action="open-support">Support</button>
           </div>
-          <div class="score-copy">
-            <p class="place-line">${esc(displayName(r.city))}, ${esc(r.state)} · ${esc(r.zip)}</p>
-            <p class="verdict">${esc(verdict(r))}</p>
-            <p class="meta-line">${esc(displayName(r.name))} · ${esc(formatDay(r.lastUpdated))}</p>
-            <div class="score-actions">
-              <button type="button" class="linkish" data-action="change-provider">${esc(switchLabel)}</button>
-              <button type="button" class="linkish" data-action="share-report">Share</button>
-              <button type="button" class="linkish" data-action="download-report">Download</button>
-              ${state.isGuest
-                ? `<button type="button" class="linkish" data-action="ask-sign-in">Save on this device</button>`
-                : `<button type="button" class="linkish" data-action="save-snapshot">Save lookup</button>`}
-            </div>
-            ${state.note ? `<p class="note">${esc(state.note)}</p>` : ""}
-          </div>
+          <a class="btn btn-ghost btn-wide" href="https://github.com/TechBishop/H2Know/releases/latest/download/H2Know.apk">Download for Android</a>
+          ${state.note ? `<p class="note">${esc(state.note)}</p>` : ""}
         </header>
-        <div class="tab-row" id="tabBar" role="tablist" aria-label="Report sections">
-          ${tabs.map(([key, label]) => `
-            <button type="button" role="tab" data-action="show-tab" data-tab="${key}" aria-selected="${tab === key}" id="tab-${key}">${label}</button>
-          `).join("")}
-        </div>
         <div class="stack tab-panel" id="tabPanel" role="tabpanel" aria-labelledby="tab-${tab}">
           ${panels[tab]}
         </div>
@@ -792,6 +827,7 @@
     renderAccount();
     renderHomeExtra();
     document.body.classList.toggle("has-report", state.mode !== "home");
+    document.body.classList.toggle("is-report", state.mode === "report");
     if (state.mode === "pick") renderPicker();
     else renderReport();
     $("zipButton").textContent = state.loadingZip ? "Looking up" : "Look up";
@@ -907,7 +943,7 @@
   }
 
   function scrollShell(top) {
-    const shell = document.querySelector(".shell");
+    const shell = document.querySelector(".scroll") || document.querySelector(".shell");
     if (!shell) return;
     shell.scrollTo({ top, behavior: reducedMotion ? "auto" : "smooth" });
   }
@@ -1153,10 +1189,12 @@
     if (action === "show-tab") {
       state.tab = el.getAttribute("data-tab") || "overview";
       render();
-      const bar = document.getElementById("tabBar");
-      const shell = document.querySelector(".shell");
-      if (bar && shell) {
-        const top = shell.scrollTop + bar.getBoundingClientRect().top - shell.getBoundingClientRect().top - 8;
+      const panel = document.getElementById("tabPanel");
+      const scroller = document.querySelector(".scroll");
+      const mast = document.querySelector(".report-mast");
+      if (panel && scroller) {
+        const mastH = mast ? mast.offsetHeight : 0;
+        const top = scroller.scrollTop + panel.getBoundingClientRect().top - scroller.getBoundingClientRect().top - mastH - 8;
         scrollShell(Math.max(0, top));
       }
       return;
