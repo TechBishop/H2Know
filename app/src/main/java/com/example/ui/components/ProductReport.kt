@@ -93,7 +93,8 @@ fun ProductReport(
     notice: String?,
     onToggleWatch: () -> Unit,
     onDismissNotice: () -> Unit,
-    onChangeProvider: () -> Unit = {}
+    onChangeProvider: () -> Unit = {},
+    onReportIssue: () -> Unit = {}
 ) {
     val palette = H2KnowThemeTokens.colors
     val context = LocalContext.current
@@ -183,6 +184,16 @@ fun ProductReport(
                 modifier = Modifier.padding(top = 8.dp)
             )
             Fact("Planning use", "${report.usage.recommendedGallonsPerDay} gallons / person / day")
+            Text(
+                "General information, not this plant's data.",
+                color = palette.ink3,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+            report.treatment.forEach { step ->
+                Text("${step.stepNumber}. ${step.title}", color = palette.ink, fontWeight = FontWeight.Medium)
+                Text(step.description, color = palette.ink2, style = MaterialTheme.typography.bodySmall)
+            }
         }
 
         ReportCard(
@@ -246,7 +257,19 @@ fun ProductReport(
                     modifier = Modifier.padding(top = 10.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = palette.surface3, contentColor = palette.ink)
                 ) {
-                    Text(if (MonetizationConfig.AMAZON_ASSOCIATE_TAG.isBlank()) "See filters" else "See filters · affiliate")
+                    Text(if (product.amazonUrl.contains("tag=")) "See filters · affiliate" else "See filters")
+                }
+                val matched = report.contaminants.find { product.targetCodes.contains(it.code) }
+                if (matched != null) {
+                    val kitUrl = ReferenceWaterData.contaminantAmazonTestKitUrl(matched)
+                    Button(
+                        onClick = {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(kitUrl)))
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = palette.surface3, contentColor = palette.ink)
+                    ) {
+                        Text(if (kitUrl.contains("tag=")) "${matched.name.substringBefore(" (")} test kit · affiliate" else "Test kit")
+                    }
                 }
                 if (MonetizationConfig.AMAZON_ASSOCIATE_TAG.isBlank()) {
                     Text(
@@ -280,6 +303,12 @@ fun ProductReport(
                 colors = ButtonDefaults.buttonColors(containerColor = palette.surface3, contentColor = palette.ink)
             ) {
                 Text(if (watched) "Remove address" else "Save address")
+            }
+            Button(
+                onClick = onReportIssue,
+                colors = ButtonDefaults.textButtonColors(contentColor = palette.brand)
+            ) {
+                Text("Report Water Quality Issue")
             }
             Button(
                 onClick = {
