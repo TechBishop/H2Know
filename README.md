@@ -1,6 +1,6 @@
 # H2Know — Civic Tap Water Intelligence
 
-**Published independently by Aegis Civic Labs**
+**H2Know is an independent project.**
 
 ---
 
@@ -20,7 +20,7 @@
 
 ## What H2Know Does (The 4W Framework)
 
-Enter any 5-digit U.S. ZIP code to inspect your local tap water across four pillars:
+Enter any 5-digit ZIP code to inspect your local tap water across four pillars:
 - **01 · WHO**: Utility governance, population served, EPA PWSID, and community-reported water issues.
 - **02 · WHERE**: Watershed origin, source water classification, treatment train, and regional U.S. Drought Monitor status.
 - **03 · WHY**: Detected contaminant lab percentiles vs. federal EPA Maximum Contaminant Levels (MCLs) and Public Health Goals (PHGs), plus targeted filtration guidance.
@@ -35,4 +35,4 @@ Enter any 5-digit U.S. ZIP code to inspect your local tap water across four pill
   - [U.S. EPA Envirofacts (SDWIS)](https://www.epa.gov/enviro/sdwis-search)
   - [U.S. Drought Monitor](https://droughtmonitor.unl.edu)
 
-*H2Know is an independent non-governmental project published by Aegis Civic Labs and is not affiliated with or endorsed by the U.S. Environmental Protection Agency (EPA) or any municipal water utility.*
+*H2Know is an independent project and is not affiliated with or endorsed by the U.S. Environmental Protection Agency (EPA) or any municipal water utility.*

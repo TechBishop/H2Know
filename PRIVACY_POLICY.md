@@ -1,17 +1,16 @@
 # Privacy Policy & EPA Disclosure — H2Know
 
-**Effective Date:** October 2026  
-**Publisher:** Aegis Civic Labs
+**Effective Date:** October 2026
 
 ## 1. Government Non-Affiliation & Official Public Data Sources
-H2Know is an independent civic transparency application developed and published by **Aegis Civic Labs**. H2Know does **not** represent, and is not affiliated with or endorsed by, the U.S. Environmental Protection Agency (EPA), the U.S. Geological Survey (USGS), or any state or municipal water utility.
+H2Know is an independent project. H2Know does **not** represent, and is not affiliated with or endorsed by, the U.S. Environmental Protection Agency (EPA), the U.S. Geological Survey (USGS), or any state or municipal water utility.
 
 All public water system identifiers (PWSID), violation histories, lead/copper percentiles, and drought indices displayed in the application are retrieved from official public-domain federal databases:
 - **U.S. EPA Envirofacts (SDWIS):** https://www.epa.gov/enviro/sdwis-search
 - **U.S. Drought Monitor:** https://droughtmonitor.unl.edu
 
 ## 2. Information Collection & Use
-- **Anonymous ZIP Code Lookups:** Users may search any 5-digit U.S. ZIP code and inspect all 4W water quality reports without creating an account or signing in. Entered ZIP codes are transmitted only to public U.S. EPA Envirofacts and Zippopotam.us endpoints to resolve local municipal water systems.
+- **Anonymous ZIP Code Lookups:** Users may search any 5-digit ZIP code and inspect all 4W water quality reports without creating an account or signing in. Entered ZIP codes are transmitted only to public U.S. EPA Envirofacts and Zippopotam.us endpoints to resolve local municipal water systems.
 - **Optional Google Sign-In & Cloud Sync:** If a user chooses to sign in with Google, H2Know stores the user's saved ZIP location history snapshots and user-submitted community water issue reports in Google Firebase Firestore.
 
 ## 3. Data Sharing, Advertising & User Data Deletion

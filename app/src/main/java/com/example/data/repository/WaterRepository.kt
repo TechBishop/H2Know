@@ -122,12 +122,12 @@ class WaterRepository(
     suspend fun searchProvidersByZip(zip: String): Pair<PlaceInfo, List<WaterSystemSummary>> =
         withContext(Dispatchers.IO) {
             val cleanZip = zip.filter { it.isDigit() }.take(5)
-            require(cleanZip.length == 5) { "Enter a valid 5-digit U.S. ZIP code." }
+            require(cleanZip.length == 5) { "Enter a valid 5-digit ZIP code." }
 
             // Resolve place via Zippopotam.us or preset fallback
             val place = fetchPlaceFromZip(cleanZip)
                 ?: ReferenceWaterData.placeFallback(cleanZip)
-                ?: throw IllegalArgumentException("ZIP code $cleanZip was not recognized. Try a nearby 5-digit U.S. ZIP.")
+                ?: throw IllegalArgumentException("ZIP code $cleanZip was not recognized. Try a nearby 5-digit ZIP.")
 
             // A system's ZIP in SDWIS is often its mailing address, not the area it serves.
             // Match active community systems whose service area is this ZIP's county.

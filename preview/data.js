@@ -641,7 +641,7 @@
   async function fetchProvidersByZip(zip) {
     const place = await fetchPlaceFromZip(zip);
     if (!place) {
-      throw new Error(`ZIP code ${zip} was not recognized. Try a nearby 5-digit U.S. ZIP.`);
+      throw new Error(`ZIP code ${zip} was not recognized. Try a nearby 5-digit ZIP.`);
     }
 
     const presetList = PRESET_SYSTEMS[zip] || null;

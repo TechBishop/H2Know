@@ -19,7 +19,7 @@
         },
         "zip": {
           "type": "string",
-          "description": "5-digit US ZIP code for the reported water issue."
+          "description": "5-digit ZIP code for the reported water issue."
         },
         "category": {
           "type": "string",

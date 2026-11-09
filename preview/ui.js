@@ -625,7 +625,7 @@
     const clean = String(raw || "").replace(/\D/g, "").slice(0, 5);
     $("zipInput").value = clean;
     if (clean.length !== 5) {
-      setNote("Enter a 5-digit U.S. ZIP code.", true);
+      setNote("Enter a 5-digit ZIP code.", true);
       return;
     }
     if (state.loadingZip === clean) return;
@@ -662,7 +662,7 @@
       `Source: ${r.sourceType}. Serves ${r.population.toLocaleString()}. EPA ID ${r.pwsid}.`,
       focus ? `${focus.plainName}: ${D.fmtVal(focus.detected)} ${focus.unit} (health goal ${focus.phg === null ? "n/a" : D.fmtVal(focus.phg)} ${focus.unit}).` : "",
       `Ten-year score change: ${deltaText}. Compliance records: ${r.violations.length}.`,
-      "Public EPA SDWIS and U.S. Drought Monitor records via H2Know. Not affiliated with the EPA. Aegis Civic Labs."
+      "Public EPA SDWIS and U.S. Drought Monitor records via H2Know. Not affiliated with the EPA."
     ].filter(Boolean).join("\n");
   }
 
@@ -756,7 +756,7 @@
       return;
     }
     if (action === "share-site") {
-      const text = "H2Know — a 0–100 score for U.S. tap water, from public EPA records. Published independently by Aegis Civic Labs.";
+      const text = "H2Know — a 0–100 score for tap water, from public EPA records. Published independently.";
       if (navigator.share) navigator.share({ title: "H2Know", text, url: window.location.href }).catch(() => {});
       else if (navigator.clipboard) navigator.clipboard.writeText(text + "\n" + window.location.href);
       return;
