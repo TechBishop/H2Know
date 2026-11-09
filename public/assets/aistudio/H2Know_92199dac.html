@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#0B0E11" />
 <meta name="description" content="H2Know — Check your tap water quality. Find your local water provider, see contaminants against EPA limits, violations, drought context, and practical filter tips." />
-<meta name="author" content="Bishop's Folly" />
+<meta name="author" content="H2Know" />
 <meta name="application-name" content="H2Know" />
 <title>H2Know — Know Your Tap Water</title>
 <style>
@@ -459,7 +459,7 @@ tr:last-child td { border-bottom: 0; }
   </div>
   <footer class="site-footer" style="border:0;margin-top:2rem">
     <div class="brand-line">H2Know</div>
-    <div>© 2026 Bishop's Folly. All rights reserved.</div>
+    <div>© 2026 H2Know. All rights reserved.</div>
     <div class="legal">
       Beta release. Information is provided for general awareness and may not reflect the latest lab results for your address.
       Always follow official notices from your water utility. Not medical, legal, or regulatory advice.
@@ -501,7 +501,7 @@ tr:last-child td { border-bottom: 0; }
   const DONATION_URL = "https://buymeacoffee.com/bishopsfolly";
 
   const APP_NAME = "H2Know";
-  const COPYRIGHT = "© 2026 Bishop's Folly. All rights reserved.";
+  const COPYRIGHT = "© 2026 H2Know. All rights reserved.";
   const EPA = "https://data.epa.gov/efservice";
   const ZIPPO = "https://api.zippopotam.us/us";
   const DROUGHT =
@@ -1463,7 +1463,7 @@ tr:last-child td { border-bottom: 0; }
     const zip = $("zipInput").value.replace(/\D/g, "").slice(0, 5);
     $("searchError").classList.add("hidden");
     if (!/^\d{5}$/.test(zip)) {
-      $("searchError").textContent = "Enter a valid 5-digit U.S. ZIP code.";
+      $("searchError").textContent = "Enter a valid 5-digit ZIP code.";
       $("searchError").classList.remove("hidden");
       return;
     }

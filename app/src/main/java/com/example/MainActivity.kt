@@ -553,7 +553,7 @@ fun H2KnowMainWorkspace(
                     }
                 }
 
-                // Independent Umbrella Studio Footer (Aegis Civic Labs · Privacy & EPA Disclaimer · Share · Support)
+                // Independent footer (Privacy & EPA Disclaimer · Share · Support)
                 Box(modifier = Modifier.widthIn(max = 840.dp)) {
                     H2KnowStudioFooter(
                         activeReport = if (isResultsScreen) uiState.activeReport else null,

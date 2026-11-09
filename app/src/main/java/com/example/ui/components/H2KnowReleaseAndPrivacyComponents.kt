@@ -63,7 +63,6 @@ import com.example.ui.theme.H2KnowThemeTokens
 import com.example.ui.theme.JetBrainsMonoFamily
 import java.util.Locale
 
-private const val STUDIO_PUBLISHER_NAME = "Aegis Civic Labs"
 private const val EPA_SDWIS_URL = "https://www.epa.gov/enviro/sdwis-search"
 private const val US_DROUGHT_MONITOR_URL = "https://droughtmonitor.unl.edu"
 private const val DONATE_COFFEE_URL = "https://buymeacoffee.com/bishopsfolly"
@@ -399,8 +398,8 @@ private fun SnapshotPill(
 fun shareH2KnowApp(context: Context) {
     val shareText = buildString {
         appendLine("H2Know — Tap Water Quality & Filter Guide")
-        appendLine("Check your U.S. ZIP code's tap water quality score, water source, detected contaminants, and matched home filters.")
-        append("Published independently by $STUDIO_PUBLISHER_NAME.")
+        appendLine("Check any 5-digit ZIP code's tap water quality score, water source, detected contaminants, and matched home filters.")
+        append("Published independently.")
     }
     val sendIntent = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
@@ -447,7 +446,7 @@ fun H2KnowStudioFooter(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    text = "PUBLISHED BY ${STUDIO_PUBLISHER_NAME.uppercase()}",
+                    text = "INDEPENDENT PROJECT",
                     fontFamily = JetBrainsMonoFamily,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
@@ -690,7 +689,7 @@ fun H2KnowPrivacyAndEpaModal(
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "$STUDIO_PUBLISHER_NAME — Legal & Data Notice",
+                            text = "Legal & Data Notice",
                             style = MaterialTheme.typography.titleMedium,
                             color = palette.ink,
                             fontWeight = FontWeight.ExtraBold
@@ -732,7 +731,7 @@ fun H2KnowPrivacyAndEpaModal(
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "H2Know is developed and published independently by $STUDIO_PUBLISHER_NAME. H2Know does NOT represent, and is not affiliated with or endorsed by, the U.S. Environmental Protection Agency (EPA), the U.S. Geological Survey (USGS), or any state or municipal water utility.",
+                                text = "H2Know is an independent project. H2Know does NOT represent, and is not affiliated with or endorsed by, the U.S. Environmental Protection Agency (EPA), the U.S. Geological Survey (USGS), or any state or municipal water utility.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = palette.ink2
                             )
@@ -820,7 +819,7 @@ fun H2KnowPrivacyAndEpaModal(
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "• Anonymous ZIP Searches: You can search any U.S. ZIP code and inspect all 4W water reports without signing in. Entered ZIP codes are only sent to public EPA Envirofacts & Zippopotam.us endpoints to resolve local utilities.",
+                                text = "• Anonymous ZIP Searches: You can search any 5-digit ZIP code and inspect all 4W water reports without signing in. Entered ZIP codes are only sent to public EPA Envirofacts & Zippopotam.us endpoints to resolve local utilities.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = palette.ink2
                             )

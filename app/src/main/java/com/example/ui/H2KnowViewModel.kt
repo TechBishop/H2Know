@@ -155,7 +155,7 @@ class H2KnowViewModel(
         if (targetZip.length != 5) {
             _uiState.update {
                 it.copy(
-                    searchError = "Enter a valid 5-digit U.S. ZIP code (e.g., 78701, 48502, 90210).",
+                    searchError = "Enter a valid 5-digit ZIP code (e.g., 78701, 48502, 90210).",
                     screen = "search"
                 )
             }

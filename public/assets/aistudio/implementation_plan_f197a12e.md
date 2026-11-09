@@ -17,7 +17,7 @@ An upgraded, full-stack version of **H2Know** that transforms U.S. EPA drinking 
 
 ## 1. Overview & Core Concept
 
-- **What It Does**: Lets residents enter any 5-digit U.S. ZIP code, pick their local water utility, and explore a comprehensive workspace covering **Overview & Active Alerts**, **Historical Trends (1Y / 5Y / 10Y)**, **Contaminants (MCL vs. Health Goal)**, **Violations & Compliance**, **Open Tickets & Community Issues**, **Water Source & Treatment**, and **Tailored Actions & Filtration**.
+- **What It Does**: Lets residents enter any 5-digit ZIP code, pick their local water utility, and explore a comprehensive workspace covering **Overview & Active Alerts**, **Historical Trends (1Y / 5Y / 10Y)**, **Contaminants (MCL vs. Health Goal)**, **Violations & Compliance**, **Open Tickets & Community Issues**, **Water Source & Treatment**, and **Tailored Actions & Filtration**.
 - **Target Audience / Persona**: Homeowners, renters, parents, and civic-minded residents who want to understand not only what is in their tap water today, but whether their water supply is improving or degrading over time, why those shifts happen, and how to stay alerted to quality changes.
 - **Key Value**: Turns static federal water records into living longitudinal intelligence—showing 1-, 5-, and 10-year trajectories with clear diagnostic explanations, proactive quality-change alerts, and actionable filtration and ticket-tracking tools.
 
@@ -57,7 +57,7 @@ An upgraded, full-stack version of **H2Know** that transforms U.S. EPA drinking 
 - **Color Palette & Mood**:
   - *Dark Mode (Default)*: Deep slate canvas (`#0B0E11`), elevated card surface (`#12161B` / `#1A1F26`), crisp alabaster ink (`#E6E8EB`), muted slate secondary text (`#A8B0BB`), and hairline borders (`rgba(255,255,255,0.07)`).
   - *Light Mode*: Cool off-white canvas (`#F4F6F8`), pure white surface (`#FFFFFF`), deep charcoal ink (`#12161B`), and subtle slate borders (`rgba(15,23,42,0.08)`).
-  - *Semantic Accents*: Hydrological Cerulean (`#2B7FD4` / `#4A8FC9`) for primary controls and trend lines, Emerald (`#1A8F5C` / `#3D9B6E`) for improving trends and nominal values, Amber (`#C4841D` / `#C9A04A`) for health-goal exceedances and seasonal warnings, Crimson (`#C43C3C` / `#C96B6B`) for legal MCL exceedances and critical alerts, and Warm Coral (`#FF5E5B`) for the Bishop's Folly creator support link.
+  - *Semantic Accents*: Hydrological Cerulean (`#2B7FD4` / `#4A8FC9`) for primary controls and trend lines, Emerald (`#1A8F5C` / `#3D9B6E`) for improving trends and nominal values, Amber (`#C4841D` / `#C9A04A`) for health-goal exceedances and seasonal warnings, Crimson (`#C43C3C` / `#C96B6B`) for legal MCL exceedances and critical alerts, and Warm Coral (`#FF5E5B`) for the creator support link.
 - **Typography & Hierarchy**:
   - *Display & Navigation*: `Plus Jakarta Sans` (600/700 weights).
   - *Body Prose*: `DM Sans` (400/500 weights) for accessible scientific explanations.

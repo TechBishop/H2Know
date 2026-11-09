@@ -7,7 +7,7 @@ Reference is the restored Argon app on `main` (commit `830c7e3`), live at the si
 | ZIP lookup | Search field, Zippopotam, then a short EPA list | Same lookup, then EPA community systems for the county | Matches |
 | Preset chips | Austin, Flint, Newark, Jackson, Beverly Hills | Same five chips | Matches |
 | Provider list and Switch | Inline cards, then Switch (n) on the report | Picker, then Switch (n) back to that list | Matches |
-| Birdseye IN 47513 | ZIP search, often a short list sorted by population | `IN5219001` BIRDSEYE WATER SYSTEM is listed for the city and opens | Matches |
+| A rural ZIP test case | ZIP search, often a short list sorted by population | `IN5219001` is listed and opens | Matches |
 | Score printed before a record loads | Hash score on the provider card | No score until the EPA record loads | Kept out. The hash is not a measurement |
 | Overview tab | Score gauge, people, source, risk, neighborhood reports | Score ring, the same facts, neighborhood reports, save address | Matches |
 | Water score 0–100 | Gauge from the page's own formula, including filled-in samples | Open violations and samples over a legal limit. A missing feed is not scored | Matches |

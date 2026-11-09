@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="H2Know" />
-<meta name="description" content="H2Know — Civic Tap Water Intelligence by Aegis Civic Labs. Inspect the WHO, WHERE, WHY, and WHEN of any U.S. ZIP code's tap water." />
+<meta name="description" content="H2Know — Civic Tap Water Intelligence. Inspect the WHO, WHERE, WHY, and WHEN of any 5-digit ZIP code's tap water." />
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
 <meta http-equiv="Pragma" content="no-cache" />
 <meta http-equiv="Expires" content="0" />
@@ -990,7 +990,7 @@ html.dark {
            ==================================================================== -->
       <footer style="margin-top:20px;background:color-mix(in srgb, var(--surface-1) 90%, transparent);border:1px solid var(--border);border-radius:22px;padding:14px 16px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center">
-          <span class="mono" style="font-size:10px;font-weight:700;color:var(--brand)">PUBLISHED BY BISHOP'S FOLLY</span>
+          <span class="mono" style="font-size:10px;font-weight:700;color:var(--brand)">INDEPENDENT PROJECT</span>
           <span style="font-size:10px;color:var(--ink-3)">•</span>
           <span class="mono" style="font-size:10px;font-weight:500;color:var(--ink-3)">INDEPENDENT CIVIC RELEASE</span>
         </div>
@@ -1126,7 +1126,7 @@ html.dark {
           <div>
             <div class="mono" style="font-size:10px;font-weight:700;color:var(--brand)">PRIVACY POLICY &amp; EPA DISCLOSURE</div>
             <div style="height:2px"></div>
-            <h3 class="title-medium" style="font-weight:800">Aegis Civic Labs — Legal &amp; Data Notice</h3>
+            <h3 class="title-medium" style="font-weight:800">Legal &amp; Data Notice</h3>
           </div>
           <button type="button" id="closePrivacyIconBtn" class="icon-circle-btn" style="width:34px;height:34px">
             <svg class="svg-ico" width="18" height="18" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
@@ -1139,7 +1139,7 @@ html.dark {
           <!-- Section 1 -->
           <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:16px;padding:14px" class="stack-8">
             <h4 class="title-small">1. Government Non-Affiliation &amp; Public Sources</h4>
-            <p class="body-small">H2Know is developed and published independently by Aegis Civic Labs. H2Know does NOT represent, and is not affiliated with or endorsed by, the U.S. Environmental Protection Agency (EPA), the U.S. Geological Survey (USGS), or any state or municipal water utility.</p>
+            <p class="body-small">H2Know is an independent project. H2Know does NOT represent, and is not affiliated with or endorsed by, the U.S. Environmental Protection Agency (EPA), the U.S. Geological Survey (USGS), or any state or municipal water utility.</p>
             <p class="body-small">All water system identifiers (PWSID), violation histories, lead/copper percentiles, and drought indices are retrieved from official public-domain federal databases:</p>
             <div class="flow-row" style="padding-top:2px">
               <a href="https://www.epa.gov/enviro/sdwis-search" target="_blank" rel="noopener noreferrer" style="text-decoration:none;border-radius:10px;background:var(--brand-soft);border:1px solid color-mix(in srgb, var(--brand) 45%, transparent);padding:6px 10px;display:inline-flex;align-items:center;gap:4px">
@@ -1156,7 +1156,7 @@ html.dark {
           <!-- Section 2 -->
           <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:16px;padding:14px" class="stack-8">
             <h4 class="title-small">2. Privacy Policy &amp; Data Deletion</h4>
-            <p class="body-small">• Anonymous ZIP Searches: You can search any U.S. ZIP code and inspect all 4W water reports without signing in. Entered ZIP codes are sent to public EPA Envirofacts, Zippopotam.us, Census ZCTA, and EPA service-area boundary endpoints to resolve local utilities.</p>
+            <p class="body-small">• Anonymous ZIP Searches: You can search any 5-digit ZIP code and inspect all 4W water reports without signing in. Entered ZIP codes are sent to public EPA Envirofacts, Zippopotam.us, Census ZCTA, and EPA service-area boundary endpoints to resolve local utilities.</p>
             <p class="body-small">• Optional Google Sign-In &amp; Cloud Sync: If you choose to sign in with Google, H2Know stores your saved ZIP history snapshots and community-reported water issues in Google Firebase Firestore.</p>
             <p class="body-small">• Instant Data Deletion &amp; Zero Ad Tracking: H2Know contains zero third-party ad networks and never sells user data. Signed-in users can permanently delete any saved ZIP history snapshot or reported issue at any time using the trash icon next to the item.</p>
           </div>
@@ -2514,13 +2514,13 @@ html.dark {
 
   // EPA CITY_SERVED and ZIP_CODE_SERVED name a system's main area. Rural customers
   // in the same ZIP can be on a different system. This table adds those systems.
-  // The note is a customer report. It is not an EPA field.
+  // The note is a user report. It is not an EPA field.
   const SERVED_ZIP_OVERRIDES = {
     "47513": [
       {
         pwsid: "IN5213007",
         note: "Rural areas of this ZIP may be served by Patoka Water Co",
-        source: "customer-reported bill (Oct 2026)"
+        source: "user report, not EPA data"
       }
     ]
   };
@@ -2535,7 +2535,7 @@ html.dark {
   function plainCustomerNote(pwsid, zip) {
     const note = customerServiceNote(pwsid, zip);
     if (!note) return "";
-    return `${note.note}. This comes from a ${note.source}, not from an EPA listing.`;
+    return `${note.note}. This comes from a ${note.source}.`;
   }
 
   async function fetchServedAreaIds(zip, city, stateCode) {
@@ -2608,7 +2608,7 @@ html.dark {
   async function fetchProvidersByZip(zip) {
     const place = await fetchPlaceFromZip(zip);
     if (!place) {
-      throw new Error(`ZIP code ${zip} was not recognized. Try a nearby 5-digit U.S. ZIP.`);
+      throw new Error(`ZIP code ${zip} was not recognized. Try a nearby 5-digit ZIP.`);
     }
     const live = await fetchEpaSystems(zip, place.city, place.state);
     if (!live.ok) {
@@ -2623,7 +2623,7 @@ html.dark {
     if (missingNotes.length) {
       const extra = await fetchWaterSystemRows(missingNotes.map((row) => row.pwsid));
       if (!extra.ok) {
-        throw new Error("The EPA water-system row for a customer-reported system did not load. No utility was invented.");
+        throw new Error("The EPA water-system row for a user-reported system did not load. No utility was invented.");
       }
       missingNotes.forEach((row) => {
         const id = String(row.pwsid).trim().toUpperCase();
@@ -3112,7 +3112,7 @@ html.dark {
   async function executeZipSearch(overrideZip, autoSelectPrimary) {
     const clean = String(overrideZip !== null && overrideZip !== undefined ? overrideZip : $("zipSearchInput").value).replace(/\D/g, "").slice(0, 5);
     if (clean.length !== 5) {
-      $("searchErrorBox").textContent = "Enter a valid 5-digit U.S. ZIP code (e.g., 78701, 48502, 90210).";
+      $("searchErrorBox").textContent = "Enter a valid 5-digit ZIP code (e.g., 78701, 48502, 90210).";
       $("searchErrorBox").classList.remove("hidden");
       return;
     }
@@ -4109,7 +4109,7 @@ html.dark {
     if (state.screen === "results" && state.activeReport) {
       openSnapshotDialog();
     } else {
-      const appText = "H2Know — U.S. Tap Water Quality & Filter Guide\nCheck your local tap water score, contaminant levels, and matched home water filters for any U.S. ZIP code using public EPA & U.S. Drought Monitor records.\nPublished independently by Aegis Civic Labs.";
+      const appText = "H2Know — Tap Water Quality & Filter Guide\nCheck your local tap water score, contaminant levels, and matched home water filters for any 5-digit ZIP code using public EPA & U.S. Drought Monitor records.\nPublished independently.";
       if (navigator.share) {
         navigator.share({ title: "H2Know — Tap Water Quality & Filter Guide", text: appText, url: window.location.href }).catch(() => {});
       } else if (navigator.clipboard) {
