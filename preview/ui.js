@@ -5,6 +5,9 @@
 (function () {
   "use strict";
 
+  const SUPPORT_URL = "";
+  const AMAZON_AFFILIATE_TAG = "";
+
   const D = window.H2KnowData;
   if (!D) return;
 
@@ -746,7 +749,10 @@
       return;
     }
     if (action === "open-privacy") { openDialog("privacyDialog"); return; }
-    if (action === "open-support") { openDialog("supportDialog"); return; }
+    if (action === "open-support") {
+      if (String(SUPPORT_URL || "").trim()) openDialog("supportDialog");
+      return;
+    }
     if (action === "ask-sign-in") { openDialog("accountDialog"); return; }
     if (action === "confirm-sign-in") {
       state.isGuest = false;

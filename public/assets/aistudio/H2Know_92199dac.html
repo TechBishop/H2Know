@@ -489,16 +489,8 @@ tr:last-child td { border-bottom: 0; }
 (function () {
   "use strict";
 
-  /**
-   * ─────────────────────────────────────────────────────────
-   * DONATION LINK — paste your page URL below, then save.
-   * Recommended for first-time makers: Buy Me a Coffee
-   *   1. Create free account at https://www.buymeacoffee.com
-   *   2. Copy your page link, e.g. https://www.buymeacoffee.com/yourname
-   * Alternatives: https://ko-fi.com/yourname  or  https://paypal.me/yourname
-   * ─────────────────────────────────────────────────────────
-   */
-  const DONATION_URL = "https://buymeacoffee.com/bishopsfolly";
+  const SUPPORT_URL = "";
+  const AMAZON_AFFILIATE_TAG = "";
 
   const APP_NAME = "H2Know";
   const COPYRIGHT = "© 2026 H2Know. All rights reserved.";
@@ -585,8 +577,10 @@ tr:last-child td { border-bottom: 0; }
       '<div class="brand-line">' + APP_NAME + "</div>" +
       "<div>" + COPYRIGHT + "</div>" +
       '<div class="legal">Beta. For general awareness only — confirm with your water utility. Not medical or legal advice.</div>' +
-      '<div class="donate-block"><p>Enjoying H2Know? A small tip helps us keep improving it.</p>' +
-      '<a class="btn-donate-lg" href="' + esc(DONATION_URL) + '" target="_blank" rel="noopener noreferrer">♥ Support H2Know</a></div>'
+      (String(SUPPORT_URL || "").trim()
+        ? '<div class="donate-block"><p>Enjoying H2Know? A small tip helps us keep improving it.</p>' +
+          '<a class="btn-donate-lg" href="' + esc(SUPPORT_URL) + '" target="_blank" rel="noopener noreferrer">♥ Support H2Know</a></div>'
+        : "")
     );
   }
 
@@ -1545,9 +1539,15 @@ tr:last-child td { border-bottom: 0; }
 
   /* Wire up */
   function applyDonationLinks() {
-    const urls = [ $("btnDonateHeader"), $("btnDonateFooter") ];
-    document.querySelectorAll('a.btn-donate, a.btn-donate-lg').forEach((a) => {
-      a.href = DONATION_URL;
+    const enabled = String(SUPPORT_URL || "").trim() !== "";
+    document.querySelectorAll("a.btn-donate, a.btn-donate-lg").forEach((a) => {
+      if (enabled) a.href = SUPPORT_URL;
+      a.hidden = !enabled;
+      a.style.display = enabled ? "" : "none";
+    });
+    document.querySelectorAll(".donate-block").forEach((block) => {
+      block.hidden = !enabled;
+      block.style.display = enabled ? "" : "none";
     });
   }
 

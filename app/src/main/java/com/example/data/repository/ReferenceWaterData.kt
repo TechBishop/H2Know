@@ -688,7 +688,7 @@ object ReferenceWaterData {
                 amazonUrl = MonetizationConfig.amazonUrl(query),
                 secondaryLabel = "",
                 secondaryUrl = "",
-                disclosure = MonetizationConfig.AFFILIATE_DISCLOSURE
+                disclosure = if (AMAZON_AFFILIATE_TAG.isBlank()) "" else MonetizationConfig.AFFILIATE_DISCLOSURE
             )
         )
     }

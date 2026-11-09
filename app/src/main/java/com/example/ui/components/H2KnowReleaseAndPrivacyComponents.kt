@@ -59,13 +59,13 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.focus.focusProperties
 import com.example.data.model.WaterSystemReport
+import com.example.data.repository.SUPPORT_URL
 import com.example.ui.theme.H2KnowThemeTokens
 import com.example.ui.theme.JetBrainsMonoFamily
 import java.util.Locale
 
 private const val EPA_SDWIS_URL = "https://www.epa.gov/enviro/sdwis-search"
 private const val US_DROUGHT_MONITOR_URL = "https://droughtmonitor.unl.edu"
-private const val DONATE_COFFEE_URL = "https://buymeacoffee.com/bishopsfolly"
 
 fun getFormattedReportShareText(report: WaterSystemReport): String = waterReportPlainText(report)
 
@@ -420,7 +420,7 @@ fun H2KnowStudioFooter(
     val context = LocalContext.current
     var showSupportConfirmDialog by remember { mutableStateOf(false) }
 
-    if (showSupportConfirmDialog) {
+    if (showSupportConfirmDialog && SUPPORT_URL.isNotBlank()) {
         H2KnowExternalSupportConfirmDialog(
             onDismiss = { showSupportConfirmDialog = false }
         )
@@ -545,8 +545,7 @@ fun H2KnowStudioFooter(
                     }
                 }
 
-                // 3. Support / Buy Me a Coffee Button (non-focusable + confirmation modal so keyboard Enter never opens webpage)
-                Surface(
+                if (SUPPORT_URL.isNotBlank()) Surface(
                     onClick = { showSupportConfirmDialog = true },
                     shape = RoundedCornerShape(999.dp),
                     color = palette.donateBg,
@@ -636,7 +635,7 @@ fun H2KnowExternalSupportConfirmDialog(
                     Button(
                         onClick = {
                             onDismiss()
-                            runCatching { uriHandler.openUri(DONATE_COFFEE_URL) }
+                            runCatching { uriHandler.openUri(SUPPORT_URL) }
                         },
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = palette.donate)
