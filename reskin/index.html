@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
+<script>
+  const SUPPORT_URL = "";
+  const AMAZON_AFFILIATE_TAG = "";
+</script>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover" />
 <meta name="theme-color" content="#090D14" />
@@ -875,7 +879,7 @@ html.dark {
         </div>
 
         <div class="top-right-actions">
-          <button type="button" id="topDonateButton" class="donate-pill-btn" tabindex="-1">
+          <button type="button" id="topDonateButton" class="donate-pill-btn hidden" tabindex="-1">
             <svg class="svg-ico" width="14" height="14" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
             <span>Support</span>
           </button>
@@ -1010,7 +1014,7 @@ html.dark {
             <span id="footerShareButtonText" class="label-small" style="color:var(--brand);letter-spacing:0.2px">Share H2Know</span>
           </button>
 
-          <button type="button" id="footerDonateButton" tabindex="-1" style="border-radius:999px;background:var(--donate-bg);border:1px solid color-mix(in srgb, var(--donate) 45%, transparent);padding:7px 12px;display:inline-flex;align-items:center;gap:5px">
+          <button type="button" id="footerDonateButton" class="hidden" tabindex="-1" style="border-radius:999px;background:var(--donate-bg);border:1px solid color-mix(in srgb, var(--donate) 45%, transparent);padding:7px 12px;display:inline-flex;align-items:center;gap:5px">
             <svg class="svg-ico" width="13" height="13" viewBox="0 0 24 24" style="color:var(--donate)"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
             <span class="label-small" style="color:var(--donate);letter-spacing:0.2px">Buy Me a Coffee</span>
           </button>
@@ -1185,7 +1189,7 @@ html.dark {
         <p class="body-small" style="margin-bottom:16px">Would you like to open the external Buy Me a Coffee page in your browser?</p>
         <div style="display:flex;justify-content:flex-end;gap:10px">
           <button type="button" id="cancelSupportDialogBtn" style="border-radius:12px;border:1px solid var(--border-strong);padding:8px 14px;font-family:var(--font-display);font-size:12.5px;font-weight:600;color:var(--ink-2)">Stay in App</button>
-          <a id="openSupportWebpageLink" href="https://buymeacoffee.com/bishopsfolly" target="_blank" rel="noopener noreferrer" style="text-decoration:none;border-radius:12px;background:var(--donate);padding:8px 14px;font-family:var(--font-display);font-size:12.5px;font-weight:700;color:#FFFFFF">Open Webpage</a>
+          <a id="openSupportWebpageLink" href="#" target="_blank" rel="noopener noreferrer" style="text-decoration:none;border-radius:12px;background:var(--donate);padding:8px 14px;font-family:var(--font-display);font-size:12.5px;font-weight:700;color:#FFFFFF">Open Webpage</a>
         </div>
       </div>
     </div>
@@ -2784,30 +2788,32 @@ html.dark {
   function withAmazonTag(url) {
     const raw = String(url || "");
     if (raw.indexOf("amazon.com") < 0) return raw;
+    const tag = String(AMAZON_AFFILIATE_TAG || "").trim();
+    if (!tag) return raw;
     if (/[?&]tag=/.test(raw)) return raw;
-    return raw + (raw.indexOf("?") >= 0 ? "&" : "?") + "tag=bishopsfolly-20";
+    return raw + (raw.indexOf("?") >= 0 ? "&" : "?") + "tag=" + encodeURIComponent(tag);
   }
 
   function contaminantAmazonFilterUrl(c) {
     const code = c?.code || "";
-    if (code === "PB90") return "https://www.amazon.com/s?k=NSF+53+lead+water+filter+pitcher+faucet+under+sink&tag=bishopsfolly-20";
-    if (code === "CU90") return "https://www.amazon.com/s?k=NSF+53+copper+and+lead+drinking+water+filter&tag=bishopsfolly-20";
-    if (code === "2950" || code === "2456") return "https://www.amazon.com/s?k=NSF+53+42+activated+carbon+water+filter+TTHM+chlorine+byproducts&tag=bishopsfolly-20";
-    if (code === "2806" || code === "2805") return "https://www.amazon.com/s?k=NSF+53+58+P473+PFAS+PFOA+PFOS+water+filter&tag=bishopsfolly-20";
-    if (code === "1040") return "https://www.amazon.com/s?k=NSF+58+reverse+osmosis+nitrate+water+filter+system&tag=bishopsfolly-20";
-    if (code === "1005") return "https://www.amazon.com/s?k=NSF+58+reverse+osmosis+arsenic+water+filter+system&tag=bishopsfolly-20";
-    if (code === "1025") return "https://www.amazon.com/s?k=NSF+58+reverse+osmosis+fluoride+water+filter&tag=bishopsfolly-20";
-    return "https://www.amazon.com/s?k=NSF+53+58+certified+drinking+water+filter&tag=bishopsfolly-20";
+    if (code === "PB90") return "https://www.amazon.com/s?k=NSF+53+lead+water+filter+pitcher+faucet+under+sink";
+    if (code === "CU90") return "https://www.amazon.com/s?k=NSF+53+copper+and+lead+drinking+water+filter";
+    if (code === "2950" || code === "2456") return "https://www.amazon.com/s?k=NSF+53+42+activated+carbon+water+filter+TTHM+chlorine+byproducts";
+    if (code === "2806" || code === "2805") return "https://www.amazon.com/s?k=NSF+53+58+P473+PFAS+PFOA+PFOS+water+filter";
+    if (code === "1040") return "https://www.amazon.com/s?k=NSF+58+reverse+osmosis+nitrate+water+filter+system";
+    if (code === "1005") return "https://www.amazon.com/s?k=NSF+58+reverse+osmosis+arsenic+water+filter+system";
+    if (code === "1025") return "https://www.amazon.com/s?k=NSF+58+reverse+osmosis+fluoride+water+filter";
+    return "https://www.amazon.com/s?k=NSF+53+58+certified+drinking+water+filter";
   }
 
   function contaminantAmazonTestKitUrl(c) {
     const code = c?.code || "";
-    if (code === "PB90" || code === "CU90") return "https://www.amazon.com/s?k=EPA+lead+and+copper+in+drinking+water+home+test+kit&tag=bishopsfolly-20";
-    if (code === "2806" || code === "2805") return "https://www.amazon.com/s?k=PFAS+forever+chemicals+mail+in+water+test+kit&tag=bishopsfolly-20";
-    if (code === "1040") return "https://www.amazon.com/s?k=nitrate+nitrite+drinking+water+test+kit+strips&tag=bishopsfolly-20";
-    if (code === "1005") return "https://www.amazon.com/s?k=arsenic+in+drinking+water+test+kit&tag=bishopsfolly-20";
-    if (code === "2950" || code === "2456") return "https://www.amazon.com/s?k=complete+home+drinking+water+test+kit+chlorine+VOC&tag=bishopsfolly-20";
-    return "https://www.amazon.com/s?k=16+in+1+drinking+water+test+kit+lead+copper+nitrate&tag=bishopsfolly-20";
+    if (code === "PB90" || code === "CU90") return "https://www.amazon.com/s?k=EPA+lead+and+copper+in+drinking+water+home+test+kit";
+    if (code === "2806" || code === "2805") return "https://www.amazon.com/s?k=PFAS+forever+chemicals+mail+in+water+test+kit";
+    if (code === "1040") return "https://www.amazon.com/s?k=nitrate+nitrite+drinking+water+test+kit+strips";
+    if (code === "1005") return "https://www.amazon.com/s?k=arsenic+in+drinking+water+test+kit";
+    if (code === "2950" || code === "2456") return "https://www.amazon.com/s?k=complete+home+drinking+water+test+kit+chlorine+VOC";
+    return "https://www.amazon.com/s?k=16+in+1+drinking+water+test+kit+lead+copper+nitrate";
   }
 
   function buildSuggestedProductsForReport(r) {
@@ -2847,9 +2853,9 @@ html.dark {
         priceTier: "$169–$249 · Prime Eligible",
         matchReason: roMatchText,
         targetCodes: ["PB90", "2806", "2805", "1040", "1005", "2950"],
-        amazonUrl: "https://www.amazon.com/s?k=NSF+58+53+under+sink+reverse+osmosis+water+filter+system&tag=bishopsfolly-20",
+        amazonUrl: "https://www.amazon.com/s?k=NSF+58+53+under+sink+reverse+osmosis+water+filter+system",
         secondaryLabel: "RO Filter Packs ↗",
-        secondaryUrl: "https://www.amazon.com/s?k=reverse+osmosis+replacement+filter+set+NSF+58&tag=bishopsfolly-20"
+        secondaryUrl: "https://www.amazon.com/s?k=reverse+osmosis+replacement+filter+set+NSF+58"
       },
       {
         id: "amz-pitcher-nsf53",
@@ -2859,9 +2865,9 @@ html.dark {
         priceTier: "$34–$58 · Prime Eligible",
         matchReason: pitcherMatchText,
         targetCodes: ["PB90", "CU90", "2950", "2456", "2806", "2805"],
-        amazonUrl: "https://www.amazon.com/s?k=NSF+53+lead+and+PFAS+water+filter+pitcher&tag=bishopsfolly-20",
+        amazonUrl: "https://www.amazon.com/s?k=NSF+53+lead+and+PFAS+water+filter+pitcher",
         secondaryLabel: "NSF-53 Cartridges ↗",
-        secondaryUrl: "https://www.amazon.com/s?k=NSF+53+replacement+water+pitcher+filter+cartridges&tag=bishopsfolly-20"
+        secondaryUrl: "https://www.amazon.com/s?k=NSF+53+replacement+water+pitcher+filter+cartridges"
       },
       {
         id: "amz-faucet-mount",
@@ -2871,9 +2877,9 @@ html.dark {
         priceTier: "$28–$46 · Prime Eligible",
         matchReason: faucetMatchText,
         targetCodes: ["PB90", "CU90", "2950", "2456"],
-        amazonUrl: "https://www.amazon.com/s?k=NSF+53+faucet+mount+water+filter+lead+reduction&tag=bishopsfolly-20",
+        amazonUrl: "https://www.amazon.com/s?k=NSF+53+faucet+mount+water+filter+lead+reduction",
         secondaryLabel: "Faucet Refills ↗",
-        secondaryUrl: "https://www.amazon.com/s?k=NSF+53+faucet+water+filter+replacement+cartridges&tag=bishopsfolly-20"
+        secondaryUrl: "https://www.amazon.com/s?k=NSF+53+faucet+water+filter+replacement+cartridges"
       },
       {
         id: "amz-home-test-kit",
@@ -2883,9 +2889,9 @@ html.dark {
         priceTier: "$22–$79 · Prime Eligible",
         matchReason: testKitMatchText,
         targetCodes: ["PB90", "CU90", "1040", "1005", "2950"],
-        amazonUrl: "https://www.amazon.com/s?k=drinking+water+test+kit+lead+copper+pfas+nitrate&tag=bishopsfolly-20",
+        amazonUrl: "https://www.amazon.com/s?k=drinking+water+test+kit+lead+copper+pfas+nitrate",
         secondaryLabel: "Mail-In Lab Kits ↗",
-        secondaryUrl: "https://www.amazon.com/s?k=certified+laboratory+mail+in+water+test+kit+lead+PFAS&tag=bishopsfolly-20"
+        secondaryUrl: "https://www.amazon.com/s?k=certified+laboratory+mail+in+water+test+kit+lead+PFAS"
       }
     ];
   }
@@ -2900,9 +2906,9 @@ html.dark {
         priceTier: "$19–$39 · Amazon",
         matchReason: `Amazon search for ZIP ${r.zip}. Not an EPA sample result.`,
         targetCodes: [],
-        amazonUrl: "https://www.amazon.com/s?k=EPA+WaterSense+high+efficiency+showerhead+and+faucet+aerator+kit&tag=bishopsfolly-20",
+        amazonUrl: "https://www.amazon.com/s?k=EPA+WaterSense+high+efficiency+showerhead+and+faucet+aerator+kit",
         secondaryLabel: "Smart Leak Sensors ↗",
-        secondaryUrl: "https://www.amazon.com/s?k=smart+home+water+leak+detector+sensor+shutoff&tag=bishopsfolly-20"
+        secondaryUrl: "https://www.amazon.com/s?k=smart+home+water+leak+detector+sensor+shutoff"
       },
       {
         id: "amz-whole-house-sediment",
@@ -2912,9 +2918,9 @@ html.dark {
         priceTier: "$52–$115 · Amazon",
         matchReason: `Protects plumbing & water heaters on ${r.sourceType.toLowerCase()} mains`,
         targetCodes: ["PB90", "CU90", "2950"],
-        amazonUrl: "https://www.amazon.com/s?k=whole+house+spin+down+sediment+and+carbon+water+filter&tag=bishopsfolly-20",
+        amazonUrl: "https://www.amazon.com/s?k=whole+house+spin+down+sediment+and+carbon+water+filter",
         secondaryLabel: "Shower Filters ↗",
-        secondaryUrl: "https://www.amazon.com/s?k=vitamin+C+activated+carbon+chlorine+shower+head+filter&tag=bishopsfolly-20"
+        secondaryUrl: "https://www.amazon.com/s?k=vitamin+C+activated+carbon+chlorine+shower+head+filter"
       }
     ];
   }
@@ -2928,9 +2934,9 @@ html.dark {
       priceTier: "$34–$58",
       matchReason: "Most Popular Renter & Kitchen Choice",
       targetCodes: ["PB90", "2806", "2950"],
-      amazonUrl: "https://www.amazon.com/s?k=NSF+53+lead+and+PFAS+water+filter+pitcher&tag=bishopsfolly-20",
+      amazonUrl: "https://www.amazon.com/s?k=NSF+53+lead+and+PFAS+water+filter+pitcher",
       secondaryLabel: "Refills ↗",
-      secondaryUrl: "https://www.amazon.com/s?k=NSF+53+replacement+water+pitcher+filter+cartridges&tag=bishopsfolly-20"
+      secondaryUrl: "https://www.amazon.com/s?k=NSF+53+replacement+water+pitcher+filter+cartridges"
     },
     {
       id: "home-amz-testkit",
@@ -2940,9 +2946,9 @@ html.dark {
       priceTier: "$22–$49",
       matchReason: "Verify Pre-1986 Household Plumbing",
       targetCodes: ["PB90", "CU90", "1040"],
-      amazonUrl: "https://www.amazon.com/s?k=16+in+1+drinking+water+test+kit+lead+copper+nitrate&tag=bishopsfolly-20",
+      amazonUrl: "https://www.amazon.com/s?k=16+in+1+drinking+water+test+kit+lead+copper+nitrate",
       secondaryLabel: "Lab Mail-In ↗",
-      secondaryUrl: "https://www.amazon.com/s?k=certified+laboratory+mail+in+water+test+kit+lead+PFAS&tag=bishopsfolly-20"
+      secondaryUrl: "https://www.amazon.com/s?k=certified+laboratory+mail+in+water+test+kit+lead+PFAS"
     },
     {
       id: "home-amz-ro",
@@ -2952,9 +2958,9 @@ html.dark {
       priceTier: "$169–$249",
       matchReason: "Strict Public Health Goal (PHG) Barrier",
       targetCodes: ["1005", "1040", "2806", "PB90"],
-      amazonUrl: "https://www.amazon.com/s?k=NSF+58+53+under+sink+reverse+osmosis+water+filter+system&tag=bishopsfolly-20",
+      amazonUrl: "https://www.amazon.com/s?k=NSF+58+53+under+sink+reverse+osmosis+water+filter+system",
       secondaryLabel: "Faucet Mounts ↗",
-      secondaryUrl: "https://www.amazon.com/s?k=NSF+53+faucet+mount+water+filter+lead+reduction&tag=bishopsfolly-20"
+      secondaryUrl: "https://www.amazon.com/s?k=NSF+53+faucet+mount+water+filter+lead+reduction"
     }
   ];
 
@@ -2970,7 +2976,7 @@ html.dark {
         <h3 class="title-large">${title}</h3>
         <div style="height:4px"></div>
         <p class="body-small">${subtitle}</p>
-        <p class="body-small">Affiliate link. H2Know may earn a commission at no extra cost to you. This is not an EPA recommendation.</p>
+        ${String(AMAZON_AFFILIATE_TAG || "").trim() ? `<p class="body-small">Affiliate link. H2Know may earn a commission at no extra cost to you. This is not an EPA recommendation.</p>` : ""}
         <div style="height:14px"></div>
 
         <div class="stack-12">
@@ -4101,8 +4107,20 @@ html.dark {
   $("footerPrivacyButton").addEventListener("click", () => $("privacyDialogBackdrop").classList.remove("hidden"));
   $("closePrivacyIconBtn").addEventListener("click", () => $("privacyDialogBackdrop").classList.add("hidden"));
   $("donePrivacyButton").addEventListener("click", () => $("privacyDialogBackdrop").classList.add("hidden"));
-  $("topDonateButton").addEventListener("click", () => $("supportDialogBackdrop").classList.remove("hidden"));
-  $("footerDonateButton").addEventListener("click", () => $("supportDialogBackdrop").classList.remove("hidden"));
+  const supportEnabled = String(SUPPORT_URL || "").trim() !== "";
+  ["topDonateButton", "footerDonateButton"].forEach((id) => {
+    const button = $(id);
+    if (!button) return;
+    button.classList.toggle("hidden", !supportEnabled);
+  });
+  if (supportEnabled) $("openSupportWebpageLink").href = SUPPORT_URL;
+  $("supportDialogBackdrop").classList.add("hidden");
+  $("topDonateButton").addEventListener("click", () => {
+    if (supportEnabled) $("supportDialogBackdrop").classList.remove("hidden");
+  });
+  $("footerDonateButton").addEventListener("click", () => {
+    if (supportEnabled) $("supportDialogBackdrop").classList.remove("hidden");
+  });
   $("cancelSupportDialogBtn").addEventListener("click", () => $("supportDialogBackdrop").classList.add("hidden"));
   $("openSupportWebpageLink").addEventListener("click", () => $("supportDialogBackdrop").classList.add("hidden"));
   $("footerShareButton").addEventListener("click", () => {

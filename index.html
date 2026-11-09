@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
+<script>
+  const SUPPORT_URL = "";
+  const AMAZON_AFFILIATE_TAG = "";
+</script>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover" />
 <meta name="theme-color" content="#090D14" />
@@ -742,7 +746,7 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
         </div>
 
         <div class="top-right-actions">
-          <button type="button" id="topDonateButton" class="donate-pill-btn" tabindex="-1">
+          <button type="button" id="topDonateButton" class="donate-pill-btn hidden" tabindex="-1">
             <svg class="svg-ico" width="14" height="14" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
             <span>Support</span>
           </button>
@@ -877,7 +881,7 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
             <span id="footerShareButtonText" class="label-small" style="color:var(--brand);letter-spacing:0.2px">Share H2Know</span>
           </button>
 
-          <button type="button" id="footerDonateButton" tabindex="-1" style="border-radius:999px;background:var(--donate-bg);border:1px solid color-mix(in srgb, var(--donate) 45%, transparent);padding:7px 12px;display:inline-flex;align-items:center;gap:5px">
+          <button type="button" id="footerDonateButton" class="hidden" tabindex="-1" style="border-radius:999px;background:var(--donate-bg);border:1px solid color-mix(in srgb, var(--donate) 45%, transparent);padding:7px 12px;display:inline-flex;align-items:center;gap:5px">
             <svg class="svg-ico" width="13" height="13" viewBox="0 0 24 24" style="color:var(--donate)"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
             <span class="label-small" style="color:var(--donate);letter-spacing:0.2px">Buy Me a Coffee</span>
           </button>
@@ -1052,7 +1056,7 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
         <p class="body-small" style="margin-bottom:16px">Would you like to open the external Buy Me a Coffee page in your browser?</p>
         <div style="display:flex;justify-content:flex-end;gap:10px">
           <button type="button" id="cancelSupportDialogBtn" style="border-radius:12px;border:1px solid var(--border-strong);padding:8px 14px;font-family:var(--font-display);font-size:12.5px;font-weight:600;color:var(--ink-2)">Stay in App</button>
-          <a id="openSupportWebpageLink" href="https://buymeacoffee.com/bishopsfolly" target="_blank" rel="noopener noreferrer" style="text-decoration:none;border-radius:12px;background:var(--donate);padding:8px 14px;font-family:var(--font-display);font-size:12.5px;font-weight:700;color:#FFFFFF">Open Webpage</a>
+          <a id="openSupportWebpageLink" href="#" target="_blank" rel="noopener noreferrer" style="text-decoration:none;border-radius:12px;background:var(--donate);padding:8px 14px;font-family:var(--font-display);font-size:12.5px;font-weight:700;color:#FFFFFF">Open Webpage</a>
         </div>
       </div>
     </div>
@@ -3577,8 +3581,20 @@ button { cursor: pointer; border: none; background: none; padding: 0; }
   $("footerPrivacyButton").addEventListener("click", () => $("privacyDialogBackdrop").classList.remove("hidden"));
   $("closePrivacyIconBtn").addEventListener("click", () => $("privacyDialogBackdrop").classList.add("hidden"));
   $("donePrivacyButton").addEventListener("click", () => $("privacyDialogBackdrop").classList.add("hidden"));
-  $("topDonateButton").addEventListener("click", () => $("supportDialogBackdrop").classList.remove("hidden"));
-  $("footerDonateButton").addEventListener("click", () => $("supportDialogBackdrop").classList.remove("hidden"));
+  const supportEnabled = String(SUPPORT_URL || "").trim() !== "";
+  ["topDonateButton", "footerDonateButton"].forEach((id) => {
+    const button = $(id);
+    if (!button) return;
+    button.classList.toggle("hidden", !supportEnabled);
+  });
+  if (supportEnabled) $("openSupportWebpageLink").href = SUPPORT_URL;
+  $("supportDialogBackdrop").classList.add("hidden");
+  $("topDonateButton").addEventListener("click", () => {
+    if (supportEnabled) $("supportDialogBackdrop").classList.remove("hidden");
+  });
+  $("footerDonateButton").addEventListener("click", () => {
+    if (supportEnabled) $("supportDialogBackdrop").classList.remove("hidden");
+  });
   $("cancelSupportDialogBtn").addEventListener("click", () => $("supportDialogBackdrop").classList.add("hidden"));
   $("openSupportWebpageLink").addEventListener("click", () => $("supportDialogBackdrop").classList.add("hidden"));
   $("footerShareButton").addEventListener("click", () => {

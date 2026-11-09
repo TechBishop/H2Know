@@ -238,7 +238,9 @@ fun ProductReport(
                 Text(product.title, color = palette.ink, fontWeight = FontWeight.SemiBold)
                 Text(product.matchReason, color = palette.ink2, modifier = Modifier.padding(top = 6.dp))
                 Text(product.certificationBadge, color = palette.ink3, modifier = Modifier.padding(top = 6.dp))
-                Text(product.disclosure, color = palette.ink3, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
+                if (MonetizationConfig.AMAZON_ASSOCIATE_TAG.isNotBlank() && product.disclosure.isNotBlank()) {
+                    Text(product.disclosure, color = palette.ink3, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
+                }
                 Button(
                     onClick = {
                         context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(product.amazonUrl)))
@@ -247,14 +249,6 @@ fun ProductReport(
                     colors = ButtonDefaults.buttonColors(containerColor = palette.surface3, contentColor = palette.ink)
                 ) {
                     Text(if (MonetizationConfig.AMAZON_ASSOCIATE_TAG.isBlank()) "See filters" else "See filters · affiliate")
-                }
-                if (MonetizationConfig.AMAZON_ASSOCIATE_TAG.isBlank()) {
-                    Text(
-                        "Affiliate tag is empty. Set AMAZON_ASSOCIATE_TAG in config.js when you have an Associates ID. No tag is sent until then.",
-                        color = palette.ink3,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 6.dp)
-                    )
                 }
             }
         }

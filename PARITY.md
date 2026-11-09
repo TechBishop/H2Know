@@ -22,7 +22,7 @@ Reference is the restored Argon app on `main` (commit `830c7e3`), live at the si
 | Historical water score | The line is a 0–100 score | "Score trend: Unavailable." The line counts compliance records | Unavailable |
 | Violations | Past testing and treatment notices | EPA violation rows, open / addressed / resolved | Matches |
 | Share | Header Share opens a snapshot card | Share opens the score text, with copy and the system share sheet | Matches |
-| Support | Donate opens Buy Me a Coffee | Support opens the same page, `buymeacoffee.com/bishopsfolly` | Matches |
+| Support | Support stays hidden until `SUPPORT_URL` is set | Same. The confirm dialog stays hidden while that value is empty | Hidden |
 | Sign in | The live button does not call Google or Firebase. It clears the guest flag and shows the fixed address civic.resident@gmail.com | Tapping Sign in says Google sign-in isn't available on this site yet. It does not mark the visitor as signed in. A browser save is labeled as not a sign-in | Unavailable. Checked on https://techbishop.github.io/H2Know/ on Oct 22, 2026. The only Google requests were font files. No account popup, no Firebase call |
 | Saved locations | Shown after the guest flag is cleared | Saved addresses on this device, reskin-only storage | Matches |
 | Saved snapshots | History tab, stored in this browser under a cloud name | History tab. Browser copies say "This browser." Firebase copies need a real sign-in | Matches |
@@ -30,8 +30,8 @@ Reference is the restored Argon app on `main` (commit `830c7e3`), live at the si
 | Report Water Quality Issue | Dialog. On the web it stays in this browser | Same dialog. "Save in this browser" is labeled as not Firebase. "Submit to Firebase" needs an authorized Google sign-in | Matches |
 | Download for Android | Footer and the desktop bar. GitHub release APK | Home, report, and footer. Same APK URL | Matches |
 | Phone frame | Desktop frame, full screen on a narrow phone | Desktop frame, full screen below 720px | Matches |
-| Amazon affiliate tag | Quality and home links are not tagged | Every Amazon link in `/reskin/` ends with `tag=bishopsfolly-20` | Tagged in the reskin |
-| Affiliate disclosure | Not shown next to the links | Shown on every Amazon card: commission notice, and the link is not an EPA recommendation | Matches |
+| Amazon affiliate tag | Quality and home links are not tagged | Amazon links stay untagged until `AMAZON_AFFILIATE_TAG` is set | Untagged |
+| Affiliate disclosure | Not shown next to the links | Hidden while `AMAZON_AFFILIATE_TAG` is empty | Hidden |
 | Priced marketplace and home kits | Prices, reduction percents, and featured kits | Not shown. The card says those figures are unavailable | Unavailable |
 | WaterSense and whole-home cards | Source tab Amazon cards | Named unavailable. There is no utility catalog | Unavailable |
 | Premium and checkout | Not charged in this build | `PREMIUM_ENABLED` is false. No checkout and no paid-tier copy | Removed by rule |

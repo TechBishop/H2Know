@@ -74,6 +74,7 @@ import com.example.data.model.WaterSystemSummary
 import com.example.data.remote.LocationHistoryDocument
 import com.example.data.remote.WaterIssueDocument
 import com.example.data.repository.ReferenceWaterData
+import com.example.data.repository.SUPPORT_URL
 import com.example.ui.CloudDataState
 import com.example.ui.theme.H2KnowThemeTokens
 import com.example.ui.theme.JetBrainsMonoFamily
@@ -106,7 +107,7 @@ fun H2KnowStreamlinedTopBar(
     val haptic = LocalHapticFeedback.current
     var showSupportConfirmDialog by remember { mutableStateOf(false) }
 
-    if (showSupportConfirmDialog) {
+    if (showSupportConfirmDialog && SUPPORT_URL.isNotBlank()) {
         H2KnowExternalSupportConfirmDialog(
             onDismiss = { showSupportConfirmDialog = false }
         )
@@ -242,8 +243,7 @@ fun H2KnowStreamlinedTopBar(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    // Original Buy Me a Coffee Donate / Support Button (non-focusable so keyboard Enter on ZIP never triggers it)
-                    Surface(
+                    if (SUPPORT_URL.isNotBlank()) Surface(
                         onClick = {
                             showSupportConfirmDialog = true
                         },

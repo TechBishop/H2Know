@@ -3,13 +3,19 @@ package com.example.data.repository
 import android.content.Context
 import java.net.URLEncoder
 
+/** Set a support page URL here. Empty hides Support and Buy Me a Coffee. */
+const val SUPPORT_URL = ""
+
+/** Set an Amazon Associates tag here. Empty leaves filter links untagged and hides the affiliate disclosure. */
+const val AMAZON_AFFILIATE_TAG = ""
+
 /**
- * Revenue settings live only in the repo-root config.js.
- * The Android build copies that file into assets.
+ * The two constants above are the one-line handles.
+ * Other revenue settings still load from the repo-root config.js.
  * PREMIUM_ENABLED stays false during beta, which hides checkout and removes the address cap.
  */
 object MonetizationConfig {
-    var AMAZON_ASSOCIATE_TAG: String = ""
+    var AMAZON_ASSOCIATE_TAG: String = AMAZON_AFFILIATE_TAG
         private set
     var STRIPE_PAYMENT_LINK: String = ""
         private set
@@ -63,7 +69,7 @@ object MonetizationConfig {
     }
 
     private fun apply(parsed: ParsedKeys) {
-        AMAZON_ASSOCIATE_TAG = parsed.amazonTag
+        AMAZON_ASSOCIATE_TAG = AMAZON_AFFILIATE_TAG.trim()
         STRIPE_PAYMENT_LINK = parsed.stripeLink
         premiumEnabled = parsed.premiumEnabled
         freeSavedAddresses = parsed.freeSavedAddresses
